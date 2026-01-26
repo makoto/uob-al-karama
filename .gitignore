@@ -1,0 +1,28 @@
+# Large data files (ZenSVI downloads & processing)
+data/
+
+# API keys
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.Python
+env/
+venv/
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Shapefile intermediates (generated from GeoJSON)
+input/*.shp
+input/*.shx
+input/*.dbf
+input/*.prj
+input/*.cpg
