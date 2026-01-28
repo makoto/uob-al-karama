@@ -1,0 +1,4 @@
+building_id,lat,lon,measured_height_m,measurement_method,distance_from_building_m,angle_to_top_deg,num_floors,notes,photo_filename
+1,,25.2421,55.3048,,clinometer,30,45,,Sample building near Galaxy Sports,IMG_001.jpg
+2,,,,,floor_count,,,12,12 floors x 3m = 36m estimate,IMG_002.jpg
+3,,,,,lidar_app,,,,,Polycam scan,building3_scan.ply

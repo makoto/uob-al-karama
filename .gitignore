@@ -26,3 +26,4 @@ input/*.shx
 input/*.dbf
 input/*.prj
 input/*.cpg
+cache

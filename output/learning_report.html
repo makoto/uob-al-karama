@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Learning Report - Al Karama Urban Climate Analysis</title>
+    <meta charset="utf-8">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: #fafafa;
+            color: #333;
+        }
+        h1 { color: #1565c0; border-bottom: 3px solid #1565c0; padding-bottom: 10px; }
+        h2 { color: #1565c0; margin-top: 40px; border-left: 4px solid #1565c0; padding-left: 15px; }
+        h3 { color: #333; margin-top: 25px; }
+        .toc { background: #e3f2fd; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .toc a { color: #1565c0; text-decoration: none; }
+        .toc a:hover { text-decoration: underline; }
+        .toc ul { margin: 10px 0; }
+        .section { background: white; padding: 25px; border-radius: 8px; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .highlight { background: #fff3e0; padding: 15px; border-radius: 6px; border-left: 4px solid #ff9800; margin: 15px 0; }
+        .code { background: #263238; color: #aed581; padding: 15px; border-radius: 6px; font-family: monospace; overflow-x: auto; margin: 15px 0; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: #f5f5f5; }
+        .metric { display: inline-block; background: #e8f5e9; padding: 5px 10px; border-radius: 4px; margin: 3px; }
+        .finding { background: #e8f5e9; padding: 15px; border-radius: 6px; border-left: 4px solid #4caf50; margin: 15px 0; }
+        .limitation { background: #ffebee; padding: 15px; border-radius: 6px; border-left: 4px solid #f44336; margin: 15px 0; }
+        .diagram { background: #f5f5f5; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; font-family: monospace; }
+        img { max-width: 100%; }
+        .formula { background: #f5f5f5; padding: 10px 20px; border-radius: 6px; font-family: monospace; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+<h1>Learning Report: Al Karama Urban Climate Analysis</h1>
+<p><strong>Location:</strong> Al Karama, Dubai, UAE<br>
+<strong>Purpose:</strong> Understand urban heat, vegetation, and pedestrian comfort using freely available data<br>
+<strong>Date:</strong> January 2026</p>
+
+<div class="toc">
+    <strong>Table of Contents</strong>
+    <ul>
+        <li><a href="#overview">1. Project Overview</a></li>
+        <li><a href="#data">2. Data Sources</a></li>
+        <li><a href="#streetview">3. Street View Analysis (GVI, SVF)</a></li>
+        <li><a href="#satellite">4. Satellite Analysis (LST, NDVI, NDBI)</a></li>
+        <li><a href="#combined">5. Combined Analysis</a></li>
+        <li><a href="#network">6. Network Analysis</a></li>
+        <li><a href="#clusters">7. Cluster Analysis</a></li>
+        <li><a href="#findings">8. Key Findings</a></li>
+        <li><a href="#limitations">9. Limitations</a></li>
+        <li><a href="#files">10. Output Files Reference</a></li>
+    </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="overview">1. Project Overview</h2>
+<div class="section">
+    <h3>What We Did</h3>
+    <p>We analyzed the urban climate and pedestrian comfort of Al Karama district using two complementary data sources:</p>
+    <ol>
+        <li><strong>Street View Images</strong> (Mapillary) - Ground-level perspective of what pedestrians see</li>
+        <li><strong>Satellite Imagery</strong> (Landsat, Sentinel-2) - Bird's eye view of temperature and vegetation</li>
+    </ol>
+
+    <div class="diagram">
+        <pre>
+┌─────────────────────────────────────────────────────────────┐
+│                    DATA SOURCES                              │
+├─────────────────────────┬───────────────────────────────────┤
+│   STREET VIEW           │         SATELLITE                 │
+│   (Mapillary)           │    (Landsat + Sentinel-2)         │
+│                         │                                   │
+│   • 11,651 images       │    • 90,300 grid cells            │
+│   • Ground-level view   │    • 10m resolution               │
+│   • What pedestrians    │    • Temperature (LST)            │
+│     actually see        │    • Vegetation (NDVI)            │
+└────────────┬────────────┴─────────────────┬─────────────────┘
+             │                              │
+             ▼                              ▼
+┌─────────────────────────┐    ┌─────────────────────────────┐
+│  Green View Index (GVI) │    │  Land Surface Temp (LST)    │
+│  Sky View Factor (SVF)  │    │  Vegetation Index (NDVI)    │
+│  Depth Estimation       │    │  Built-up Index (NDBI)      │
+└────────────┬────────────┘    └─────────────────┬───────────┘
+             │                                   │
+             └─────────────┬─────────────────────┘
+                           ▼
+              ┌─────────────────────────┐
+              │   COMBINED ANALYSIS     │
+              │  • Heat Mitigation      │
+              │  • Pedestrian Comfort   │
+              │  • Network Centrality   │
+              │  • Climate Clusters     │
+              └─────────────────────────┘
+        </pre>
+    </div>
+
+    <h3>Why This Matters</h3>
+    <p>Urban heat is a major issue in Dubai. By identifying where heat stress is worst and where interventions would help the most people, planners can make better decisions about:</p>
+    <ul>
+        <li>Where to plant trees</li>
+        <li>Where to add shade structures</li>
+        <li>Which streets to prioritize for pedestrian improvements</li>
+    </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="data">2. Data Sources</h2>
+<div class="section">
+    <h3>2.1 Mapillary Street View Images</h3>
+    <table>
+        <tr><th>Property</th><th>Value</th></tr>
+        <tr><td>Source</td><td>Mapillary (crowdsourced street imagery)</td></tr>
+        <tr><td>Images downloaded</td><td>11,651</td></tr>
+        <tr><td>Coverage</td><td>Al Karama district boundary</td></tr>
+        <tr><td>Cost</td><td>Free (API access)</td></tr>
+        <tr><td>Tool used</td><td>ZenSVI Python library</td></tr>
+    </table>
+
+    <div class="code">
+# How we downloaded images
+from zensvi.download import MLYDownloader
+
+mly = MLYDownloader(log_path="logs")
+mly.download_svi(
+    dir_output="data/mapillary_svi",
+    input_shp="data/al_karama.geojson",
+    lat=None, lon=None,
+    id_columns=None
+)
+    </div>
+
+    <h3>2.2 Satellite Imagery</h3>
+    <table>
+        <tr><th>Satellite</th><th>Data</th><th>Resolution</th><th>Use</th></tr>
+        <tr><td>Landsat 8/9</td><td>Thermal infrared</td><td>30m (100m native)</td><td>Land Surface Temperature</td></tr>
+        <tr><td>Sentinel-2</td><td>Multispectral</td><td>10m</td><td>NDVI, NDBI vegetation/built-up</td></tr>
+    </table>
+
+    <div class="highlight">
+        <strong>Google Earth Engine (GEE):</strong> We used GEE to access and process satellite data. It's free for research/academic use. You need to register at <a href="https://earthengine.google.com/">earthengine.google.com</a>.
+    </div>
+
+    <h3>2.3 OpenStreetMap</h3>
+    <table>
+        <tr><th>Data</th><th>Count</th><th>Use</th></tr>
+        <tr><td>Buildings</td><td>3,243</td><td>3D visualization, height data</td></tr>
+        <tr><td>Street network</td><td>5,975 edges</td><td>Centrality analysis</td></tr>
+    </table>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="streetview">3. Street View Analysis</h2>
+<div class="section">
+    <h3>3.1 Green View Index (GVI)</h3>
+    <p><strong>What it measures:</strong> The percentage of green pixels (vegetation) visible in a street view image.</p>
+
+    <div class="formula">
+        GVI = (Green pixels in image) / (Total pixels in image) × 100%
+    </div>
+
+    <p><strong>How it's calculated:</strong></p>
+    <ol>
+        <li>Take a street view image</li>
+        <li>Convert to a color space that separates green vegetation</li>
+        <li>Use a vegetation index formula to identify green pixels</li>
+        <li>Count the percentage of green pixels</li>
+    </ol>
+
+    <div class="finding">
+        <strong>Al Karama Result:</strong> Mean GVI = 3.55%<br>
+        This is very low - most streets have minimal visible vegetation.
+    </div>
+
+    <h3>3.2 Sky View Factor (SVF)</h3>
+    <p><strong>What it measures:</strong> The percentage of sky visible from a point on the street. Lower SVF = more shading from buildings/trees.</p>
+
+    <div class="formula">
+        SVF = (Sky pixels in image) / (Total pixels in upper hemisphere) × 100%
+    </div>
+
+    <p><strong>Interpretation:</strong></p>
+    <ul>
+        <li>SVF = 100%: Open area, no obstructions (full sun exposure)</li>
+        <li>SVF = 50%: Half the sky blocked (moderate shading)</li>
+        <li>SVF = 20%: Narrow street canyon (good shading)</li>
+    </ul>
+
+    <div class="finding">
+        <strong>Al Karama Result:</strong> Mean SVF = 31.4%<br>
+        Moderate sky exposure - some shading from buildings but not dense urban canyon.
+    </div>
+
+    <h3>3.3 Depth Estimation</h3>
+    <p><strong>What it does:</strong> Uses AI (DepthAnythingV2 model) to estimate relative distances in an image.</p>
+
+    <div class="limitation">
+        <strong>Limitation:</strong> Depth estimation gives <em>relative</em> distances (what's closer vs farther), not <em>absolute</em> distances in meters. Without camera calibration, we can't accurately measure building heights.
+    </div>
+
+    <p>We processed 26 test images as a proof-of-concept. Full processing of all 11,651 images would require significant compute time.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="satellite">4. Satellite Analysis</h2>
+<div class="section">
+    <h3>4.1 Land Surface Temperature (LST)</h3>
+    <p><strong>What it measures:</strong> The temperature of the ground/surface as seen from space.</p>
+
+    <div class="highlight">
+        <strong>Important:</strong> LST is NOT air temperature. It measures how hot surfaces (roads, buildings, sand) are. LST is typically higher than air temperature during the day.
+    </div>
+
+    <p><strong>How it's calculated from Landsat:</strong></p>
+    <div class="formula">
+LST = Brightness Temperature / (1 + (λ × BT / ρ) × ln(ε))
+
+Where:
+  λ = wavelength of thermal band (10.8 μm)
+  BT = brightness temperature from satellite
+  ρ = h × c / σ (Planck's constant × speed of light / Boltzmann)
+  ε = surface emissivity (assumed 0.95 for urban areas)
+    </div>
+
+    <div class="finding">
+        <strong>Al Karama Result:</strong><br>
+        Mean LST = 48.6°C (summer)<br>
+        Range: 36°C to 54°C<br>
+        The 18°C variation shows some areas are significantly cooler (likely parks/vegetation).
+    </div>
+
+    <h3>4.2 NDVI (Normalized Difference Vegetation Index)</h3>
+    <p><strong>What it measures:</strong> Vegetation health/density from satellite perspective.</p>
+
+    <div class="formula">
+NDVI = (NIR - Red) / (NIR + Red)
+
+Where:
+  NIR = Near-infrared reflectance (Sentinel-2 Band 8)
+  Red = Red reflectance (Sentinel-2 Band 4)
+    </div>
+
+    <p><strong>Interpretation:</strong></p>
+    <table>
+        <tr><th>NDVI Value</th><th>Meaning</th></tr>
+        <tr><td>-1.0 to 0</td><td>Water, bare soil, buildings</td></tr>
+        <tr><td>0 to 0.2</td><td>Sparse vegetation, dry grass</td></tr>
+        <tr><td>0.2 to 0.4</td><td>Moderate vegetation</td></tr>
+        <tr><td>0.4 to 0.6</td><td>Dense vegetation</td></tr>
+        <tr><td>0.6 to 1.0</td><td>Very dense, healthy vegetation</td></tr>
+    </table>
+
+    <div class="finding">
+        <strong>Al Karama Result:</strong> Mean NDVI = 0.104<br>
+        Very low - mostly built-up with sparse vegetation. Only 11% of area has NDVI > 0.3.
+    </div>
+
+    <h3>4.3 NDBI (Normalized Difference Built-up Index)</h3>
+    <p><strong>What it measures:</strong> Built-up/urban density.</p>
+
+    <div class="formula">
+NDBI = (SWIR - NIR) / (SWIR + NIR)
+
+Where:
+  SWIR = Short-wave infrared (Sentinel-2 Band 11)
+  NIR = Near-infrared (Sentinel-2 Band 8)
+    </div>
+
+    <p>High NDBI = more buildings/concrete. Low NDBI = vegetation or water.</p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="combined">5. Combined Analysis</h2>
+<div class="section">
+    <h3>5.1 Heat Mitigation Priority</h3>
+    <p><strong>Goal:</strong> Identify locations where interventions (tree planting, shade) would have the most impact.</p>
+
+    <p><strong>Method:</strong> Combine multiple factors into a priority score:</p>
+
+    <div class="formula">
+Priority Score = 0.40 × LST_normalized
+              + 0.25 × (1 - GVI_normalized)  [low greenery = high priority]
+              + 0.20 × (1 - NDVI_normalized) [low vegetation = high priority]
+              + 0.15 × SVF_normalized        [high exposure = high priority]
+    </div>
+
+    <div class="finding">
+        <strong>Result:</strong><br>
+        Critical priority: 2,892 locations (25%)<br>
+        High priority: 6,122 locations (53%)<br>
+        <br>
+        78% of Al Karama needs heat mitigation interventions.
+    </div>
+
+    <h3>5.2 Pedestrian Comfort Index (PCI)</h3>
+    <p><strong>Goal:</strong> Rate streets by walking comfort.</p>
+
+    <div class="formula">
+PCI = 0.40 × Temperature_comfort (inverse of LST)
+    + 0.35 × Shade (1 - SVF)
+    + 0.25 × Vegetation_comfort (GVI)
+    </div>
+
+    <p><strong>Interpretation:</strong></p>
+    <table>
+        <tr><th>PCI</th><th>Comfort Level</th></tr>
+        <tr><td>> 0.6</td><td>Very Comfortable</td></tr>
+        <tr><td>0.45 - 0.6</td><td>Comfortable</td></tr>
+        <tr><td>0.3 - 0.45</td><td>Moderate</td></tr>
+        <tr><td>< 0.3</td><td>Uncomfortable</td></tr>
+    </table>
+
+    <div class="finding">
+        <strong>Result:</strong> Only 29% of streets are comfortable for pedestrians.
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="network">6. Network Analysis</h2>
+<div class="section">
+    <h3>6.1 What is Network Centrality?</h3>
+    <p>Network analysis treats streets as a graph (nodes = intersections, edges = street segments) to understand which streets are most important for movement.</p>
+
+    <h3>6.2 Betweenness Centrality</h3>
+    <p><strong>What it measures:</strong> How often a street lies on the shortest path between other locations.</p>
+
+    <div class="formula">
+Betweenness(v) = Σ (σst(v) / σst)
+
+Where:
+  σst = total number of shortest paths from node s to node t
+  σst(v) = number of those paths that pass through v
+    </div>
+
+    <p><strong>Interpretation:</strong> High betweenness = many people pass through this street to get from A to B. These are main corridors.</p>
+
+    <h3>6.3 Closeness Centrality</h3>
+    <p><strong>What it measures:</strong> How close (accessible) a location is to all other locations.</p>
+
+    <div class="formula">
+Closeness(v) = (n-1) / Σ d(v,u)
+
+Where:
+  n = number of nodes
+  d(v,u) = shortest path distance from v to u
+    </div>
+
+    <p><strong>Interpretation:</strong> High closeness = easy to reach from anywhere. Central, accessible locations.</p>
+
+    <h3>6.4 Intervention Priority</h3>
+    <p>We combined centrality with comfort to find streets where improvements help the most people:</p>
+
+    <div class="formula">
+Intervention Priority = Centrality × (1 - Comfort)
+
+High priority = busy street that is uncomfortable
+    </div>
+
+    <div class="finding">
+        <strong>Result:</strong> 51 streets identified as high priority - heavily used but uncomfortable.
+    </div>
+
+    <h3>6.5 Edge Effects</h3>
+    <div class="highlight">
+        <strong>Important caveat:</strong> Centrality calculations are affected by study area boundaries. Streets at the edge appear less important because paths can't continue beyond our boundary. We addressed this by expanding the analysis area (+500m buffer) and then clipping results back to Al Karama.
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="clusters">7. Cluster Analysis</h2>
+<div class="section">
+    <h3>7.1 K-Means Clustering</h3>
+    <p><strong>Goal:</strong> Group locations into distinct "urban climate zones" based on their characteristics.</p>
+
+    <p><strong>Method:</strong></p>
+    <ol>
+        <li>Select features: GVI, SVF, LST, NDVI</li>
+        <li>Standardize features (z-scores) so they're comparable</li>
+        <li>Run K-means algorithm with k=4 clusters</li>
+        <li>Label clusters based on their characteristics</li>
+    </ol>
+
+    <div class="finding">
+        <strong>Result - 4 Urban Climate Zones:</strong>
+        <table>
+            <tr><th>Zone</th><th>Count</th><th>GVI</th><th>SVF</th><th>LST</th><th>Character</th></tr>
+            <tr><td>Hot & Exposed</td><td>3,962</td><td>2.5%</td><td>46%</td><td>50.6°C</td><td>Open areas, full sun</td></tr>
+            <tr><td>Hot & Shaded</td><td>3,386</td><td>1.6%</td><td>19%</td><td>50.2°C</td><td>Buildings block sun but no trees</td></tr>
+            <tr><td>Green & Shaded</td><td>1,083</td><td>15.3%</td><td>30%</td><td>50.1°C</td><td>Best areas - has vegetation</td></tr>
+            <tr><td>Mixed/Cool</td><td>1,667</td><td>2.4%</td><td>32%</td><td>48.5°C</td><td>Cooler but reason unclear</td></tr>
+        </table>
+    </div>
+
+    <h3>7.2 Green Space Accessibility</h3>
+    <p><strong>Method:</strong> For each street view point, calculate distance to nearest "green space" (cells with NDVI > 0.3).</p>
+
+    <div class="finding">
+        <strong>Result:</strong><br>
+        Mean distance to green: 90m<br>
+        95.7% of streets within 200m of green space<br>
+        <br>
+        <em>Note: "Green space" here means satellite-detected vegetation, not necessarily public parks.</em>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="findings">8. Key Findings</h2>
+<div class="section">
+    <h3>8.1 Correlations</h3>
+    <table>
+        <tr><th>Relationship</th><th>Correlation (r)</th><th>Interpretation</th></tr>
+        <tr><td>GVI ↔ NDVI</td><td><strong>0.501</strong></td><td>Street greenery matches satellite vegetation - data validates!</td></tr>
+        <tr><td>SVF ↔ LST</td><td>0.136</td><td>More sky exposure = slightly hotter</td></tr>
+        <tr><td>GVI ↔ LST</td><td>-0.039</td><td>More greenery = slightly cooler (weak)</td></tr>
+        <tr><td>NDVI ↔ LST</td><td>-0.040</td><td>Vegetation cools surfaces (weak)</td></tr>
+    </table>
+
+    <div class="highlight">
+        <strong>Why are temperature correlations weak?</strong><br>
+        Satellite LST measures <em>surface</em> temperature, but pedestrians experience <em>air</em> temperature and radiant heat. Also, our measurements are at different times (satellite = specific overpass time, street view = whenever image was captured).
+    </div>
+
+    <h3>8.2 Main Takeaways</h3>
+    <ol>
+        <li><strong>Al Karama is hot:</strong> Mean surface temperature of 48.6°C in summer</li>
+        <li><strong>Very little vegetation:</strong> Only 3.55% green view, 0.104 NDVI</li>
+        <li><strong>Most streets uncomfortable:</strong> 71% have low pedestrian comfort</li>
+        <li><strong>Shade helps:</strong> Areas with low SVF are more comfortable</li>
+        <li><strong>78% needs intervention:</strong> High or critical priority for heat mitigation</li>
+    </ol>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="limitations">9. Limitations</h2>
+<div class="section">
+    <div class="limitation">
+        <strong>1. Temporal mismatch:</strong> Street view images are from various dates, satellite data is from summer 2024. They don't represent the same moment in time.
+    </div>
+
+    <div class="limitation">
+        <strong>2. LST ≠ Air temperature:</strong> Satellite measures surface temperature, not what pedestrians feel. Actual thermal comfort depends on air temperature, humidity, wind, and radiant heat.
+    </div>
+
+    <div class="limitation">
+        <strong>3. Resolution limits:</strong> Satellite data is 10-30m resolution. Fine-scale variations (individual trees, building shadows) are smoothed out.
+    </div>
+
+    <div class="limitation">
+        <strong>4. Depth estimation is relative:</strong> AI depth maps show what's closer/farther, but can't give actual distances without camera calibration.
+    </div>
+
+    <div class="limitation">
+        <strong>5. Street view sampling bias:</strong> Mapillary images are crowdsourced, so coverage depends on where people drove/walked with cameras. Some areas may have gaps.
+    </div>
+
+    <div class="limitation">
+        <strong>6. Single season:</strong> We only analyzed summer data. Winter conditions would be different.
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="files">10. Output Files Reference</h2>
+<div class="section">
+    <h3>Interactive Maps</h3>
+    <table>
+        <tr><th>File</th><th>Description</th></tr>
+        <tr><td>index.html</td><td>Main dashboard with links to all visualizations</td></tr>
+        <tr><td>gvi_heatmap.html</td><td>Green View Index heatmap</td></tr>
+        <tr><td>svf_heatmap.html</td><td>Sky View Factor heatmap</td></tr>
+        <tr><td>satellite_full/full_area_analysis_10m.html</td><td>Satellite data at 10m resolution</td></tr>
+        <tr><td>heat_mitigation/priority_map.html</td><td>Intervention priority locations</td></tr>
+        <tr><td>walking_routes/pedestrian_comfort_map.html</td><td>Street comfort ratings</td></tr>
+        <tr><td>network_analysis/network_analysis_map.html</td><td>Centrality metrics</td></tr>
+        <tr><td>quick_analysis/quick_analysis_map.html</td><td>Clusters and green accessibility</td></tr>
+    </table>
+
+    <h3>Data Files (CSV)</h3>
+    <table>
+        <tr><th>File</th><th>Description</th><th>Rows</th></tr>
+        <tr><td>gvi_svf_combined.csv</td><td>GVI and SVF for all street view points</td><td>11,576</td></tr>
+        <tr><td>satellite_full/full_area_data.csv</td><td>LST, NDVI, NDBI grid</td><td>90,300</td></tr>
+        <tr><td>heat_mitigation/priority_scores.csv</td><td>Priority scores for each point</td><td>11,576</td></tr>
+        <tr><td>walking_routes/segment_comfort.csv</td><td>Comfort by street segment</td><td>420</td></tr>
+        <tr><td>quick_analysis/correlations.csv</td><td>Correlation statistics</td><td>6</td></tr>
+        <tr><td>quick_analysis/cluster_stats.csv</td><td>Cluster characteristics</td><td>4</td></tr>
+    </table>
+
+    <h3>GIS Files</h3>
+    <table>
+        <tr><th>File</th><th>Format</th><th>Description</th></tr>
+        <tr><td>gvi_svf_points.geojson</td><td>GeoJSON</td><td>Street view points with metrics</td></tr>
+        <tr><td>network_analysis/street_network.geojson</td><td>GeoJSON</td><td>Street network with centrality</td></tr>
+        <tr><td>osm_3d/al_karama_buildings.geojson</td><td>GeoJSON</td><td>Building footprints from OSM</td></tr>
+    </table>
+
+    <h3>Python Scripts</h3>
+    <table>
+        <tr><th>Script</th><th>Purpose</th></tr>
+        <tr><td>setup_gee.py</td><td>Test Google Earth Engine connection</td></tr>
+        <tr><td>satellite_analysis.py</td><td>Download and analyze satellite data</td></tr>
+        <tr><td>satellite_full_area.py</td><td>Full area grid analysis at 10m</td></tr>
+        <tr><td>heat_mitigation_priorities.py</td><td>Calculate intervention priorities</td></tr>
+        <tr><td>walking_route_analysis.py</td><td>Pedestrian comfort analysis</td></tr>
+        <tr><td>network_analysis_v3.py</td><td>Street network centrality</td></tr>
+        <tr><td>quick_analyses.py</td><td>Correlations, clusters, accessibility</td></tr>
+    </table>
+</div>
+
+<!-- ============================================================ -->
+<h2>Tools & Libraries Used</h2>
+<div class="section">
+    <table>
+        <tr><th>Tool</th><th>Purpose</th><th>License</th></tr>
+        <tr><td>ZenSVI</td><td>Download Mapillary images, calculate GVI/SVF</td><td>Open source</td></tr>
+        <tr><td>Google Earth Engine</td><td>Access satellite imagery</td><td>Free for research</td></tr>
+        <tr><td>OSMnx</td><td>Download OpenStreetMap street networks</td><td>MIT</td></tr>
+        <tr><td>NetworkX</td><td>Graph/network analysis</td><td>BSD</td></tr>
+        <tr><td>scikit-learn</td><td>K-means clustering</td><td>BSD</td></tr>
+        <tr><td>GeoPandas</td><td>Geospatial data handling</td><td>BSD</td></tr>
+        <tr><td>Leaflet.js</td><td>Interactive web maps</td><td>BSD</td></tr>
+    </table>
+</div>
+
+<div class="section" style="text-align: center; margin-top: 40px;">
+    <p><em>Report generated January 2026</em></p>
+    <p><a href="index.html">← Back to Dashboard</a></p>
+</div>
+
+</body>
+</html>

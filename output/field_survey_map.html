@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Field Survey Map - Al Karama Test Area</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; }
+        #map { width: 100%; height: 100vh; }
+        .info-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 1000;
+            max-width: 350px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }
+        .info-panel h3 { margin: 0 0 10px 0; color: #1976d2; }
+        .info-panel p { margin: 5px 0; font-size: 13px; }
+        .checklist { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 5px; }
+        .checklist h4 { margin: 0 0 8px 0; }
+        .checklist li { margin: 5px 0; }
+        .priority-high { color: #d32f2f; font-weight: bold; }
+        .priority-med { color: #f57c00; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="info-panel">
+        <h3>📋 Field Survey Guide</h3>
+        <p><b>Location:</b> Al Karama, Dubai</p>
+        <p><b>Test Area:</b> 50m radius (red circle)</p>
+
+        <div class="checklist">
+            <h4>Buildings to Measure:</h4>
+            <ol>
+                <li class="priority-high">⭐ 3-5 buildings for calibration</li>
+                <li class="priority-med">📏 Vary heights (low, mid, high-rise)</li>
+                <li>📍 Note GPS coordinates</li>
+                <li>📸 Take reference photos</li>
+            </ol>
+        </div>
+
+        <div class="checklist">
+            <h4>For Each Building:</h4>
+            <ul>
+                <li>Stand 20-50m away</li>
+                <li>Measure distance (GPS or tape)</li>
+                <li>Measure angle to top (clinometer)</li>
+                <li>Count floors as backup</li>
+                <li>Take photo with person/car for scale</li>
+            </ul>
+        </div>
+
+        <div class="checklist">
+            <h4>Recommended Apps:</h4>
+            <ul>
+                <li><b>iOS:</b> Measure (built-in), Theodolite</li>
+                <li><b>Android:</b> Smart Measure, Clinometer</li>
+                <li><b>Both:</b> GPS Coordinates app</li>
+            </ul>
+        </div>
+
+        <p style="margin-top:15px;font-size:11px;color:#666">
+            Click markers to see camera locations from our dataset.
+            Measure buildings visible from these points.
+        </p>
+    </div>
+
+    <script>
+        const map = L.map('map').setView([25.2421, 55.3048], 18);
+
+        // Satellite imagery for building identification
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 20
+        }).addTo(map);
+
+        // Labels overlay
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png', {
+            maxZoom: 20
+        }).addTo(map);
+
+        // Test area circle
+        L.circle([25.242071, 55.304779], {
+            radius: 50,
+            color: '#d32f2f',
+            fillColor: '#d32f2f',
+            fillOpacity: 0.1,
+            weight: 3
+        }).bindPopup('<b>50m Test Area</b><br>Measure buildings within this circle').addTo(map);
+
+        // Camera positions from our dataset
+        const cameras = [
+            {id: "827604215891753", lat: 25.242071, lon: 55.304779, center: true},
+            {id: "417883751137797", lat: 25.242309, lon: 55.304859},
+            {id: "422678950546317", lat: 25.242270, lon: 55.304849},
+            {id: "1037316951337214", lat: 25.242105, lon: 55.304800},
+            {id: "7879044885485323", lat: 25.241964, lon: 55.304629},
+            {id: "1887044698480385", lat: 25.242454, lon: 55.304902},
+            {id: "469408758768081", lat: 25.242008, lon: 55.304403},
+            {id: "1908565949595844", lat: 25.242027, lon: 55.304339},
+        ];
+
+        cameras.forEach(cam => {
+            const color = cam.center ? '#d32f2f' : '#1976d2';
+            const icon = cam.center ? '⭐' : '📷';
+
+            L.circleMarker([cam.lat, cam.lon], {
+                radius: cam.center ? 10 : 6,
+                color: color,
+                fillColor: color,
+                fillOpacity: 0.8,
+                weight: 2
+            }).bindPopup(`
+                <b>${icon} Camera ${cam.id}</b><br>
+                Lat: ${cam.lat.toFixed(6)}<br>
+                Lon: ${cam.lon.toFixed(6)}<br>
+                ${cam.center ? '<b style="color:#d32f2f">CENTER POINT</b>' : ''}
+                <hr>
+                <i>Measure buildings visible from this location</i>
+            `).addTo(map);
+        });
+
+        // Suggested measurement points (corners of test area)
+        const measurePoints = [
+            {lat: 25.2425, lon: 55.3052, label: "NE Corner"},
+            {lat: 25.2425, lon: 55.3044, label: "NW Corner"},
+            {lat: 25.2417, lon: 55.3052, label: "SE Corner"},
+            {lat: 25.2417, lon: 55.3044, label: "SW Corner"},
+        ];
+
+        measurePoints.forEach(pt => {
+            L.marker([pt.lat, pt.lon], {
+                icon: L.divIcon({
+                    className: 'measure-point',
+                    html: '📍',
+                    iconSize: [20, 20]
+                })
+            }).bindPopup(`<b>Measurement Point: ${pt.label}</b><br>Good spot to measure nearby buildings`).addTo(map);
+        });
+    </script>
+</body>
+</html>

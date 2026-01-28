@@ -1,0 +1,29 @@
+{
+  "total_locations": 10098,
+  "correlations": {
+    "GVI vs LST": -0.031411084279212485,
+    "SVF vs LST": 0.1230191193102313,
+    "GVI vs NDVI (satellite)": 0.492496468395416,
+    "SVF vs NDVI (satellite)": 0.028498981012640076
+  },
+  "statistics": {
+    "count": 10098,
+    "gvi_mean": 0.03555620558904555,
+    "svf_mean": 0.33059247547044796,
+    "lst_mean": 50.053615283333365,
+    "lst_std": 0.9950219390224101,
+    "ndvi_satellite_mean": 0.05444811799984381
+  },
+  "hotspots": {
+    "threshold": 51.16879085000005,
+    "count": 1014,
+    "avg_gvi": 0.03328975915664058,
+    "avg_svf": 0.34755033549824427
+  },
+  "coolspots": {
+    "threshold": 48.62322045500003,
+    "count": 1010,
+    "avg_gvi": 0.03765689023125941,
+    "avg_svf": 0.32339583586807163
+  }
+}

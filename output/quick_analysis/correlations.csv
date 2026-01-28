@@ -1,0 +1,7 @@
+var1,var2,description,r,p_value,significant
+gvi,lst,Street greenery vs Temperature,-0.0391,8.611555001273982e-05,True
+gvi,ndvi,Street greenery vs Satellite vegetation,0.5007,0.0,True
+svf,lst,Sky exposure vs Temperature,0.1359,8.259272322805584e-43,True
+ndvi,lst,Satellite vegetation vs Temperature,-0.0405,4.698174776894895e-05,True
+ndbi,lst,Built-up index vs Temperature,0.0135,0.17508950074490273,False
+gvi,svf,Greenery vs Sky exposure,-0.0746,5.97156917644462e-14,True

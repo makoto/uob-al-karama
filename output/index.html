@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Al Karama Urban Analysis - Index</title>
+    <meta charset="utf-8">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #fff;
+        }
+        .header {
+            background: rgba(0,0,0,0.3);
+            padding: 40px 20px;
+            text-align: center;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.7;
+            font-size: 1.1em;
+        }
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+        .stat {
+            text-align: center;
+        }
+        .stat-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4fc3f7;
+        }
+        .stat-label {
+            font-size: 0.85em;
+            opacity: 0.7;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .section {
+            margin-bottom: 40px;
+        }
+        .section-title {
+            font-size: 1.4em;
+            font-weight: 500;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255,255,255,0.1);
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .card:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateY(-3px);
+            border-color: rgba(79, 195, 247, 0.5);
+        }
+        .card-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        .card-title {
+            font-size: 1.1em;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+        .card-desc {
+            font-size: 0.85em;
+            opacity: 0.7;
+            line-height: 1.5;
+        }
+        .card-tag {
+            display: inline-block;
+            padding: 3px 8px;
+            background: rgba(79, 195, 247, 0.2);
+            border-radius: 4px;
+            font-size: 0.75em;
+            margin-top: 10px;
+            color: #4fc3f7;
+        }
+        .footer {
+            text-align: center;
+            padding: 30px;
+            opacity: 0.5;
+            font-size: 0.85em;
+        }
+        .data-section {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 40px;
+        }
+        .data-section h3 {
+            margin: 0 0 15px 0;
+            font-weight: 500;
+        }
+        .data-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 10px;
+        }
+        .data-item {
+            background: rgba(0,0,0,0.2);
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            display: flex;
+            justify-content: space-between;
+        }
+        .data-item span:last-child {
+            color: #4fc3f7;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Al Karama Urban Analysis</h1>
+        <p>Dubai, UAE - Street View + Satellite Data Analysis</p>
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-value">11,651</div>
+                <div class="stat-label">Street View Images</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">48.7°C</div>
+                <div class="stat-label">Avg Summer Temp</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">3.55%</div>
+                <div class="stat-label">Green View Index</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">73%</div>
+                <div class="stat-label">Low Vegetation Area</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Street View Analysis -->
+        <div class="section">
+            <div class="section-title">🌿 Street View Analysis</div>
+            <div class="cards">
+                <a href="gvi_heatmap.html" class="card">
+                    <div class="card-icon">🗺️</div>
+                    <div class="card-title">GVI Heatmap</div>
+                    <div class="card-desc">Green View Index heatmap showing vegetation visibility across Al Karama</div>
+                    <div class="card-tag">10,138 points</div>
+                </a>
+                <a href="gvi_point_map.html" class="card">
+                    <div class="card-icon">📍</div>
+                    <div class="card-title">GVI Point Map</div>
+                    <div class="card-desc">Individual street view locations with GVI values and image popups</div>
+                    <div class="card-tag">Interactive</div>
+                </a>
+                <a href="svf_heatmap.html" class="card">
+                    <div class="card-icon">☀️</div>
+                    <div class="card-title">SVF Heatmap</div>
+                    <div class="card-desc">Sky View Factor showing sky visibility and shading conditions</div>
+                    <div class="card-tag">31.4% mean</div>
+                </a>
+                <a href="gvi_svf_comparison_map.html" class="card">
+                    <div class="card-icon">⚖️</div>
+                    <div class="card-title">GVI vs SVF Comparison</div>
+                    <div class="card-desc">Side-by-side comparison of vegetation and sky visibility</div>
+                    <div class="card-tag">Dual layer</div>
+                </a>
+                <a href="gvi_svf_scatter.html" class="card">
+                    <div class="card-icon">📊</div>
+                    <div class="card-title">GVI-SVF Scatter Plot</div>
+                    <div class="card-desc">Correlation analysis between Green View Index and Sky View Factor</div>
+                    <div class="card-tag">r = -0.007</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Satellite Analysis -->
+        <div class="section">
+            <div class="section-title">🛰️ Satellite Analysis</div>
+            <div class="cards">
+                <a href="satellite_analysis/satellite_analysis.html" class="card">
+                    <div class="card-icon">🌡️</div>
+                    <div class="card-title">Satellite Overview</div>
+                    <div class="card-desc">Summary of Landsat thermal and Sentinel-2 vegetation analysis</div>
+                    <div class="card-tag">Landsat + Sentinel-2</div>
+                </a>
+                <a href="satellite_full/full_area_analysis.html" class="card">
+                    <div class="card-icon">🗺️</div>
+                    <div class="card-title">Full Area Grid (30m)</div>
+                    <div class="card-desc">Temperature, NDVI, NDBI at 30m resolution across entire Al Karama</div>
+                    <div class="card-tag">10,101 cells</div>
+                </a>
+                <a href="satellite_full/full_area_analysis_10m.html" class="card">
+                    <div class="card-icon">🔍</div>
+                    <div class="card-title">Full Area Grid (10m)</div>
+                    <div class="card-desc">Higher resolution analysis at 10m - max native Sentinel-2 resolution</div>
+                    <div class="card-tag">90,300 cells</div>
+                </a>
+                <a href="thermal_sharpening/thermal_sharpening.html" class="card">
+                    <div class="card-icon">🔬</div>
+                    <div class="card-title">Thermal Sharpening (10m)</div>
+                    <div class="card-desc">Downscaled temperature using NDVI relationship - compare 30m vs 10m</div>
+                    <div class="card-tag">90,300 cells</div>
+                </a>
+                <a href="combined_analysis/combined_analysis.html" class="card">
+                    <div class="card-icon">🔗</div>
+                    <div class="card-title">Combined SVI + Satellite</div>
+                    <div class="card-desc">Street-level GVI/SVF overlaid with satellite temperature</div>
+                    <div class="card-tag">10,098 points</div>
+                </a>
+                <a href="climate_analysis/urban_climate_map.html" class="card">
+                    <div class="card-icon">🌤️</div>
+                    <div class="card-title">Environmental Comfort</div>
+                    <div class="card-desc">Composite comfort index combining shade and vegetation</div>
+                    <div class="card-tag">Climate analysis</div>
+                </a>
+                <a href="heat_mitigation/priority_map.html" class="card">
+                    <div class="card-icon">🎯</div>
+                    <div class="card-title">Heat Mitigation Priorities</div>
+                    <div class="card-desc">Priority locations for tree planting and shade interventions</div>
+                    <div class="card-tag">2,892 critical spots</div>
+                </a>
+                <a href="walking_routes/pedestrian_comfort_map.html" class="card">
+                    <div class="card-icon">🚶</div>
+                    <div class="card-title">Pedestrian Comfort Map</div>
+                    <div class="card-desc">Walking comfort by street segment with route comparison</div>
+                    <div class="card-tag">420 segments</div>
+                </a>
+                <a href="network_analysis/network_analysis_map.html" class="card">
+                    <div class="card-icon">🕸️</div>
+                    <div class="card-title">Street Network Analysis</div>
+                    <div class="card-desc">Centrality metrics from OSM - betweenness, closeness, priority</div>
+                    <div class="card-tag">5,656 segments</div>
+                </a>
+                <a href="quick_analysis/quick_analysis_map.html" class="card">
+                    <div class="card-icon">📊</div>
+                    <div class="card-title">Clusters & Green Access</div>
+                    <div class="card-desc">K-means climate zones + distance to green space analysis</div>
+                    <div class="card-tag">4 clusters</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- 3D & Depth Analysis -->
+        <div class="section">
+            <div class="section-title">🏗️ 3D & Depth Analysis</div>
+            <div class="cards">
+                <a href="osm_3d/al_karama_3d.html" class="card">
+                    <div class="card-icon">🏢</div>
+                    <div class="card-title">OSM 3D Buildings</div>
+                    <div class="card-desc">3D building visualization from OpenStreetMap data</div>
+                    <div class="card-tag">3,243 buildings</div>
+                </a>
+                <a href="depth_gallery.html" class="card">
+                    <div class="card-icon">🖼️</div>
+                    <div class="card-title">Depth Map Gallery</div>
+                    <div class="card-desc">Side-by-side original images and depth estimation results</div>
+                    <div class="card-tag">26 images</div>
+                </a>
+                <a href="depth_map.html" class="card">
+                    <div class="card-icon">📍</div>
+                    <div class="card-title">Depth Map Locations</div>
+                    <div class="card-desc">Map showing test area depth estimation locations with popups</div>
+                    <div class="card-tag">50m radius</div>
+                </a>
+                <a href="pointcloud_viewer.html" class="card">
+                    <div class="card-icon">☁️</div>
+                    <div class="card-title">3D Point Cloud</div>
+                    <div class="card-desc">3D point cloud from depth maps (note: compass data unavailable)</div>
+                    <div class="card-tag">50K points</div>
+                </a>
+                <a href="height_estimation/height_estimates_map.html" class="card">
+                    <div class="card-icon">📏</div>
+                    <div class="card-title">Height Estimation PoC</div>
+                    <div class="card-desc">Building height estimates from depth maps (proof of concept)</div>
+                    <div class="card-tag">Experimental</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Field Work -->
+        <div class="section">
+            <div class="section-title">📋 Field Survey</div>
+            <div class="cards">
+                <a href="test_area_map.html" class="card">
+                    <div class="card-icon">🎯</div>
+                    <div class="card-title">Test Area Map</div>
+                    <div class="card-desc">50m radius test area for depth estimation and height analysis</div>
+                    <div class="card-tag">26 images</div>
+                </a>
+                <a href="field_survey_map.html" class="card">
+                    <div class="card-icon">🧭</div>
+                    <div class="card-title">Field Survey Guide</div>
+                    <div class="card-desc">Map and instructions for on-site building height measurement</div>
+                    <div class="card-tag">Data collection</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Data Summary -->
+        <div class="data-section">
+            <h3>📁 Data Files</h3>
+            <div class="data-list">
+                <div class="data-item"><span>GVI + SVF Combined</span><span>gvi_svf_combined.csv</span></div>
+                <div class="data-item"><span>Full Area Grid (30m)</span><span>satellite_full/full_area_data.csv</span></div>
+                <div class="data-item"><span>Full Area Grid (10m)</span><span>satellite_full/full_area_data.csv (90K rows)</span></div>
+                <div class="data-item"><span>Thermal Sharpening (10m)</span><span>thermal_sharpening/sharpened_data.csv</span></div>
+                <div class="data-item"><span>Combined Analysis</span><span>combined_analysis/combined_data.csv</span></div>
+                <div class="data-item"><span>OSM Buildings</span><span>osm_3d/al_karama_buildings.geojson</span></div>
+                <div class="data-item"><span>Environmental Comfort</span><span>climate_analysis/environmental_comfort.csv</span></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section" style="margin-top: 40px;">
+            <div class="section-title">📚 Documentation</div>
+            <div class="cards">
+                <a href="learning_report.html" class="card">
+                    <div class="card-icon">📖</div>
+                    <div class="card-title">Learning Report</div>
+                    <div class="card-desc">Detailed explanation of methods, formulas, and how each analysis works</div>
+                    <div class="card-tag">Start here</div>
+                </a>
+                <a href="../notebooks/analysis_guide.ipynb" class="card">
+                    <div class="card-icon">🐍</div>
+                    <div class="card-title">Python Code Guide</div>
+                    <div class="card-desc">Jupyter notebook with sample code for each analysis and required libraries</div>
+                    <div class="card-tag">Code examples</div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Al Karama Urban Analysis | Data: Mapillary, Landsat 8/9, Sentinel-2, OpenStreetMap<br>
+        Generated with ZenSVI + Google Earth Engine
+    </div>
+</body>
+</html>

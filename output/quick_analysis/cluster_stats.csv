@@ -1,0 +1,5 @@
+cluster,label,count,gvi_mean,svf_mean,lst_mean,ndvi_mean
+0,Hot & Barren,3386,1.61,19.43,50.24,0.0326
+1,Hot & Barren,3962,2.46,46.11,50.55,0.0438
+2,Shaded Urban,1083,15.35,29.97,50.07,0.1918
+3,Mixed,1667,2.44,31.75,48.48,0.0461
