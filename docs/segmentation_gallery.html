@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Segmentation Gallery - Al Karama Urban Analysis</title>
+    <meta charset="utf-8">
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #fff;
+        }
+        h1 { text-align: center; font-weight: 300; margin-bottom: 10px; }
+        .subtitle { text-align: center; opacity: 0.7; margin-bottom: 30px; }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #4fc3f7;
+            text-decoration: none;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        .legend {
+            background: rgba(255,255,255,0.1);
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: center;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+        }
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .section { margin-bottom: 40px; }
+        .section-title {
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+        }
+        .section-title.low { color: #ff8a80; }
+        .section-title.high { color: #69f0ae; }
+
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        .card {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        .card img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .card-info {
+            padding: 15px;
+        }
+        .gvi-value {
+            font-size: 1.4em;
+            font-weight: bold;
+        }
+        .gvi-value.low { color: #ff8a80; }
+        .gvi-value.high { color: #69f0ae; }
+        .card-meta {
+            font-size: 0.85em;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+        .mapillary-link {
+            display: inline-block;
+            margin-top: 10px;
+            color: #4fc3f7;
+            text-decoration: none;
+            font-size: 0.9em;
+        }
+        .mapillary-link:hover { text-decoration: underline; }
+
+        .explanation {
+            background: rgba(255,255,255,0.05);
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .explanation h3 { margin-top: 0; }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">← Back to Index</a>
+    <h1>Segmentation Gallery</h1>
+    <p class="subtitle">Semantic segmentation showing vegetation detection for GVI calculation</p>
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-color" style="background:#6B8E23;"></div> Vegetation</div>
+        <div class="legend-item"><div class="legend-color" style="background:#87CEEB;"></div> Sky</div>
+        <div class="legend-item"><div class="legend-color" style="background:#808080;"></div> Building</div>
+        <div class="legend-item"><div class="legend-color" style="background:#8B4513;"></div> Road/Ground</div>
+        <div class="legend-item"><div class="legend-color" style="background:#FF69B4;"></div> Person</div>
+        <div class="legend-item"><div class="legend-color" style="background:#4169E1;"></div> Vehicle</div>
+    </div>
+
+    <div class="explanation">
+        <h3>How GVI is Calculated</h3>
+        <p>The <strong>Green View Index (GVI)</strong> measures the percentage of vegetation visible in a street-level image.
+        A deep learning model (semantic segmentation) identifies different objects in each image.
+        The green-colored pixels represent detected vegetation (trees, shrubs, grass).
+        GVI = (green pixels) / (total pixels) × 100%</p>
+        <p>Al Karama's mean GVI is only <strong>3.5%</strong>, indicating very low street-level vegetation visibility.</p>
+    </div>
+
+    <div class="section">
+        <div class="section-title high">🌿 High GVI Examples (50-65% vegetation)</div>
+        <div class="gallery">
+            <div class="card">
+                <img src="segmentation_gallery/1636878507073240_blend.png" alt="High GVI segmentation">
+                <div class="card-info">
+                    <div class="gvi-value high">65.0% GVI</div>
+                    <div class="card-meta">Highest vegetation visibility in Al Karama</div>
+                    <a href="https://www.mapillary.com/app/?pKey=1636878507073240" target="_blank" class="mapillary-link">View original on Mapillary →</a>
+                </div>
+            </div>
+            <div class="card">
+                <img src="segmentation_gallery/1123373235543330_blend.png" alt="High GVI segmentation">
+                <div class="card-info">
+                    <div class="gvi-value high">63.5% GVI</div>
+                    <div class="card-meta">Dense tree canopy coverage</div>
+                    <a href="https://www.mapillary.com/app/?pKey=1123373235543330" target="_blank" class="mapillary-link">View original on Mapillary →</a>
+                </div>
+            </div>
+            <div class="card">
+                <img src="segmentation_gallery/955769635178184_blend.png" alt="High GVI segmentation">
+                <div class="card-info">
+                    <div class="gvi-value high">61.8% GVI</div>
+                    <div class="card-meta">Street with mature trees</div>
+                    <a href="https://www.mapillary.com/app/?pKey=955769635178184" target="_blank" class="mapillary-link">View original on Mapillary →</a>
+                </div>
+            </div>
+            <div class="card">
+                <img src="segmentation_gallery/160429962609407_blend.png" alt="High GVI segmentation">
+                <div class="card-info">
+                    <div class="gvi-value high">60.9% GVI</div>
+                    <div class="card-meta">Green corridor area</div>
+                    <a href="https://www.mapillary.com/app/?pKey=160429962609407" target="_blank" class="mapillary-link">View original on Mapillary →</a>
+                </div>
+            </div>
+            <div class="card">
+                <img src="segmentation_gallery/485218786138365_blend.png" alt="High GVI segmentation">
+                <div class="card-info">
+                    <div class="gvi-value high">59.7% GVI</div>
+                    <div class="card-meta">Tree-lined street</div>
+                    <a href="https://www.mapillary.com/app/?pKey=485218786138365" target="_blank" class="mapillary-link">View original on Mapillary →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title low">🏜️ Low GVI Examples (0% vegetation)</div>
+        <div class="gallery">
+            <div class="card">
+                <img src="segmentation_gallery/1203285330133886_blend.png" alt="Low GVI segmentation">
+                <div class="card-info">
+                    <div class="gvi-value low">0.0% GVI</div>
+                    <div class="card-meta">No visible vegetation</div>
+                    <a href="https://www.mapillary.com/app/?pKey=1203285330133886" target="_blank" class="mapillary-link">View original on Mapillary →</a>
+                </div>
+            </div>
+            <div class="card">
+                <img src="segmentation_gallery/969767578153962_blend.png" alt="Low GVI segmentation">
+                <div class="card-info">
+                    <div class="gvi-value low">0.0% GVI</div>
+                    <div class="card-meta">Urban canyon - buildings only</div>
+                    <a href="https://www.mapillary.com/app/?pKey=969767578153962" target="_blank" class="mapillary-link">View original on Mapillary →</a>
+                </div>
+            </div>
+            <div class="card">
+                <img src="segmentation_gallery/229564355597038_blend.png" alt="Low GVI segmentation">
+                <div class="card-info">
+                    <div class="gvi-value low">0.0% GVI</div>
+                    <div class="card-meta">Concrete dominated view</div>
+                    <a href="https://www.mapillary.com/app/?pKey=229564355597038" target="_blank" class="mapillary-link">View original on Mapillary →</a>
+                </div>
+            </div>
+            <div class="card">
+                <img src="segmentation_gallery/2385046601866734_blend.png" alt="Low GVI segmentation">
+                <div class="card-info">
+                    <div class="gvi-value low">0.0% GVI</div>
+                    <div class="card-meta">No greenery present</div>
+                    <a href="https://www.mapillary.com/app/?pKey=2385046601866734" target="_blank" class="mapillary-link">View original on Mapillary →</a>
+                </div>
+            </div>
+            <div class="card">
+                <img src="segmentation_gallery/1844855035675723_blend.png" alt="Low GVI segmentation">
+                <div class="card-info">
+                    <div class="gvi-value low">0.0% GVI</div>
+                    <div class="card-meta">Built environment only</div>
+                    <a href="https://www.mapillary.com/app/?pKey=1844855035675723" target="_blank" class="mapillary-link">View original on Mapillary →</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px; opacity: 0.6;">
+        <p>Segmentation performed using ZenSVI with Mapillary/Cityscapes trained models</p>
+        <a href="index.html" class="back-link">← Back to Index</a>
+    </div>
+</body>
+</html>
