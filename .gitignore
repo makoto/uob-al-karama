@@ -4,6 +4,9 @@ data/
 # API keys
 .env
 
+# Claude Code settings
+.claude/
+
 # Python
 __pycache__/
 *.pyc
