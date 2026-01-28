@@ -273,6 +273,28 @@ Where:
     </div>
 
     <p>High NDBI = more buildings/concrete. Low NDBI = vegetation or water.</p>
+
+    <h3>4.4 Thermal Sharpening (30m → 10m)</h3>
+    <p><strong>What it does:</strong> Downscales coarse Landsat thermal data (30m) to match Sentinel-2 resolution (10m) using the correlation between temperature and vegetation.</p>
+
+    <p><strong>Why it's needed:</strong> Landsat thermal bands have 100m native resolution (resampled to 30m). For detailed urban analysis, we want finer resolution to see temperature variations at street level.</p>
+
+    <div class="formula">
+Method: Linear regression of LST vs NDVI at 30m → Apply model to 10m NDVI
+
+1. Sample both LST (30m) and NDVI (10m aggregated to 30m) at random points
+2. Fit regression: LST = a + b × NDVI
+3. Apply to 10m NDVI: LST_10m = a + b × NDVI_10m
+4. Add residuals from nearest 30m pixel for local calibration
+    </div>
+
+    <div class="highlight">
+        <strong>Al Karama Result:</strong><br>
+        Regression: LST = 49.02 + (-3.66 × NDVI)<br>
+        R² = 0.045 (weak correlation)<br>
+        RMSE = 0.32°C (difference between 30m and 10m)<br><br>
+        <em>Note: Weak R² is expected in urban areas where impervious surfaces dominate. The method works better in areas with more vegetation variation.</em>
+    </div>
 </div>
 
 <!-- ============================================================ -->
@@ -471,9 +493,10 @@ High priority = busy street that is uncomfortable
     <table>
         <tr><th>File</th><th>Description</th></tr>
         <tr><td>index.html</td><td>Main dashboard with links to all visualizations</td></tr>
-        <tr><td>gvi_heatmap.html</td><td>Green View Index heatmap</td></tr>
-        <tr><td>svf_heatmap.html</td><td>Sky View Factor heatmap</td></tr>
+        <tr><td>gvi_point_map.html</td><td>Green View Index point map with image popups</td></tr>
+        <tr><td>gvi_svf_comparison_map.html</td><td>GVI vs SVF side-by-side comparison</td></tr>
         <tr><td>satellite_full/full_area_analysis_10m.html</td><td>Satellite data at 10m resolution</td></tr>
+        <tr><td>thermal_sharpening/thermal_sharpening.html</td><td>30m to 10m thermal downscaling comparison</td></tr>
         <tr><td>heat_mitigation/priority_map.html</td><td>Intervention priority locations</td></tr>
         <tr><td>walking_routes/pedestrian_comfort_map.html</td><td>Street comfort ratings</td></tr>
         <tr><td>network_analysis/network_analysis_map.html</td><td>Centrality metrics</td></tr>
@@ -505,6 +528,8 @@ High priority = busy street that is uncomfortable
         <tr><td>setup_gee.py</td><td>Test Google Earth Engine connection</td></tr>
         <tr><td>satellite_analysis.py</td><td>Download and analyze satellite data</td></tr>
         <tr><td>satellite_full_area.py</td><td>Full area grid analysis at 10m</td></tr>
+        <tr><td>thermal_sharpening.py</td><td>Downscale LST from 30m to 10m using NDVI regression</td></tr>
+        <tr><td>combined_analysis.py</td><td>Merge street-level GVI/SVF with satellite thermal data</td></tr>
         <tr><td>heat_mitigation_priorities.py</td><td>Calculate intervention priorities</td></tr>
         <tr><td>walking_route_analysis.py</td><td>Pedestrian comfort analysis</td></tr>
         <tr><td>network_analysis_v3.py</td><td>Street network centrality</td></tr>
