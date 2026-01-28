@@ -49,12 +49,13 @@
         <li><a href="#data">2. Data Sources</a></li>
         <li><a href="#streetview">3. Street View Analysis (GVI, SVF)</a></li>
         <li><a href="#satellite">4. Satellite Analysis (LST, NDVI, NDBI)</a></li>
-        <li><a href="#combined">5. Combined Analysis</a></li>
-        <li><a href="#network">6. Network Analysis</a></li>
-        <li><a href="#clusters">7. Cluster Analysis</a></li>
-        <li><a href="#findings">8. Key Findings</a></li>
-        <li><a href="#limitations">9. Limitations</a></li>
-        <li><a href="#files">10. Output Files Reference</a></li>
+        <li><a href="#building-heights">5. Building Height Enhancement (GEE)</a></li>
+        <li><a href="#combined">6. Combined Analysis</a></li>
+        <li><a href="#network">7. Network Analysis</a></li>
+        <li><a href="#clusters">8. Cluster Analysis</a></li>
+        <li><a href="#findings">9. Key Findings</a></li>
+        <li><a href="#limitations">10. Limitations</a></li>
+        <li><a href="#files">11. Output Files Reference</a></li>
     </ul>
 </div>
 
@@ -298,9 +299,125 @@ Method: Linear regression of LST vs NDVI at 30m → Apply model to 10m NDVI
 </div>
 
 <!-- ============================================================ -->
-<h2 id="combined">5. Combined Analysis</h2>
+<h2 id="building-heights">5. Building Height Enhancement (GEE)</h2>
 <div class="section">
-    <h3>5.1 Heat Mitigation Priority</h3>
+    <h3>5.1 The Problem</h3>
+    <p>OpenStreetMap provides building footprints for Al Karama (3,243 buildings), but only <strong>78 buildings (2.4%)</strong> have real height data. The remaining 3,165 buildings default to 9m (assumed 3 floors), which produces an unrealistic 3D model where most buildings appear the same height.</p>
+
+    <div class="highlight">
+        <strong>Goal:</strong> Use freely available global datasets from Google Earth Engine to estimate building heights for the 97.6% of buildings missing real data.
+    </div>
+
+    <h3>5.2 Datasets Evaluated</h3>
+    <p>We tested multiple GEE datasets for coverage over Dubai/Al Karama:</p>
+
+    <table>
+        <tr><th>Dataset</th><th>Resolution</th><th>Coverage</th><th>What it provides</th></tr>
+        <tr><td>Open Buildings 2.5D Temporal</td><td>~2.5m</td><td>Not available (0 images)</td><td>Would have had individual building heights</td></tr>
+        <tr><td><strong>GHSL Built-C</strong></td><td><strong>10m</strong></td><td><strong>84,182 pixels</strong></td><td>Height classes (categorical)</td></tr>
+        <tr><td><strong>GHSL Built-H</strong></td><td><strong>100m</strong></td><td><strong>883 pixels</strong></td><td>Continuous heights (meters)</td></tr>
+        <tr><td><strong>nDSM (ALOS-SRTM)</strong></td><td><strong>30m</strong></td><td><strong>10,416 pixels</strong></td><td>Surface model difference</td></tr>
+    </table>
+
+    <h3>5.3 GHSL Built-C (10m) - Height Classes</h3>
+    <p><strong>Source:</strong> JRC Global Human Settlement Layer (GHSL), 2018 epoch</p>
+    <p><strong>Collection:</strong> <code>JRC/GHSL/P2023A/GHS_BUILT_C/2018</code></p>
+
+    <p>This dataset classifies built-up areas into height bands at 10m resolution. Each pixel encodes both building type (residential, non-residential, mixed) and height class:</p>
+
+    <table>
+        <tr><th>Height Class</th><th>Range</th><th>Midpoint Used</th></tr>
+        <tr><td>1</td><td>&le;3m</td><td>3.0m</td></tr>
+        <tr><td>2</td><td>3-6m</td><td>4.5m</td></tr>
+        <tr><td>3</td><td>6-15m</td><td>10.5m</td></tr>
+        <tr><td>4</td><td>15-30m</td><td>22.5m</td></tr>
+        <tr><td>5</td><td>&gt;30m</td><td>45.0m</td></tr>
+    </table>
+
+    <p><strong>Method:</strong> For each OSM building polygon, we used <code>reduceRegions</code> with a <code>mode</code> reducer to extract the dominant height class within the footprint, then converted to the midpoint height.</p>
+
+    <div class="code">
+# Extract height class per building polygon
+image = ee.Image("JRC/GHSL/P2023A/GHS_BUILT_C/2018")
+band = image.select('built_characteristics')
+
+reduced = band.reduceRegions(
+    collection=building_polygons,
+    reducer=ee.Reducer.mode(),
+    scale=10,
+)
+
+# Convert class to height: height_band = class_value % 10
+# Then map to midpoint heights
+    </div>
+
+    <h3>5.4 GHSL Built-H (100m) - Continuous Heights</h3>
+    <p><strong>Collection:</strong> <code>JRC/GHSL/P2023A/GHS_BUILT_H/2018</code></p>
+    <p>Provides continuous building height estimates in meters at 100m resolution. Less spatial detail but gives actual meter values rather than classes.</p>
+    <p><strong>Method:</strong> <code>reduceRegions</code> with <code>mean</code> reducer per building polygon.</p>
+
+    <div class="highlight">
+        <strong>Limitation:</strong> GHSL Built-H caps at ~40m for this area (mean 13.5m). Al Karama has buildings taller than 40m, so GHSL may underestimate the tallest buildings. OSM real heights (up to 230m) are preserved where available.
+    </div>
+
+    <h3>5.5 nDSM: Normalized Digital Surface Model (30m)</h3>
+    <p><strong>What it is:</strong> The difference between a Digital Surface Model (DSM, which includes buildings/trees) and a Digital Elevation Model (DEM, bare ground only).</p>
+
+    <div class="formula">
+nDSM = DSM - DEM
+
+Where:
+  DSM = ALOS AW3D30 (JAXA, 2006-2011, 30m resolution)
+  DEM = SRTM (NASA, 2000, 30m resolution)
+    </div>
+
+    <p>Positive nDSM values indicate above-ground structures (buildings, trees). However, this approach is noisy because the two datasets were acquired years apart (2000 vs 2006-2011), and both have their own measurement uncertainties.</p>
+
+    <div class="limitation">
+        <strong>Limitation:</strong> The temporal mismatch between SRTM (2000) and ALOS (2006-2011) means buildings constructed between these dates will appear in the nDSM, but pre-existing terrain changes or demolitions can produce artifacts. We applied a threshold of &gt;2m to filter out noise.
+    </div>
+
+    <h3>5.6 Priority Merge System</h3>
+    <p>We merged heights from all sources using a priority system that preserves the most reliable data:</p>
+
+    <table>
+        <tr><th>Priority</th><th>Source</th><th>Resolution</th><th>Rationale</th></tr>
+        <tr><td>1 (highest)</td><td>OSM real height (&ne;9m)</td><td>Individual</td><td>Surveyed or mapped by contributors</td></tr>
+        <tr><td>2</td><td>GHSL Built-C</td><td>10m</td><td>Best spatial resolution, height classes</td></tr>
+        <tr><td>3</td><td>GHSL Built-H</td><td>100m</td><td>Continuous values but coarser</td></tr>
+        <tr><td>4</td><td>nDSM</td><td>30m</td><td>Noisy but independent measurement</td></tr>
+        <tr><td>5 (lowest)</td><td>Default</td><td>n/a</td><td>Keep 9m assumption</td></tr>
+    </table>
+
+    <h3>5.7 Results</h3>
+    <div class="finding">
+        <strong>Coverage improved from 2.4% to 99.5%:</strong>
+        <table>
+            <tr><th>Source</th><th>Buildings</th><th>Percentage</th></tr>
+            <tr><td>OSM real height</td><td>78</td><td>2.4%</td></tr>
+            <tr><td>GHSL Built-C (10m)</td><td>3,055</td><td>94.2%</td></tr>
+            <tr><td>GHSL Built-H (100m)</td><td>80</td><td>2.5%</td></tr>
+            <tr><td>nDSM (30m)</td><td>14</td><td>0.4%</td></tr>
+            <tr><td>Default (9m)</td><td>16</td><td>0.5%</td></tr>
+            <tr><td><strong>Total with data</strong></td><td><strong>3,227</strong></td><td><strong>99.5%</strong></td></tr>
+        </table>
+    </div>
+
+    <p>GHSL Built-C dominated because its 10m resolution matches well with building footprint sizes, and it had near-complete coverage of the study area. The 3D visualization now includes a "Color by Source" toggle to show which dataset provided each building's height.</p>
+
+    <div class="highlight">
+        <strong>Height distribution by source:</strong><br>
+        OSM real: 6-230m (median 36m) - includes known tall buildings<br>
+        GHSL Built-C: 3-45m (median 10.5m) - 5 height classes<br>
+        GHSL Built-H: 2.5-33.7m (median 10.3m) - continuous<br>
+        nDSM: 2.7-10.8m (median 4.0m) - low-rise buildings only
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="combined">6. Combined Analysis</h2>
+<div class="section">
+    <h3>6.1 Heat Mitigation Priority</h3>
     <p><strong>Goal:</strong> Identify locations where interventions (tree planting, shade) would have the most impact.</p>
 
     <p><strong>Method:</strong> Combine multiple factors into a priority score:</p>
@@ -320,7 +437,7 @@ Priority Score = 0.40 × LST_normalized
         78% of Al Karama needs heat mitigation interventions.
     </div>
 
-    <h3>5.2 Pedestrian Comfort Index (PCI)</h3>
+    <h3>6.2 Pedestrian Comfort Index (PCI)</h3>
     <p><strong>Goal:</strong> Rate streets by walking comfort.</p>
 
     <div class="formula">
@@ -344,12 +461,12 @@ PCI = 0.40 × Temperature_comfort (inverse of LST)
 </div>
 
 <!-- ============================================================ -->
-<h2 id="network">6. Network Analysis</h2>
+<h2 id="network">7. Network Analysis</h2>
 <div class="section">
-    <h3>6.1 What is Network Centrality?</h3>
+    <h3>7.1 What is Network Centrality?</h3>
     <p>Network analysis treats streets as a graph (nodes = intersections, edges = street segments) to understand which streets are most important for movement.</p>
 
-    <h3>6.2 Betweenness Centrality</h3>
+    <h3>7.2 Betweenness Centrality</h3>
     <p><strong>What it measures:</strong> How often a street lies on the shortest path between other locations.</p>
 
     <div class="formula">
@@ -362,7 +479,7 @@ Where:
 
     <p><strong>Interpretation:</strong> High betweenness = many people pass through this street to get from A to B. These are main corridors.</p>
 
-    <h3>6.3 Closeness Centrality</h3>
+    <h3>7.3 Closeness Centrality</h3>
     <p><strong>What it measures:</strong> How close (accessible) a location is to all other locations.</p>
 
     <div class="formula">
@@ -375,7 +492,7 @@ Where:
 
     <p><strong>Interpretation:</strong> High closeness = easy to reach from anywhere. Central, accessible locations.</p>
 
-    <h3>6.4 Intervention Priority</h3>
+    <h3>7.4 Intervention Priority</h3>
     <p>We combined centrality with comfort to find streets where improvements help the most people:</p>
 
     <div class="formula">
@@ -388,16 +505,16 @@ High priority = busy street that is uncomfortable
         <strong>Result:</strong> 51 streets identified as high priority - heavily used but uncomfortable.
     </div>
 
-    <h3>6.5 Edge Effects</h3>
+    <h3>7.5 Edge Effects</h3>
     <div class="highlight">
         <strong>Important caveat:</strong> Centrality calculations are affected by study area boundaries. Streets at the edge appear less important because paths can't continue beyond our boundary. We addressed this by expanding the analysis area (+500m buffer) and then clipping results back to Al Karama.
     </div>
 </div>
 
 <!-- ============================================================ -->
-<h2 id="clusters">7. Cluster Analysis</h2>
+<h2 id="clusters">8. Cluster Analysis</h2>
 <div class="section">
-    <h3>7.1 K-Means Clustering</h3>
+    <h3>8.1 K-Means Clustering</h3>
     <p><strong>Goal:</strong> Group locations into distinct "urban climate zones" based on their characteristics.</p>
 
     <p><strong>Method:</strong></p>
@@ -419,7 +536,7 @@ High priority = busy street that is uncomfortable
         </table>
     </div>
 
-    <h3>7.2 Green Space Accessibility</h3>
+    <h3>8.2 Green Space Accessibility</h3>
     <p><strong>Method:</strong> For each street view point, calculate distance to nearest "green space" (cells with NDVI > 0.3).</p>
 
     <div class="finding">
@@ -432,9 +549,9 @@ High priority = busy street that is uncomfortable
 </div>
 
 <!-- ============================================================ -->
-<h2 id="findings">8. Key Findings</h2>
+<h2 id="findings">9. Key Findings</h2>
 <div class="section">
-    <h3>8.1 Correlations</h3>
+    <h3>9.1 Correlations</h3>
     <table>
         <tr><th>Relationship</th><th>Correlation (r)</th><th>Interpretation</th></tr>
         <tr><td>GVI ↔ NDVI</td><td><strong>0.501</strong></td><td>Street greenery matches satellite vegetation - data validates!</td></tr>
@@ -448,7 +565,7 @@ High priority = busy street that is uncomfortable
         Satellite LST measures <em>surface</em> temperature, but pedestrians experience <em>air</em> temperature and radiant heat. Also, our measurements are at different times (satellite = specific overpass time, street view = whenever image was captured).
     </div>
 
-    <h3>8.2 Main Takeaways</h3>
+    <h3>9.2 Main Takeaways</h3>
     <ol>
         <li><strong>Al Karama is hot:</strong> Mean surface temperature of 48.6°C in summer</li>
         <li><strong>Very little vegetation:</strong> Only 3.55% green view, 0.104 NDVI</li>
@@ -459,7 +576,7 @@ High priority = busy street that is uncomfortable
 </div>
 
 <!-- ============================================================ -->
-<h2 id="limitations">9. Limitations</h2>
+<h2 id="limitations">10. Limitations</h2>
 <div class="section">
     <div class="limitation">
         <strong>1. Temporal mismatch:</strong> Street view images are from various dates, satellite data is from summer 2024. They don't represent the same moment in time.
@@ -484,10 +601,14 @@ High priority = busy street that is uncomfortable
     <div class="limitation">
         <strong>6. Single season:</strong> We only analyzed summer data. Winter conditions would be different.
     </div>
+
+    <div class="limitation">
+        <strong>7. GHSL height classes are coarse:</strong> The GHSL Built-C dataset provides 5 height bands, not precise heights. Buildings are assigned midpoint values (e.g., all 6-15m buildings get 10.5m). This means 94% of buildings share one of only 5 possible height values. GHSL Built-H caps at ~40m, underestimating the tallest buildings in Al Karama.
+    </div>
 </div>
 
 <!-- ============================================================ -->
-<h2 id="files">10. Output Files Reference</h2>
+<h2 id="files">11. Output Files Reference</h2>
 <div class="section">
     <h3>Interactive Maps</h3>
     <table>
@@ -501,6 +622,7 @@ High priority = busy street that is uncomfortable
         <tr><td>walking_routes/pedestrian_comfort_map.html</td><td>Street comfort ratings</td></tr>
         <tr><td>network_analysis/network_analysis_map.html</td><td>Centrality metrics</td></tr>
         <tr><td>quick_analysis/quick_analysis_map.html</td><td>Clusters and green accessibility</td></tr>
+        <tr><td>osm_3d/al_karama_3d.html</td><td>3D buildings with GEE-enhanced heights (color by height or source)</td></tr>
     </table>
 
     <h3>Data Files (CSV)</h3>
@@ -519,7 +641,7 @@ High priority = busy street that is uncomfortable
         <tr><th>File</th><th>Format</th><th>Description</th></tr>
         <tr><td>gvi_svf_points.geojson</td><td>GeoJSON</td><td>Street view points with metrics</td></tr>
         <tr><td>network_analysis/street_network.geojson</td><td>GeoJSON</td><td>Street network with centrality</td></tr>
-        <tr><td>osm_3d/al_karama_buildings.geojson</td><td>GeoJSON</td><td>Building footprints from OSM</td></tr>
+        <tr><td>osm_3d/al_karama_buildings.geojson</td><td>GeoJSON</td><td>Building footprints with GEE-enhanced heights and height_source field</td></tr>
     </table>
 
     <h3>Python Scripts</h3>
@@ -534,6 +656,7 @@ High priority = busy street that is uncomfortable
         <tr><td>walking_route_analysis.py</td><td>Pedestrian comfort analysis</td></tr>
         <tr><td>network_analysis_v3.py</td><td>Street network centrality</td></tr>
         <tr><td>quick_analyses.py</td><td>Correlations, clusters, accessibility</td></tr>
+        <tr><td>gee_building_heights.py</td><td>Extract GHSL/nDSM building heights from GEE, merge with OSM</td></tr>
     </table>
 </div>
 
