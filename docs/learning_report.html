@@ -156,7 +156,25 @@ mly.download_svi(
         <tr><th>Data</th><th>Count</th><th>Use</th></tr>
         <tr><td>Buildings</td><td>3,243</td><td>3D visualization, height data</td></tr>
         <tr><td>Street network</td><td>5,975 edges</td><td>Centrality analysis</td></tr>
+        <tr><td>Points of Interest</td><td>1,290</td><td>Amenity overlay on 3D shade map</td></tr>
     </table>
+
+    <h3>2.4 Overpass API (Points of Interest)</h3>
+    <table>
+        <tr><th>Property</th><th>Value</th></tr>
+        <tr><td>Source</td><td><a href="https://overpass-api.de/">Overpass API</a> (OpenStreetMap query interface)</td></tr>
+        <tr><td>Query area</td><td>Al Karama bounding box (25.238&ndash;25.259&deg;N, 55.292&ndash;55.313&deg;E)</td></tr>
+        <tr><td>OSM tags queried</td><td><code>amenity</code>, <code>shop</code>, <code>tourism</code>, <code>office</code>, <code>leisure</code>, <code>healthcare</code></td></tr>
+        <tr><td>Raw elements returned</td><td>1,419</td></tr>
+        <tr><td>After noise filtering</td><td>1,290</td></tr>
+        <tr><td>Categories</td><td>8 (Food, Shopping, Hotel, Health, Religious, Services, Leisure, Education)</td></tr>
+        <tr><td>Cost</td><td>Free (public API, rate-limited)</td></tr>
+        <tr><td>Caching</td><td><code>pois_cache.json</code> &mdash; avoids repeat API calls on re-run</td></tr>
+    </table>
+
+    <div class="highlight">
+        <strong>Noise filtering:</strong> 18 OSM types are excluded as "urban furniture" that would clutter the map: bench, waste_basket, parking, shelter, bollard, fire_hydrant, street_lamp, etc. This reduces the raw 1,419 elements to 1,290 meaningful PoIs.
+    </div>
 </div>
 
 <!-- ============================================================ -->
