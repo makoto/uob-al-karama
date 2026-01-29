@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Al Karama Urban Analysis - Index</title>
+    <title>Al Karama Urban Digital Twin</title>
     <meta charset="utf-8">
     <style>
         * { box-sizing: border-box; }
@@ -9,24 +9,25 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
             margin: 0;
             padding: 0;
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            background: #f5f0e8;
             min-height: 100vh;
-            color: #fff;
+            color: #2c2520;
         }
         .header {
-            background: rgba(0,0,0,0.3);
+            background: linear-gradient(135deg, #3b2818 0%, #5c3a1e 100%);
             padding: 40px 20px;
             text-align: center;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: #f5f0e8;
         }
         .header h1 {
             margin: 0;
             font-size: 2.5em;
             font-weight: 300;
+            color: #f5f0e8;
         }
         .header p {
             margin: 10px 0 0 0;
-            opacity: 0.7;
+            opacity: 0.75;
             font-size: 1.1em;
         }
         .stats {
@@ -42,7 +43,7 @@
         .stat-value {
             font-size: 2em;
             font-weight: bold;
-            color: #4fc3f7;
+            color: #e8a04c;
         }
         .stat-label {
             font-size: 0.85em;
@@ -61,10 +62,11 @@
             font-weight: 500;
             margin-bottom: 20px;
             padding-bottom: 10px;
-            border-bottom: 2px solid rgba(255,255,255,0.2);
+            border-bottom: 2px solid #d4c4a8;
             display: flex;
             align-items: center;
             gap: 10px;
+            color: #5c3a1e;
         }
         .cards {
             display: grid;
@@ -72,19 +74,24 @@
             gap: 20px;
         }
         .card {
-            background: rgba(255,255,255,0.05);
+            background: #fff;
             border-radius: 12px;
             padding: 20px;
             transition: all 0.3s ease;
-            border: 1px solid rgba(255,255,255,0.1);
+            border: 1px solid #d4c4a8;
             text-decoration: none;
             color: inherit;
             display: block;
+            box-shadow: 0 2px 8px rgba(60,40,20,0.06);
         }
         .card:hover {
-            background: rgba(255,255,255,0.1);
             transform: translateY(-3px);
-            border-color: rgba(79, 195, 247, 0.5);
+            border-color: #c4653a;
+            box-shadow: 0 6px 20px rgba(60,40,20,0.12);
+        }
+        .card.featured {
+            border-color: #c4653a;
+            background: #fdf8f3;
         }
         .card-icon {
             font-size: 2em;
@@ -94,36 +101,39 @@
             font-size: 1.1em;
             font-weight: 500;
             margin-bottom: 8px;
+            color: #3b2818;
         }
         .card-desc {
             font-size: 0.85em;
-            opacity: 0.7;
+            opacity: 0.65;
             line-height: 1.5;
         }
         .card-tag {
             display: inline-block;
             padding: 3px 8px;
-            background: rgba(79, 195, 247, 0.2);
+            background: rgba(196, 101, 58, 0.12);
             border-radius: 4px;
             font-size: 0.75em;
             margin-top: 10px;
-            color: #4fc3f7;
+            color: #c4653a;
         }
         .footer {
             text-align: center;
             padding: 30px;
-            opacity: 0.5;
+            opacity: 0.45;
             font-size: 0.85em;
         }
         .data-section {
-            background: rgba(255,255,255,0.03);
+            background: #faf6ef;
             border-radius: 12px;
             padding: 25px;
             margin-top: 40px;
+            border: 1px solid #e8dcc8;
         }
         .data-section h3 {
             margin: 0 0 15px 0;
             font-weight: 500;
+            color: #5c3a1e;
         }
         .data-list {
             display: grid;
@@ -131,38 +141,39 @@
             gap: 10px;
         }
         .data-item {
-            background: rgba(0,0,0,0.2);
+            background: #fff;
             padding: 10px 15px;
             border-radius: 6px;
             font-size: 0.9em;
             display: flex;
             justify-content: space-between;
+            border: 1px solid #e8dcc8;
         }
-        .data-item span:last-child {
-            color: #4fc3f7;
+        .data-item a {
+            color: #c4653a;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1>Al Karama Urban Analysis</h1>
-        <p>Dubai, UAE - Street View + Satellite Data Analysis</p>
+        <h1>Al Karama Urban Digital Twin</h1>
+        <p>3D shade simulation, thermal analysis, and pedestrian comfort mapping for a Dubai district</p>
         <div class="stats">
             <div class="stat">
-                <div class="stat-value">11,651</div>
-                <div class="stat-label">Street View Images</div>
+                <div class="stat-value">3,243</div>
+                <div class="stat-label">Buildings</div>
             </div>
             <div class="stat">
-                <div class="stat-value">48.7°C</div>
-                <div class="stat-label">Avg Summer Temp</div>
+                <div class="stat-value">5,656</div>
+                <div class="stat-label">Street Segments</div>
             </div>
             <div class="stat">
-                <div class="stat-value">3.55%</div>
-                <div class="stat-label">Green View Index</div>
+                <div class="stat-value">1,290</div>
+                <div class="stat-label">POIs</div>
             </div>
             <div class="stat">
-                <div class="stat-value">73%</div>
-                <div class="stat-label">Low Vegetation Area</div>
+                <div class="stat-value">20,000</div>
+                <div class="stat-label">Satellite Cells</div>
             </div>
         </div>
     </div>
@@ -172,14 +183,14 @@
         <div class="section">
             <div class="section-title">&#127759; Unified Viewers</div>
             <div class="cards">
-                <a href="viewer.html" class="card" style="border-color: rgba(79,195,247,0.5); background: rgba(79,195,247,0.08);">
+                <a href="viewer.html" class="card featured">
                     <div class="card-icon">&#127751;</div>
                     <div class="card-title">3D Digital Twin</div>
                     <div class="card-desc">Interactive 3D viewer with buildings, shade simulation, thermal analysis, mobility networks, and POIs with time-of-day controls</div>
                     <div class="card-tag">deck.gl 3D &mdash; 13 layers</div>
                     <div class="card-tag">OSM &middot; Mapillary &middot; Landsat &middot; Sentinel-2</div>
                 </a>
-                <a href="viewer_2d.html" class="card" style="border-color: rgba(79,195,247,0.5); background: rgba(79,195,247,0.08);">
+                <a href="viewer_2d.html" class="card featured">
                     <div class="card-icon">&#128506;</div>
                     <div class="card-title">2D Analysis Viewer</div>
                     <div class="card-desc">Unified Leaflet map with togglable layers: street centrality, pedestrian comfort, heat priority, combined SVI, satellite grid, clusters, green access</div>
@@ -213,27 +224,27 @@
         <!-- Data Summary -->
         <div class="data-section">
             <h3>📁 Data Files</h3>
-            <p style="font-size: 0.85em; opacity: 0.6; margin: 0 0 12px;">All data served from <a href="https://github.com/makoto/uob-al-karama/tree/master/docs/data/al_karama" style="color: #4fc3f7;">docs/data/al_karama/</a></p>
+            <p style="font-size: 0.85em; opacity: 0.5; margin: 0 0 12px;">All data served from <a href="https://github.com/makoto/uob-al-karama/tree/master/docs/data/al_karama" style="color: #c4653a;">docs/data/al_karama/</a></p>
             <div class="data-list">
-                <div class="data-item"><span>Area Manifest</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/area.json" style="color: #4fc3f7;">area.json</a></span></div>
-                <div class="data-item"><span>Buildings (GEE heights)</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/buildings.geojson" style="color: #4fc3f7;">buildings.geojson</a></span></div>
-                <div class="data-item"><span>Tree Canopy</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/canopy.geojson" style="color: #4fc3f7;">canopy.geojson</a></span></div>
-                <div class="data-item"><span>Street Network</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/streets.geojson" style="color: #4fc3f7;">streets.geojson</a></span></div>
-                <div class="data-item"><span>Points of Interest</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/pois.json" style="color: #4fc3f7;">pois.json</a></span></div>
-                <div class="data-item"><span>Combined SVI + Satellite</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/combined_svi.json" style="color: #4fc3f7;">combined_svi.json</a></span></div>
-                <div class="data-item"><span>Satellite Grid (30m)</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/satellite_grid.json" style="color: #4fc3f7;">satellite_grid.json</a></span></div>
-                <div class="data-item"><span>Heat Priority Points</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/priority_points.json" style="color: #4fc3f7;">priority_points.json</a></span></div>
-                <div class="data-item"><span>Segment Comfort</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/segment_comfort.json" style="color: #4fc3f7;">segment_comfort.json</a></span></div>
-                <div class="data-item"><span>Climate Clusters</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/clusters.json" style="color: #4fc3f7;">clusters.json</a></span></div>
-                <div class="data-item"><span>Distance to Green</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/distance_to_green.json" style="color: #4fc3f7;">distance_to_green.json</a></span></div>
-                <div class="data-item"><span>Street Shade Coverage</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/street_shade.csv" style="color: #4fc3f7;">street_shade.csv</a></span></div>
-                <div class="data-item"><span>Street Metrics</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/street_metrics.json" style="color: #4fc3f7;">street_metrics.json</a></span></div>
-                <div class="data-item"><span>Shadow Projections</span><span><a href="https://github.com/makoto/uob-al-karama/tree/master/docs/data/al_karama/shadows" style="color: #4fc3f7;">shadows/ (7 time slots)</a></span></div>
+                <div class="data-item"><span>Area Manifest</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/area.json">area.json</a></span></div>
+                <div class="data-item"><span>Buildings (GEE heights)</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/buildings.geojson">buildings.geojson</a></span></div>
+                <div class="data-item"><span>Tree Canopy</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/canopy.geojson">canopy.geojson</a></span></div>
+                <div class="data-item"><span>Street Network</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/streets.geojson">streets.geojson</a></span></div>
+                <div class="data-item"><span>Points of Interest</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/pois.json">pois.json</a></span></div>
+                <div class="data-item"><span>Combined SVI + Satellite</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/combined_svi.json">combined_svi.json</a></span></div>
+                <div class="data-item"><span>Satellite Grid (30m)</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/satellite_grid.json">satellite_grid.json</a></span></div>
+                <div class="data-item"><span>Heat Priority Points</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/priority_points.json">priority_points.json</a></span></div>
+                <div class="data-item"><span>Segment Comfort</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/segment_comfort.json">segment_comfort.json</a></span></div>
+                <div class="data-item"><span>Climate Clusters</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/clusters.json">clusters.json</a></span></div>
+                <div class="data-item"><span>Distance to Green</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/distance_to_green.json">distance_to_green.json</a></span></div>
+                <div class="data-item"><span>Street Shade Coverage</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/street_shade.csv">street_shade.csv</a></span></div>
+                <div class="data-item"><span>Street Metrics</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/street_metrics.json">street_metrics.json</a></span></div>
+                <div class="data-item"><span>Shadow Projections</span><span><a href="https://github.com/makoto/uob-al-karama/tree/master/docs/data/al_karama/shadows">shadows/ (7 time slots)</a></span></div>
             </div>
         </div>
 
         <!-- Documentation -->
-        <div class="section">
+        <div class="section" style="margin-top: 40px;">
             <div class="section-title">📚 Documentation</div>
             <div class="cards">
                 <a href="learning_report.html" class="card">
@@ -253,7 +264,7 @@
     </div>
 
     <div class="footer">
-        Al Karama Urban Analysis | Data: Mapillary, Landsat 8/9, Sentinel-2, OpenStreetMap<br>
+        Al Karama Urban Digital Twin | Data: Mapillary, Landsat 8/9, Sentinel-2, OpenStreetMap<br>
         Generated with ZenSVI + Google Earth Engine
     </div>
 </body>
