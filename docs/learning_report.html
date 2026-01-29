@@ -60,6 +60,7 @@
         <li><a href="#limitations">11. Limitations</a></li>
         <li><a href="#files">12. Output Files Reference</a></li>
         <li><a href="#field-survey">13. Field Survey Guide</a></li>
+        <li><a href="#unused-depth">Appendix A: Unused Methodology &mdash; Depth Estimation</a></li>
     </ul>
 </div>
 
@@ -91,7 +92,7 @@
 ┌─────────────────────────┐    ┌─────────────────────────────┐
 │  Green View Index (GVI) │    │  Land Surface Temp (LST)    │
 │  Sky View Factor (SVF)  │    │  Vegetation Index (NDVI)    │
-│  Depth Estimation       │    │  Built-up Index (NDBI)      │
+│                         │    │  Built-up Index (NDBI)      │
 └────────────┬────────────┘    └─────────────────┬───────────┘
              │                                   │
              └─────────────┬─────────────────────┘
@@ -220,14 +221,7 @@ mly.download_svi(
         Moderate sky exposure - some shading from buildings but not dense urban canyon.
     </div>
 
-    <h3>3.3 Depth Estimation</h3>
-    <p><strong>What it does:</strong> Uses AI (DepthAnythingV2 model) to estimate relative distances in an image.</p>
-
-    <div class="limitation">
-        <strong>Limitation:</strong> Depth estimation gives <em>relative</em> distances (what's closer vs farther), not <em>absolute</em> distances in meters. Without camera calibration, we can't accurately measure building heights.
-    </div>
-
-    <p>We processed 26 test images as a proof-of-concept. Full processing of all 11,651 images would require significant compute time.</p>
+    <p><em>Note: Monocular depth estimation was explored but not adopted in the final analysis. See <a href="#unused-depth">Appendix A: Unused Methodology &mdash; Depth Estimation</a> for details.</em></p>
 </div>
 
 <!-- ============================================================ -->
@@ -802,63 +796,48 @@ out center;
     </div>
 
     <div class="limitation">
-        <strong>4. Depth estimation is relative:</strong> AI depth maps show what's closer/farther, but can't give actual distances without camera calibration.
+        <strong>4. Street view sampling bias:</strong> Mapillary images are crowdsourced, so coverage depends on where people drove/walked with cameras. Some areas may have gaps.
     </div>
 
     <div class="limitation">
-        <strong>5. Street view sampling bias:</strong> Mapillary images are crowdsourced, so coverage depends on where people drove/walked with cameras. Some areas may have gaps.
+        <strong>5. Single season:</strong> We only analyzed summer data. Winter conditions would be different.
     </div>
 
     <div class="limitation">
-        <strong>6. Single season:</strong> We only analyzed summer data. Winter conditions would be different.
-    </div>
-
-    <div class="limitation">
-        <strong>7. GHSL height classes are coarse:</strong> The GHSL Built-C dataset provides 5 height bands, not precise heights. Buildings are assigned midpoint values (e.g., all 6-15m buildings get 10.5m). This means 94% of buildings share one of only 5 possible height values. GHSL Built-H caps at ~40m, underestimating the tallest buildings in Al Karama.
+        <strong>6. GHSL height classes are coarse:</strong> The GHSL Built-C dataset provides 5 height bands, not precise heights. Buildings are assigned midpoint values (e.g., all 6-15m buildings get 10.5m). This means 94% of buildings share one of only 5 possible height values. GHSL Built-H caps at ~40m, underestimating the tallest buildings in Al Karama.
     </div>
 </div>
 
 <!-- ============================================================ -->
 <h2 id="files">12. Output Files Reference</h2>
 <div class="section">
-    <h3>Interactive Maps</h3>
+    <h3>Interactive Viewers</h3>
     <table>
         <tr><th>File</th><th>Description</th></tr>
         <tr><td>index.html</td><td>Main dashboard with links to all visualizations</td></tr>
-        <tr><td>gvi_point_map.html</td><td>Green View Index point map with image popups</td></tr>
-        <tr><td>gvi_svf_comparison_map.html</td><td>GVI vs SVF side-by-side comparison</td></tr>
-        <tr><td>satellite_full/full_area_analysis_10m.html</td><td>Satellite data at 10m resolution</td></tr>
-        <tr><td>thermal_sharpening/thermal_sharpening.html</td><td>30m to 10m thermal downscaling comparison</td></tr>
-        <tr><td>heat_mitigation/priority_map.html</td><td>Intervention priority locations</td></tr>
-        <tr><td>walking_routes/pedestrian_comfort_map.html</td><td>Street comfort ratings</td></tr>
-        <tr><td>network_analysis/network_analysis_map.html</td><td>Centrality metrics</td></tr>
-        <tr><td>quick_analysis/quick_analysis_map.html</td><td>Clusters and green accessibility</td></tr>
-        <tr><td>osm_3d/al_karama_3d.html</td><td>3D buildings with GEE-enhanced heights (color by height or source)</td></tr>
-        <tr><td>shade_analysis/shade_map.html</td><td>Building &amp; tree shade analysis with time slider (7 time slots, 6 AM&ndash;6 PM, July 15)</td></tr>
-        <tr><td>shade_analysis/shade_map_3d.html</td><td>3D shade analysis with extruded buildings, tree canopy, projected shadows, and GPU sun shadows</td></tr>
+        <tr><td>viewer.html</td><td>3D Digital Twin &mdash; buildings, shade, thermal, mobility, POIs (deck.gl, 13 layers)</td></tr>
+        <tr><td>viewer_2d.html</td><td>2D Analysis Viewer &mdash; centrality, comfort, priority, SVI, satellite, clusters, green access (Leaflet, 7 layers)</td></tr>
+        <tr><td>gvi_point_map.html</td><td>GVI point map with clustered markers and image popups</td></tr>
+        <tr><td>segmentation_gallery.html</td><td>Sample segmentation images (high vs low vegetation)</td></tr>
     </table>
 
-    <h3>Data Files (CSV)</h3>
+    <h3>Data Files (<a href="https://github.com/makoto/uob-al-karama/tree/master/docs/data/al_karama" style="color: #1565c0;">data/al_karama/</a>)</h3>
     <table>
-        <tr><th>File</th><th>Description</th><th>Rows</th></tr>
-        <tr><td>gvi_svf_combined.csv</td><td>GVI and SVF for all street view points</td><td>11,576</td></tr>
-        <tr><td>satellite_full/full_area_data.csv</td><td>LST, NDVI, NDBI grid</td><td>90,300</td></tr>
-        <tr><td>heat_mitigation/priority_scores.csv</td><td>Priority scores for each point</td><td>11,576</td></tr>
-        <tr><td>walking_routes/segment_comfort.csv</td><td>Comfort by street segment</td><td>420</td></tr>
-        <tr><td>quick_analysis/correlations.csv</td><td>Correlation statistics</td><td>6</td></tr>
-        <tr><td>quick_analysis/cluster_stats.csv</td><td>Cluster characteristics</td><td>4</td></tr>
-        <tr><td>shade_analysis/street_shade.csv</td><td>Shade % per street per hour (7 hours) + daily average</td><td>5,656</td></tr>
-    </table>
-
-    <h3>GIS Files</h3>
-    <table>
-        <tr><th>File</th><th>Format</th><th>Description</th></tr>
-        <tr><td>gvi_svf_points.geojson</td><td>GeoJSON</td><td>Street view points with metrics</td></tr>
-        <tr><td>network_analysis/street_network.geojson</td><td>GeoJSON</td><td>Street network with centrality</td></tr>
-        <tr><td>osm_3d/al_karama_buildings.geojson</td><td>GeoJSON</td><td>Building footprints with GEE-enhanced heights and height_source field</td></tr>
-        <tr><td>shade_analysis/shadows_HH.geojson</td><td>GeoJSON</td><td>Shadow polygons per hour (x7 files: 06, 08, 10, 12, 14, 16, 18)</td></tr>
-        <tr><td>shade_analysis/canopy_polygons_with_height.geojson</td><td>GeoJSON</td><td>1,033 tree canopy polygons with IDW-interpolated heights</td></tr>
-        <tr><td>shade_analysis/pois_cache.json</td><td>JSON</td><td>1,290 Overpass API PoIs (8 categories) &mdash; cached to avoid repeat API calls</td></tr>
+        <tr><th>File</th><th>Description</th><th>Records</th></tr>
+        <tr><td>area.json</td><td>Area manifest (center, zoom, layer paths, sun info)</td><td>&mdash;</td></tr>
+        <tr><td>buildings.geojson</td><td>Building footprints with GEE-enhanced heights</td><td>3,243</td></tr>
+        <tr><td>canopy.geojson</td><td>Tree canopy polygons with IDW-interpolated heights</td><td>1,033</td></tr>
+        <tr><td>streets.geojson</td><td>Street network with centrality, PCI, LST, priority</td><td>5,656</td></tr>
+        <tr><td>pois.json</td><td>Points of interest (8 categories, Overpass API)</td><td>1,290</td></tr>
+        <tr><td>combined_svi.json</td><td>Street-level GVI/SVF + satellite LST/NDVI</td><td>10,098</td></tr>
+        <tr><td>satellite_grid.json</td><td>Satellite LST/NDVI/NDBI grid (30m, subsampled)</td><td>20,000</td></tr>
+        <tr><td>priority_points.json</td><td>Heat mitigation priority scores and levels</td><td>11,576</td></tr>
+        <tr><td>segment_comfort.json</td><td>Pedestrian comfort by street segment</td><td>420</td></tr>
+        <tr><td>clusters.json</td><td>K-means climate cluster assignments</td><td>10,098</td></tr>
+        <tr><td>distance_to_green.json</td><td>Distance to nearest green space</td><td>11,576</td></tr>
+        <tr><td>street_shade.csv</td><td>Shade % per street per hour (7 hours)</td><td>5,656</td></tr>
+        <tr><td>street_metrics.json</td><td>Street-level aggregated metrics</td><td>5,656</td></tr>
+        <tr><td>shadows/shadows_HH.geojson</td><td>Shadow polygons per hour (&times;7 files)</td><td>&mdash;</td></tr>
     </table>
 
     <h3>Python Scripts</h3>
@@ -948,7 +927,46 @@ Building Height = Distance &times; tan(Angle) + Observer Height
 
 <div class="section" style="text-align: center; margin-top: 40px;">
     <p><em>Report generated January 2026</em></p>
-    <p><a href="index.html">← Back to Dashboard</a></p>
+    <p><a href="index.html">&larr; Back to Dashboard</a></p>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="unused-depth">Appendix A: Unused Methodology &mdash; Depth Estimation</h2>
+<div class="section">
+    <h3>A.1 Concept</h3>
+    <p>Monocular depth estimation uses a neural network to predict a per-pixel depth map from a single image. We tested <strong>DepthAnythingV2</strong>, a foundation model that produces a relative depth map where each pixel is assigned a value indicating its distance from the camera (blue = far, red = near).</p>
+
+    <p>The initial hypothesis was that depth maps from street-view images could be used to estimate building heights, supplementing or replacing satellite-derived height data.</p>
+
+    <h3>A.2 What Was Done</h3>
+    <p>26 test images from a 50m-radius area (centred on Mapillary camera 827604215891753) were processed as a proof-of-concept. The model successfully produced visually plausible depth maps distinguishing foreground elements (cars, people) from background structures (buildings, sky).</p>
+
+    <h3>A.3 Why It Was Dropped</h3>
+
+    <div class="limitation">
+        <strong>Fundamental limitation: relative depth only.</strong> Monocular depth estimation produces <em>relative</em> distances (pixel A is closer than pixel B), not <em>absolute</em> distances in metres. Without camera calibration parameters (focal length, sensor size) &mdash; which Mapillary images do not reliably provide &mdash; there is no way to convert the depth map into real-world measurements.
+    </div>
+
+    <p>This means depth estimation cannot answer "this building is 25m tall" &mdash; only "this building is farther away than this car." Building heights require absolute measurements, which this technique cannot provide from the available data.</p>
+
+    <h3>A.4 What Would Make It Viable</h3>
+    <table>
+        <tr><th>Requirement</th><th>What It Enables</th></tr>
+        <tr><td>Stereo image pairs (two images of the same scene from known positions)</td><td>Triangulation for absolute distance</td></tr>
+        <tr><td>Camera intrinsics (focal length, sensor size)</td><td>Metric depth from single images</td></tr>
+        <tr><td>LiDAR ground truth</td><td>Calibration of relative depth to absolute values</td></tr>
+    </table>
+
+    <p>None of these were available from the Mapillary dataset. Adding more single-view images would not resolve the limitation &mdash; the problem is the absence of calibration data, not the quantity of images.</p>
+
+    <h3>A.5 Alternative Used</h3>
+    <p>Building heights were instead derived from satellite sources via Google Earth Engine (see <a href="#building-heights">Section 5</a>), achieving 99.5% coverage across 3,243 buildings using GHSL Built-C, GHSL Built-H, nDSM (ALOS&ndash;SRTM), and OSM survey data.</p>
+</div>
+
+<!-- ============================================================ -->
+
+<div class="section" style="text-align: center; margin-top: 40px;">
+    <p><a href="index.html">&larr; Back to Dashboard</a></p>
 </div>
 
 </body>

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Urban Climate Viewer - Al Karama</title>
+    <title>3D Digital Twin - Al Karama</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://unpkg.com/deck.gl@8.9.0/dist.min.js"></script>
@@ -19,7 +19,7 @@
     <!-- Layer panel -->
     <div id="layer-panel">
         <div class="panel-header">
-            <h2>Urban Climate Viewer</h2>
+            <h2>3D Digital Twin</h2>
             <p id="areaSubtitle">July 15 (peak summer) &mdash; Al Karama, Dubai</p>
         </div>
 
@@ -215,7 +215,7 @@
             <a href="thermal_sharpening/thermal_sharpening.html">Thermal Sharpening</a>
         </div>
     </div>
-    <span class="nav-title">Urban Climate Viewer</span>
+    <span class="nav-title">3D Digital Twin</span>
     <select class="area-dropdown" id="areaSelect" onchange="switchArea(this.value)">
         <option value="al_karama">Al Karama</option>
     </select>
@@ -1290,7 +1290,7 @@ async function switchArea(areaId) {
     // Update UI
     document.getElementById('areaSubtitle').textContent =
         AREA.analysis_date + ' \u2014 ' + AREA.name + ', ' + AREA.city;
-    document.title = 'Urban Climate Viewer - ' + AREA.name;
+    document.title = '3D Digital Twin - ' + AREA.name;
 
     // Load immediate-tier data
     document.getElementById('initLoader').classList.add('active');

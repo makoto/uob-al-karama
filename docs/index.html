@@ -174,8 +174,8 @@
             <div class="cards">
                 <a href="viewer.html" class="card" style="border-color: rgba(79,195,247,0.5); background: rgba(79,195,247,0.08);">
                     <div class="card-icon">&#127751;</div>
-                    <div class="card-title">3D Urban Climate Viewer</div>
-                    <div class="card-desc">All analysis layers in one PLATEAU-inspired 3D viewer: buildings, shade, thermal, mobility, POIs with time-of-day controls</div>
+                    <div class="card-title">3D Digital Twin</div>
+                    <div class="card-desc">Interactive 3D viewer with buildings, shade simulation, thermal analysis, mobility networks, and POIs with time-of-day controls</div>
                     <div class="card-tag">deck.gl 3D &mdash; 13 layers</div>
                     <div class="card-tag">OSM &middot; Mapillary &middot; Landsat &middot; Sentinel-2</div>
                 </a>
@@ -207,27 +207,28 @@
                     <div class="card-tag">10 samples</div>
                     <div class="card-tag">Mapillary</div>
                 </a>
-                <a href="depth_gallery.html" class="card">
-                    <div class="card-icon">🖼️</div>
-                    <div class="card-title">Depth Map Gallery</div>
-                    <div class="card-desc">Side-by-side original images and depth estimation results</div>
-                    <div class="card-tag">26 images</div>
-                    <div class="card-tag">Mapillary</div>
-                </a>
             </div>
         </div>
 
         <!-- Data Summary -->
         <div class="data-section">
             <h3>📁 Data Files</h3>
+            <p style="font-size: 0.85em; opacity: 0.6; margin: 0 0 12px;">All data served from <a href="https://github.com/makoto/uob-al-karama/tree/master/docs/data/al_karama" style="color: #4fc3f7;">docs/data/al_karama/</a></p>
             <div class="data-list">
-                <div class="data-item"><span>GVI + SVF Combined</span><span>gvi_svf_combined.csv</span></div>
-                <div class="data-item"><span>Full Area Grid (30m)</span><span>satellite_full/full_area_data.csv</span></div>
-                <div class="data-item"><span>Full Area Grid (10m)</span><span>satellite_full/full_area_data.csv (90K rows)</span></div>
-                <div class="data-item"><span>Thermal Sharpening (10m)</span><span>thermal_sharpening/sharpened_data.csv</span></div>
-                <div class="data-item"><span>Combined Analysis</span><span>combined_analysis/combined_data.csv</span></div>
-                <div class="data-item"><span>Buildings (GEE heights)</span><span>osm_3d/al_karama_buildings.geojson</span></div>
-                <div class="data-item"><span>Environmental Comfort</span><span>climate_analysis/environmental_comfort.csv</span></div>
+                <div class="data-item"><span>Area Manifest</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/area.json" style="color: #4fc3f7;">area.json</a></span></div>
+                <div class="data-item"><span>Buildings (GEE heights)</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/buildings.geojson" style="color: #4fc3f7;">buildings.geojson</a></span></div>
+                <div class="data-item"><span>Tree Canopy</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/canopy.geojson" style="color: #4fc3f7;">canopy.geojson</a></span></div>
+                <div class="data-item"><span>Street Network</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/streets.geojson" style="color: #4fc3f7;">streets.geojson</a></span></div>
+                <div class="data-item"><span>Points of Interest</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/pois.json" style="color: #4fc3f7;">pois.json</a></span></div>
+                <div class="data-item"><span>Combined SVI + Satellite</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/combined_svi.json" style="color: #4fc3f7;">combined_svi.json</a></span></div>
+                <div class="data-item"><span>Satellite Grid (30m)</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/satellite_grid.json" style="color: #4fc3f7;">satellite_grid.json</a></span></div>
+                <div class="data-item"><span>Heat Priority Points</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/priority_points.json" style="color: #4fc3f7;">priority_points.json</a></span></div>
+                <div class="data-item"><span>Segment Comfort</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/segment_comfort.json" style="color: #4fc3f7;">segment_comfort.json</a></span></div>
+                <div class="data-item"><span>Climate Clusters</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/clusters.json" style="color: #4fc3f7;">clusters.json</a></span></div>
+                <div class="data-item"><span>Distance to Green</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/distance_to_green.json" style="color: #4fc3f7;">distance_to_green.json</a></span></div>
+                <div class="data-item"><span>Street Shade Coverage</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/street_shade.csv" style="color: #4fc3f7;">street_shade.csv</a></span></div>
+                <div class="data-item"><span>Street Metrics</span><span><a href="https://github.com/makoto/uob-al-karama/blob/master/docs/data/al_karama/street_metrics.json" style="color: #4fc3f7;">street_metrics.json</a></span></div>
+                <div class="data-item"><span>Shadow Projections</span><span><a href="https://github.com/makoto/uob-al-karama/tree/master/docs/data/al_karama/shadows" style="color: #4fc3f7;">shadows/ (7 time slots)</a></span></div>
             </div>
         </div>
     </div>
