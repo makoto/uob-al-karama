@@ -1,0 +1,106 @@
+{
+  "id": "al_karama",
+  "name": "Al Karama",
+  "city": "Dubai, UAE",
+  "center": [
+    55.3025,
+    25.2485
+  ],
+  "zoom": 15,
+  "analysis_date": "2024-07-15",
+  "timezone_offset": 4,
+  "times": [
+    6,
+    8,
+    10,
+    12,
+    14,
+    16,
+    18
+  ],
+  "time_labels": [
+    "6:00 AM",
+    "8:00 AM",
+    "10:00 AM",
+    "12:00 PM",
+    "2:00 PM",
+    "4:00 PM",
+    "6:00 PM"
+  ],
+  "layers": {
+    "buildings": "buildings.geojson",
+    "canopy": "canopy.geojson",
+    "streets": "streets.geojson",
+    "pois": "pois.json",
+    "street_shade": "street_shade.csv",
+    "street_metrics": "street_metrics.json",
+    "segment_comfort": "segment_comfort.json",
+    "priority": "priority_points.json",
+    "clusters": "clusters.json",
+    "distance_to_green": "distance_to_green.json",
+    "combined_svi": "combined_svi.json",
+    "shadows": {
+      "06": "shadows/shadows_06.geojson",
+      "08": "shadows/shadows_08.geojson",
+      "10": "shadows/shadows_10.geojson",
+      "12": "shadows/shadows_12.geojson",
+      "14": "shadows/shadows_14.geojson",
+      "16": "shadows/shadows_16.geojson",
+      "18": "shadows/shadows_18.geojson"
+    }
+  },
+  "sun_info": {
+    "6": {
+      "altitude": 3.7,
+      "azimuth": 68.0,
+      "shadow_factor": 15.32
+    },
+    "8": {
+      "altitude": 29.7,
+      "azimuth": 78.7,
+      "shadow_factor": 1.75
+    },
+    "10": {
+      "altitude": 56.6,
+      "azimuth": 88.9,
+      "shadow_factor": 0.66
+    },
+    "12": {
+      "altitude": 83.1,
+      "azimuth": 122.6,
+      "shadow_factor": 0.12
+    },
+    "14": {
+      "altitude": 67.9,
+      "azimuth": 264.9,
+      "shadow_factor": 0.41
+    },
+    "16": {
+      "altitude": 40.8,
+      "azimuth": 277.2,
+      "shadow_factor": 1.16
+    },
+    "18": {
+      "altitude": 14.3,
+      "azimuth": 287.2,
+      "shadow_factor": 3.93
+    }
+  },
+  "utc_timestamps": {
+    "6": "2024-07-15T02:00:00Z",
+    "8": "2024-07-15T04:00:00Z",
+    "10": "2024-07-15T06:00:00Z",
+    "12": "2024-07-15T08:00:00Z",
+    "14": "2024-07-15T10:00:00Z",
+    "16": "2024-07-15T12:00:00Z",
+    "18": "2024-07-15T14:00:00Z"
+  },
+  "stats": {
+    "buildings": 3243,
+    "trees": 1033,
+    "streets": 5656,
+    "pois": 1290,
+    "avg_shade": 35.8,
+    "avg_lst": 48.6
+  }
+}

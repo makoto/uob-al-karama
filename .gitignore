@@ -1,5 +1,6 @@
 # Large data files (ZenSVI downloads & processing)
 data/
+!docs/data/
 
 # API keys
 .env
