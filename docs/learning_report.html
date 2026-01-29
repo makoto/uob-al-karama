@@ -550,10 +550,10 @@ High priority = busy street that is uncomfortable
 </div>
 
 <!-- ============================================================ -->
-<h2 id="shade">9. Building Shade Analysis</h2>
+<h2 id="shade">9. Building &amp; Tree Canopy Shade Analysis</h2>
 <div class="section">
     <h3>9.1 Objective</h3>
-    <p>Quantify how much shade buildings cast on streets during peak summer, and identify which streets are most exposed to direct sun. This extends the building height data (Section 5) to evaluate its impact on pedestrian thermal comfort.</p>
+    <p>Quantify how much shade buildings <strong>and tree canopies</strong> cast on streets during peak summer, and identify which streets are most exposed to direct sun. This extends the building height data (Section 5) and integrates tree canopy data from the Meta 1m Global Canopy Height Map.</p>
 
     <h3>9.2 Solar Position (NOAA Algorithm)</h3>
     <p><strong>Method:</strong> Implemented the NOAA solar position spreadsheet algorithm using pure numpy/math (no external solar libraries). The algorithm computes solar altitude and azimuth from Julian Day, solar declination, hour angle, and observer coordinates.</p>
@@ -562,27 +562,29 @@ High priority = busy street that is uncomfortable
         Julian Day &rarr; Solar Declination &rarr; Hour Angle &rarr; Altitude &amp; Azimuth
     </div>
 
-    <p><strong>Analysis date:</strong> July 15 (peak summer in Dubai), 5 time slots.</p>
+    <p><strong>Analysis date:</strong> July 15 (peak summer in Dubai), 7 time slots from 6 AM to 6 PM.</p>
 
     <table>
         <tr><th>Local Time</th><th>Altitude</th><th>Azimuth</th><th>Shadow Length Factor</th></tr>
-        <tr><td>08:00</td><td>~35&deg;</td><td>~80&deg; (E)</td><td>1.43&times; height</td></tr>
-        <tr><td>10:00</td><td>~60&deg;</td><td>~95&deg; (E)</td><td>0.58&times;</td></tr>
-        <tr><td>12:00</td><td>~85&deg;</td><td>~180&deg; (S)</td><td>0.09&times; (near overhead)</td></tr>
-        <tr><td>14:00</td><td>~65&deg;</td><td>~265&deg; (W)</td><td>0.47&times;</td></tr>
-        <tr><td>16:00</td><td>~42&deg;</td><td>~280&deg; (W)</td><td>1.11&times;</td></tr>
+        <tr><td>06:00</td><td>3.7&deg;</td><td>68.0&deg; (ENE)</td><td>15.32&times; height</td></tr>
+        <tr><td>08:00</td><td>29.7&deg;</td><td>78.7&deg; (E)</td><td>1.75&times;</td></tr>
+        <tr><td>10:00</td><td>56.6&deg;</td><td>88.9&deg; (E)</td><td>0.66&times;</td></tr>
+        <tr><td>12:00</td><td>83.1&deg;</td><td>122.6&deg; (SE)</td><td>0.12&times; (near overhead)</td></tr>
+        <tr><td>14:00</td><td>67.9&deg;</td><td>264.9&deg; (W)</td><td>0.41&times;</td></tr>
+        <tr><td>16:00</td><td>40.8&deg;</td><td>277.2&deg; (W)</td><td>1.16&times;</td></tr>
+        <tr><td>18:00</td><td>14.3&deg;</td><td>287.2&deg; (WNW)</td><td>3.93&times;</td></tr>
     </table>
 
     <div class="highlight">
-        <strong>Key insight:</strong> At noon in July, the sun is nearly overhead (85&deg; altitude) so shadows are minimal. Morning and afternoon shadows are much longer, cast east-to-west, providing the most meaningful shade for pedestrians.
+        <strong>Key insight:</strong> At noon in July, the sun is nearly overhead (83&deg; altitude) so shadows are minimal. Early morning (6 AM) and late afternoon (6 PM) produce extremely long shadows &mdash; at 6 AM the sun is only 3.7&deg; above the horizon, casting shadows over 15&times; building height. This reveals how shadow coverage changes dramatically throughout the day.
     </div>
 
     <h3>9.3 Shadow Projection Method</h3>
-    <p><strong>For each building at each time:</strong></p>
+    <p><strong>For each building and tree canopy polygon at each time:</strong></p>
     <ol>
         <li>Calculate shadow length: <code>shadow_length = height / tan(altitude)</code></li>
         <li>Determine shadow direction: opposite to sun azimuth</li>
-        <li>Create shadow polygon: convex hull of building footprint + translated tip footprint</li>
+        <li>Create shadow polygon: convex hull of footprint + translated tip footprint</li>
         <li>All calculations in UTM Zone 40N (EPSG:32640) for metric accuracy</li>
     </ol>
 
@@ -591,36 +593,91 @@ High priority = busy street that is uncomfortable
         shadow_direction = sun_azimuth + 180&deg;
     </div>
 
-    <h3>9.4 Street Shade Calculation</h3>
-    <p><strong>Method:</strong> For each time slot, union all building shadows using a chunked spatial approach (200m grid tiles), then calculate the fraction of each street segment that falls within shadow.</p>
+    <p>Shadow sources include <strong>3,243 buildings</strong> and <strong>1,033 tree canopy polygons</strong>, producing ~30,000 individual shadow projections across 7 time slots.</p>
+
+    <h3>9.4 Tree Canopy Integration</h3>
+    <p><strong>Data source:</strong> Meta 1m Global Canopy Height Map, accessed via Google Earth Engine. The canopy data was processed in three stages:</p>
+    <ol>
+        <li><strong>Canopy polygon extraction:</strong> The raster canopy height image was thresholded (&gt;2m) and converted to 1,033 vector polygons representing tree canopy areas.</li>
+        <li><strong>Height sampling:</strong> 183 sample points with canopy height values were extracted from the raster.</li>
+        <li><strong>IDW height interpolation:</strong> Each polygon centroid was assigned a height using Inverse Distance Weighting (IDW) interpolation from the 3 nearest sample points (within 500m). Polygons with no nearby samples received the median height (3.0m).</li>
+    </ol>
+
+    <div class="formula">
+        height_polygon = &Sigma;(w<sub>i</sub> &times; h<sub>i</sub>) / &Sigma;(w<sub>i</sub>), &nbsp; where w<sub>i</sub> = 1 / d<sub>i</sub>&sup2;
+    </div>
+
+    <table>
+        <tr><th>Canopy Metric</th><th>Value</th></tr>
+        <tr><td>Total canopy polygons</td><td>1,033</td></tr>
+        <tr><td>Height range</td><td>1.0 &ndash; 11.9 m</td></tr>
+        <tr><td>Mean height</td><td>3.2 m</td></tr>
+        <tr><td>Median height</td><td>2.7 m</td></tr>
+        <tr><td>Sample points used for IDW</td><td>183</td></tr>
+    </table>
+
+    <h3>9.5 Street Shade Calculation</h3>
+    <p><strong>Method:</strong> For each time slot, union all building <em>and</em> tree canopy shadows using a chunked spatial approach (200m grid tiles), then calculate the fraction of each street segment that falls within shadow.</p>
 
     <div class="formula">
         shade_fraction = shaded_length / total_length
     </div>
 
-    <p>Daily average shade is computed across all 5 time slots. Performance is managed via spatial indexing (STRtree) and chunked union operations (~3,243 buildings &times; 5 times = ~16,000 shadow projections).</p>
+    <p>Daily average shade is computed across all 7 time slots. Performance is managed via spatial indexing (STRtree) and chunked union operations.</p>
 
-    <h3>9.5 Results</h3>
+    <h3>9.6 Results</h3>
+
+    <table>
+        <tr><th>Time</th><th>Avg Shade</th><th>Well-shaded (&ge;50%)</th><th>Exposed (&lt;20%)</th></tr>
+        <tr><td>06:00 AM</td><td><strong>93.8%</strong></td><td>5,339 / 5,656</td><td>155</td></tr>
+        <tr><td>08:00 AM</td><td>39.4%</td><td>2,250 / 5,656</td><td>1,842</td></tr>
+        <tr><td>10:00 AM</td><td>19.9%</td><td>1,106 / 5,656</td><td>3,249</td></tr>
+        <tr><td>12:00 PM</td><td>5.9%</td><td>288 / 5,656</td><td>5,052</td></tr>
+        <tr><td>02:00 PM</td><td>13.2%</td><td>722 / 5,656</td><td>3,907</td></tr>
+        <tr><td>04:00 PM</td><td>26.6%</td><td>1,511 / 5,656</td><td>2,570</td></tr>
+        <tr><td>06:00 PM</td><td><strong>51.6%</strong></td><td>3,015 / 5,656</td><td>1,309</td></tr>
+    </table>
+
+    <div class="finding">
+        <strong>Daily summary (buildings + trees combined):</strong><br>
+        &bull; Average shade coverage across 7 time slots: <strong>35.8%</strong><br>
+        &bull; Well-shaded streets (&ge;50% daily average): <strong>1,208 / 5,656</strong> (21%)<br>
+        &bull; Exposed streets (&lt;20% daily average): <strong>1,639 / 5,656</strong> (29%)<br>
+        &bull; Most shade at 6 AM (93.8%) and 6 PM (51.6%) &mdash; long shadows from low sun angle<br>
+        &bull; Least shade at noon (5.9%) &mdash; sun nearly overhead at 83&deg;
+    </div>
+
     <div class="finding">
         <strong>Key outputs:</strong><br>
-        &bull; Shadow polygons for each of the 5 time slots (GeoJSON)<br>
-        &bull; Shade percentage per street per hour (CSV)<br>
-        &bull; Interactive map with time slider showing shade progression<br>
+        &bull; Shadow polygons for each of the 7 time slots (GeoJSON) &mdash; separate building and tree shadow layers<br>
+        &bull; Shade percentage per street per hour (CSV, 5,656 streets &times; 7 hours)<br>
+        &bull; Interactive 2D map with time slider, building shadow toggle, and tree shadow toggle<br>
+        &bull; Interactive 3D map with extruded buildings (gray) and tree canopy (green), projected shadow overlays, and GPU-rendered sun shadows<br>
         &bull; Streets colored by shade coverage (red=exposed, green=shaded)
     </div>
 
-    <h3>9.6 Caveats</h3>
+    <h3>9.7 Visualisation</h3>
+    <p>Two interactive HTML maps are provided:</p>
+    <ul>
+        <li><strong>2D shade map</strong> (<a href="shade_analysis/shade_map.html">shade_map.html</a>): Leaflet map with a time slider (6 AM &ndash; 6 PM). Three toggle layers: building shadows (dark gray), tree shadows (green), and street shade percentages (color-coded). Shadow polygons update as you scrub the slider.</li>
+        <li><strong>3D shade map</strong> (<a href="shade_analysis/shade_map_3d.html">shade_map_3d.html</a>): deck.gl map with extruded buildings and green tree canopy polygons. Features both pre-computed projected shadow overlays (building + tree, toggleable) and GPU-rendered sun shadows via deck.gl <code>_SunLight</code>. Tooltips show building height, tree height, and per-street shade percentage.</li>
+    </ul>
+
+    <h3>9.8 Caveats</h3>
     <div class="limitation">
-        <strong>1. Flat terrain assumed:</strong> No elevation model used &mdash; all buildings assumed on same ground plane.
+        <strong>1. Flat terrain assumed:</strong> No elevation model used &mdash; all buildings and trees assumed on same ground plane.
     </div>
     <div class="limitation">
-        <strong>2. Buildings only:</strong> Trees, bridges, awnings, and other shade sources are not modeled.
+        <strong>2. Trees modeled as solid polygons:</strong> Real tree canopies are porous &mdash; light filters through leaves. Our model treats each canopy polygon as a solid shadow caster, overestimating tree shade somewhat.
     </div>
     <div class="limitation">
-        <strong>3. Quantized heights:</strong> GHSL height classes produce 5 discrete height values, leading to quantized shadow lengths.
+        <strong>3. Canopy heights via IDW interpolation:</strong> Only 183 sample points were available for 1,033 polygons. Heights were interpolated using IDW (k=3), introducing spatial smoothing. The 1m resolution of the source raster is reduced.
     </div>
     <div class="limitation">
-        <strong>4. No diffusion:</strong> Shadow boundaries are binary (shaded/not shaded) &mdash; no partial shade or penumbra modeled.
+        <strong>4. Quantized building heights:</strong> GHSL height classes produce discrete height values, leading to quantized shadow lengths.
+    </div>
+    <div class="limitation">
+        <strong>5. No diffusion:</strong> Shadow boundaries are binary (shaded/not shaded) &mdash; no partial shade or penumbra modeled.
     </div>
 </div>
 
@@ -699,7 +756,9 @@ High priority = busy street that is uncomfortable
         <tr><td>network_analysis/network_analysis_map.html</td><td>Centrality metrics</td></tr>
         <tr><td>quick_analysis/quick_analysis_map.html</td><td>Clusters and green accessibility</td></tr>
         <tr><td>osm_3d/al_karama_3d.html</td><td>3D buildings with GEE-enhanced heights (color by height or source)</td></tr>
-        <tr><td>shade_analysis/shade_map.html</td><td>Building shade analysis with time slider (5 time slots, July 15)</td></tr>
+        <tr><td>shade_analysis/shade_map.html</td><td>Building &amp; tree shade analysis with time slider (7 time slots, 6 AM&ndash;6 PM, July 15)</td></tr>
+        <tr><td>shade_analysis/shade_map_3d.html</td><td>3D shade analysis with extruded buildings, tree canopy, projected shadows, and GPU sun shadows</td></tr>
+        <tr><td>shade_analysis/canopy_inspection.html</td><td>Canopy polygon inspection map</td></tr>
     </table>
 
     <h3>Data Files (CSV)</h3>
@@ -711,7 +770,7 @@ High priority = busy street that is uncomfortable
         <tr><td>walking_routes/segment_comfort.csv</td><td>Comfort by street segment</td><td>420</td></tr>
         <tr><td>quick_analysis/correlations.csv</td><td>Correlation statistics</td><td>6</td></tr>
         <tr><td>quick_analysis/cluster_stats.csv</td><td>Cluster characteristics</td><td>4</td></tr>
-        <tr><td>shade_analysis/street_shade.csv</td><td>Shade % per street per hour + daily average</td><td>5,656</td></tr>
+        <tr><td>shade_analysis/street_shade.csv</td><td>Shade % per street per hour (7 hours) + daily average</td><td>5,656</td></tr>
     </table>
 
     <h3>GIS Files</h3>
@@ -720,7 +779,8 @@ High priority = busy street that is uncomfortable
         <tr><td>gvi_svf_points.geojson</td><td>GeoJSON</td><td>Street view points with metrics</td></tr>
         <tr><td>network_analysis/street_network.geojson</td><td>GeoJSON</td><td>Street network with centrality</td></tr>
         <tr><td>osm_3d/al_karama_buildings.geojson</td><td>GeoJSON</td><td>Building footprints with GEE-enhanced heights and height_source field</td></tr>
-        <tr><td>shade_analysis/shadows_HH.geojson</td><td>GeoJSON</td><td>Shadow polygons per hour (x5 files: 08, 10, 12, 14, 16)</td></tr>
+        <tr><td>shade_analysis/shadows_HH.geojson</td><td>GeoJSON</td><td>Shadow polygons per hour (x7 files: 06, 08, 10, 12, 14, 16, 18)</td></tr>
+        <tr><td>shade_analysis/canopy_polygons_with_height.geojson</td><td>GeoJSON</td><td>1,033 tree canopy polygons with IDW-interpolated heights</td></tr>
     </table>
 
     <h3>Python Scripts</h3>
@@ -736,7 +796,8 @@ High priority = busy street that is uncomfortable
         <tr><td>network_analysis_v3.py</td><td>Street network centrality</td></tr>
         <tr><td>quick_analyses.py</td><td>Correlations, clusters, accessibility</td></tr>
         <tr><td>gee_building_heights.py</td><td>Extract GHSL/nDSM building heights from GEE, merge with OSM</td></tr>
-        <tr><td>shade_analysis.py</td><td>Building shadow projection and street shade coverage analysis</td></tr>
+        <tr><td>shade_analysis.py</td><td>Building + tree canopy shadow projection and street shade coverage analysis</td></tr>
+        <tr><td>fetch_canopy_height.py</td><td>Fetch Meta 1m canopy height data from GEE, extract polygons, and assign heights via IDW interpolation</td></tr>
     </table>
 </div>
 
@@ -752,6 +813,8 @@ High priority = busy street that is uncomfortable
         <tr><td>scikit-learn</td><td>K-means clustering</td><td>BSD</td></tr>
         <tr><td>GeoPandas</td><td>Geospatial data handling</td><td>BSD</td></tr>
         <tr><td>Leaflet.js</td><td>Interactive web maps</td><td>BSD</td></tr>
+        <tr><td>deck.gl</td><td>3D WebGL map visualisation with GPU shadow rendering</td><td>MIT</td></tr>
+        <tr><td>SciPy</td><td>Spatial KD-tree for IDW canopy height interpolation</td><td>BSD</td></tr>
     </table>
 </div>
 

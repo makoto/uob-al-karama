@@ -27,7 +27,7 @@ LONGITUDE = 55.3025
 TIMEZONE_OFFSET = 4   # UAE = UTC+4
 DATE = (2024, 7, 15)  # July 15, peak summer
 
-TIMES_LOCAL = [8, 10, 12, 14, 16]  # Local hours to analyze
+TIMES_LOCAL = [6, 8, 10, 12, 14, 16, 18]  # Local hours to analyze
 
 BUILDINGS_PATH = os.path.join(os.path.dirname(__file__),
     '..', 'docs', 'osm_3d', 'al_karama_buildings.geojson')
@@ -451,15 +451,15 @@ def generate_html_map(streets_wgs, shade_data, shadow_geojsons, sun_positions, o
 
 <div class="time-slider">
     <div class="time-label" id="timeLabel">12:00 PM</div>
-    <input type="range" id="timeSlider" min="0" max="4" value="2" step="1">
+    <input type="range" id="timeSlider" min="0" max="6" value="3" step="1">
     <div class="time-marks">
-        <span>8 AM</span><span>10 AM</span><span>12 PM</span><span>2 PM</span><span>4 PM</span>
+        <span>6 AM</span><span>8 AM</span><span>10 AM</span><span>12 PM</span><span>2 PM</span><span>4 PM</span><span>6 PM</span>
     </div>
 </div>
 
 <script>
-var times = [8, 10, 12, 14, 16];
-var timeLabels = ['8:00 AM', '10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM'];
+var times = [6, 8, 10, 12, 14, 16, 18];
+var timeLabels = ['6:00 AM', '8:00 AM', '10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM', '6:00 PM'];
 var sunInfo = {json.dumps(sun_info)};
 
 var map = L.map('map').setView([{LATITUDE}, {LONGITUDE}], 15);
@@ -591,7 +591,7 @@ document.getElementById('toggleStreets').addEventListener('change', function() {
 });
 
 // Initial render
-updateMap(2);
+updateMap(3);
 </script>
 </body>
 </html>"""
@@ -603,8 +603,19 @@ updateMap(2);
 
 # ── 5b. 3D HTML Map Generation (deck.gl + SunLight) ──────────────────
 
-def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, out_path, canopy_wgs=None):
+def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, out_path,
+                         canopy_wgs=None, shadow_geojsons=None, canopy_shadow_geojsons=None):
     """Generate interactive 3D HTML map with deck.gl _SunLight shadow rendering."""
+
+    # Prepare shadow GeoJSON strings for embedding
+    shadow_json_strs = {}
+    if shadow_geojsons:
+        for h, gjson in shadow_geojsons.items():
+            shadow_json_strs[h] = gjson
+    canopy_shadow_json_strs = {}
+    if canopy_shadow_geojsons:
+        for h, gjson in canopy_shadow_geojsons.items():
+            canopy_shadow_json_strs[h] = gjson
 
     # Prepare canopy GeoJSON
     canopy_geojson = '{"type":"FeatureCollection","features":[]}'
@@ -858,6 +869,12 @@ def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, 
         <label><input type="checkbox" id="toggleCanopy" checked> Tree canopy (extruded)</label>
     </div>
     <div class="toggle-row">
+        <label><input type="checkbox" id="toggleProjectedShadows" checked> Building shadows (projected)</label>
+    </div>
+    <div class="toggle-row">
+        <label><input type="checkbox" id="toggleTreeShadows" checked> Tree shadows (projected)</label>
+    </div>
+    <div class="toggle-row">
         <label><input type="checkbox" id="toggleShadows" checked> Sun shadows (GPU)</label>
     </div>
 
@@ -886,9 +903,9 @@ def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, 
 
 <div class="time-slider">
     <div class="time-label" id="timeLabel">12:00 PM</div>
-    <input type="range" id="timeSlider" min="0" max="4" value="2" step="1">
+    <input type="range" id="timeSlider" min="0" max="6" value="3" step="1">
     <div class="time-marks">
-        <span>8 AM</span><span>10 AM</span><span>12 PM</span><span>2 PM</span><span>4 PM</span>
+        <span>6 AM</span><span>8 AM</span><span>10 AM</span><span>12 PM</span><span>2 PM</span><span>4 PM</span><span>6 PM</span>
     </div>
 </div>
 
@@ -900,8 +917,22 @@ var BUILDINGS = {buildings_geojson};
 var STREETS = {streets_geojson};
 var CANOPY = {canopy_geojson};
 
-var TIMES = [8, 10, 12, 14, 16];
-var TIME_LABELS = ['8:00 AM', '10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM'];
+// Pre-computed shadow polygons per time (building shadows)
+var SHADOW_DATA = {{
+"""
+
+    for h in TIMES_LOCAL:
+        html += f"    {h}: {shadow_json_strs.get(h, '{}')},\n"
+
+    html += "};\n\n// Pre-computed tree shadow polygons per time\nvar TREE_SHADOW_DATA = {\n"
+
+    for h in TIMES_LOCAL:
+        html += f"    {h}: {canopy_shadow_json_strs.get(h, '{}')},\n"
+
+    html += f"""}};
+
+var TIMES = [6, 8, 10, 12, 14, 16, 18];
+var TIME_LABELS = ['6:00 AM', '8:00 AM', '10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM', '6:00 PM'];
 var SUN_INFO = {json.dumps(sun_info)};
 
 // UTC timestamps for _SunLight (July 15, 2024 — month index 6 = July)
@@ -915,9 +946,11 @@ var UTC_TIMESTAMPS = {{
     html += f"""}};
 
 // ── State ──
-var currentTimeIdx = 2; // start at noon
+var currentTimeIdx = 3; // start at noon
 var showBuildings = true;
 var showCanopy = true;
+var showProjectedShadows = true;
+var showTreeShadows = true;
 var streetMode = 'neutral'; // 'neutral' | 'shade' | 'off'
 var showShadows = true;
 
@@ -998,6 +1031,36 @@ function buildLayers() {{
         }}));
     }}
 
+    // Projected building shadow polygons (flat on ground)
+    if (showProjectedShadows && SHADOW_DATA[h] && SHADOW_DATA[h].features) {{
+        layers.push(new deck.GeoJsonLayer({{
+            id: 'projected-shadows',
+            data: SHADOW_DATA[h],
+            filled: true,
+            stroked: false,
+            getFillColor: [30, 30, 60, 80],
+            pickable: false,
+            updateTriggers: {{
+                data: [h]
+            }}
+        }}));
+    }}
+
+    // Projected tree shadow polygons (flat on ground)
+    if (showTreeShadows && TREE_SHADOW_DATA[h] && TREE_SHADOW_DATA[h].features) {{
+        layers.push(new deck.GeoJsonLayer({{
+            id: 'projected-tree-shadows',
+            data: TREE_SHADOW_DATA[h],
+            filled: true,
+            stroked: false,
+            getFillColor: [20, 80, 30, 90],
+            pickable: false,
+            updateTriggers: {{
+                data: [h]
+            }}
+        }}));
+    }}
+
     // Streets layer — neutral mode: semi-transparent white so GPU shadows show through
     if (streetMode === 'neutral') {{
         layers.push(new deck.PathLayer({{
@@ -1074,7 +1137,7 @@ var deckgl = new deck.DeckGL({{
     }},
     controller: true,
     layers: buildLayers(),
-    effects: [buildLightingEffect(2)],
+    effects: [buildLightingEffect(3)],
     getTooltip: function(info) {{
         if (!info.object) return null;
         var d = info.object;
@@ -1165,13 +1228,21 @@ document.getElementById('toggleCanopy').addEventListener('change', function() {{
     showCanopy = this.checked;
     updateMap(currentTimeIdx);
 }});
+document.getElementById('toggleProjectedShadows').addEventListener('change', function() {{
+    showProjectedShadows = this.checked;
+    updateMap(currentTimeIdx);
+}});
+document.getElementById('toggleTreeShadows').addEventListener('change', function() {{
+    showTreeShadows = this.checked;
+    updateMap(currentTimeIdx);
+}});
 document.getElementById('toggleShadows').addEventListener('change', function() {{
     showShadows = this.checked;
     updateMap(currentTimeIdx);
 }});
 
 // Initial render
-updateMap(2);
+updateMap(3);
 </script>
 </body>
 </html>"""
@@ -1353,7 +1424,9 @@ def main():
     html_3d_path = os.path.join(OUT_DIR, 'shade_map_3d.html')
     buildings_with_height = buildings[buildings['height'].notna() & (buildings['height'] > 0)].copy()
     generate_3d_html_map(buildings_with_height, streets, shade_df, sun_positions, html_3d_path,
-                         canopy_wgs=canopy)
+                         canopy_wgs=canopy,
+                         shadow_geojsons=shadow_geojsons_wgs,
+                         canopy_shadow_geojsons=canopy_shadow_geojsons_wgs)
 
     elapsed = time.time() - t0
     print(f"\n{'=' * 60}")
