@@ -33,6 +33,8 @@ BUILDINGS_PATH = os.path.join(os.path.dirname(__file__),
     '..', 'docs', 'osm_3d', 'al_karama_buildings.geojson')
 STREETS_PATH = os.path.join(os.path.dirname(__file__),
     '..', 'docs', 'network_analysis', 'street_network.geojson')
+CANOPY_PATH = os.path.join(os.path.dirname(__file__),
+    '..', 'docs', 'shade_analysis', 'canopy_polygons_with_height.geojson')
 OUT_DIR = os.path.join(os.path.dirname(__file__),
     '..', 'docs', 'shade_analysis')
 
@@ -291,8 +293,15 @@ def calculate_street_shade(streets_utm, shadow_union):
 
 # ── 5. HTML Map Generation ───────────────────────────────────────────
 
-def generate_html_map(streets_wgs, shade_data, shadow_geojsons, sun_positions, out_path):
+def generate_html_map(streets_wgs, shade_data, shadow_geojsons, sun_positions, out_path,
+                      canopy_shadow_geojsons=None):
     """Generate interactive Leaflet HTML map with time slider."""
+
+    # Prepare canopy shadow GeoJSON strings
+    canopy_shadow_json_strs = {}
+    if canopy_shadow_geojsons:
+        for h, gjson in canopy_shadow_geojsons.items():
+            canopy_shadow_json_strs[h] = gjson
 
     # Prepare street features with shade data
     street_features = []
@@ -424,6 +433,9 @@ def generate_html_map(streets_wgs, shade_data, shadow_geojsons, sun_positions, o
         <label><input type="checkbox" id="toggleShadows" checked> Show building shadows</label>
     </div>
     <div class="toggle-row">
+        <label><input type="checkbox" id="toggleTreeShadows" checked> Show tree shadows</label>
+    </div>
+    <div class="toggle-row">
         <label><input type="checkbox" id="toggleStreets" checked> Show street shade %</label>
     </div>
 
@@ -466,11 +478,17 @@ var shadowData = {{
     for h in TIMES_LOCAL:
         html += f"    {h}: {shadow_json_strs.get(h, '{}')},\n"
 
+    html += "};\n\n// Tree shadow data per time\nvar treeShadowData = {\n"
+
+    for h in TIMES_LOCAL:
+        html += f"    {h}: {canopy_shadow_json_strs.get(h, '{}')},\n"
+
     html += """};
 
 // Layers
 var streetLayer = null;
 var shadowLayer = null;
+var treeShadowLayer = null;
 
 function shadeColor(pct) {
     if (pct >= 75) return '#2e7d32';
@@ -519,7 +537,7 @@ function updateMap(timeIdx) {
         }).addTo(map);
     }
 
-    // Update shadows
+    // Update building shadows
     if (shadowLayer) map.removeLayer(shadowLayer);
     if (document.getElementById('toggleShadows').checked && shadowData[h] && shadowData[h].features) {
         shadowLayer = L.geoJSON(shadowData[h], {
@@ -529,6 +547,20 @@ function updateMap(timeIdx) {
                 color: '#455a64',
                 weight: 0.5,
                 opacity: 0.4
+            }
+        }).addTo(map);
+    }
+
+    // Update tree shadows
+    if (treeShadowLayer) map.removeLayer(treeShadowLayer);
+    if (document.getElementById('toggleTreeShadows').checked && treeShadowData[h] && treeShadowData[h].features) {
+        treeShadowLayer = L.geoJSON(treeShadowData[h], {
+            style: {
+                fillColor: '#1b5e20',
+                fillOpacity: 0.3,
+                color: '#2e7d32',
+                weight: 0.5,
+                opacity: 0.5
             }
         }).addTo(map);
     }
@@ -551,6 +583,9 @@ document.getElementById('timeSlider').addEventListener('input', function() {
 document.getElementById('toggleShadows').addEventListener('change', function() {
     updateMap(parseInt(document.getElementById('timeSlider').value));
 });
+document.getElementById('toggleTreeShadows').addEventListener('change', function() {
+    updateMap(parseInt(document.getElementById('timeSlider').value));
+});
 document.getElementById('toggleStreets').addEventListener('change', function() {
     updateMap(parseInt(document.getElementById('timeSlider').value));
 });
@@ -568,8 +603,40 @@ updateMap(2);
 
 # ── 5b. 3D HTML Map Generation (deck.gl + SunLight) ──────────────────
 
-def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, out_path):
+def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, out_path, canopy_wgs=None):
     """Generate interactive 3D HTML map with deck.gl _SunLight shadow rendering."""
+
+    # Prepare canopy GeoJSON
+    canopy_geojson = '{"type":"FeatureCollection","features":[]}'
+    if canopy_wgs is not None and len(canopy_wgs) > 0:
+        canopy_features = []
+        for _, row in canopy_wgs.iterrows():
+            geom = row.geometry
+            if geom is None or geom.is_empty:
+                continue
+            height = row.get('canopy_height_m', 0)
+            if height is None or height <= 0:
+                continue
+            coords = list(geom.exterior.coords) if geom.geom_type == 'Polygon' else []
+            if not coords:
+                continue
+            feature = {
+                'type': 'Feature',
+                'properties': {
+                    'height': round(float(height), 1),
+                    'type': 'tree',
+                },
+                'geometry': {
+                    'type': 'Polygon',
+                    'coordinates': [[[c[0], c[1]] for c in coords]]
+                }
+            }
+            canopy_features.append(feature)
+        canopy_geojson = json.dumps({
+            'type': 'FeatureCollection',
+            'features': canopy_features
+        })
+        print(f"  Canopy features for 3D map: {len(canopy_features)}")
 
     # Prepare buildings GeoJSON
     building_features = []
@@ -788,6 +855,9 @@ def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, 
         <label><input type="checkbox" id="toggleBuildings" checked> Buildings (extruded)</label>
     </div>
     <div class="toggle-row">
+        <label><input type="checkbox" id="toggleCanopy" checked> Tree canopy (extruded)</label>
+    </div>
+    <div class="toggle-row">
         <label><input type="checkbox" id="toggleShadows" checked> Sun shadows (GPU)</label>
     </div>
 
@@ -828,6 +898,7 @@ def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, 
 // ── Data ──
 var BUILDINGS = {buildings_geojson};
 var STREETS = {streets_geojson};
+var CANOPY = {canopy_geojson};
 
 var TIMES = [8, 10, 12, 14, 16];
 var TIME_LABELS = ['8:00 AM', '10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM'];
@@ -846,6 +917,7 @@ var UTC_TIMESTAMPS = {{
 // ── State ──
 var currentTimeIdx = 2; // start at noon
 var showBuildings = true;
+var showCanopy = true;
 var streetMode = 'neutral'; // 'neutral' | 'shade' | 'off'
 var showShadows = true;
 
@@ -900,6 +972,27 @@ function buildLayers() {{
                 diffuse: 0.6,
                 shininess: 32,
                 specularColor: [60, 64, 70]
+            }},
+            pickable: true
+        }}));
+    }}
+
+    // Canopy layer — green extruded polygons
+    if (showCanopy && CANOPY.features && CANOPY.features.length > 0) {{
+        layers.push(new deck.PolygonLayer({{
+            id: 'canopy',
+            data: CANOPY.features,
+            extruded: true,
+            wireframe: false,
+            opacity: 0.7,
+            getPolygon: function(d) {{ return d.geometry.coordinates; }},
+            getElevation: function(d) {{ return d.properties.height || 3; }},
+            getFillColor: [34, 120, 50],
+            material: {{
+                ambient: 0.4,
+                diffuse: 0.6,
+                shininess: 20,
+                specularColor: [30, 80, 40]
             }},
             pickable: true
         }}));
@@ -997,6 +1090,15 @@ var deckgl = new deck.DeckGL({{
                 style: {{ background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }}
             }};
         }}
+        if (info.layer && info.layer.id === 'canopy') {{
+            return {{
+                html: '<div style="padding:6px;max-width:250px;">' +
+                    '<b>Tree Canopy</b><br>' +
+                    'Height: ' + p.height + 'm' +
+                    '</div>',
+                style: {{ background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }}
+            }};
+        }}
         if (info.layer && (info.layer.id === 'streets-neutral' || info.layer.id === 'streets-shade')) {{
             var h = TIMES[currentTimeIdx];
             var shadeKey = 'shade_' + (h < 10 ? '0' + h : '' + h);
@@ -1059,6 +1161,10 @@ document.getElementById('toggleBuildings').addEventListener('change', function()
     showBuildings = this.checked;
     updateMap(currentTimeIdx);
 }});
+document.getElementById('toggleCanopy').addEventListener('change', function() {{
+    showCanopy = this.checked;
+    updateMap(currentTimeIdx);
+}});
 document.getElementById('toggleShadows').addEventListener('change', function() {{
     showShadows = this.checked;
     updateMap(currentTimeIdx);
@@ -1097,9 +1203,25 @@ def main():
     print(f"  Buildings: {len(buildings)}")
     print(f"  Streets:   {len(streets)}")
 
+    # Load canopy polygons with heights (optional — graceful degradation)
+    canopy = None
+    canopy_utm = None
+    if os.path.exists(CANOPY_PATH):
+        try:
+            canopy = gpd.read_file(CANOPY_PATH)
+            canopy = canopy[canopy['canopy_height_m'].notna() & (canopy['canopy_height_m'] > 0)].copy()
+            print(f"  Canopy polygons: {len(canopy)} (with height > 0)")
+        except Exception as e:
+            print(f"  WARNING: Could not load canopy data: {e}")
+            canopy = None
+    else:
+        print(f"  NOTE: No canopy data found at {CANOPY_PATH} — running buildings-only")
+
     # Convert to UTM for metric calculations
     buildings_utm = buildings.to_crs(UTM_CRS)
     streets_utm = streets.to_crs(UTM_CRS)
+    if canopy is not None and len(canopy) > 0:
+        canopy_utm = canopy.to_crs(UTM_CRS)
 
     # Filter buildings with valid height
     buildings_utm = buildings_utm[buildings_utm['height'].notna() & (buildings_utm['height'] > 0)].copy()
@@ -1109,6 +1231,7 @@ def main():
     print("\n[3/6] Computing shadow projections...")
     shadow_unions = {}
     shadow_geojsons_wgs = {}  # For HTML embedding (WGS84)
+    canopy_shadow_geojsons_wgs = {}  # Canopy-only shadows for 2D map toggle
     shade_results = {}
 
     for hour in TIMES_LOCAL:
@@ -1128,7 +1251,23 @@ def main():
             if shadow is not None and not shadow.is_empty:
                 shadow_geoms.append(shadow)
 
-        print(f"    Projected {len(shadow_geoms)} shadows in {time.time()-t_start:.1f}s")
+        n_building_shadows = len(shadow_geoms)
+        print(f"    Projected {n_building_shadows} building shadows in {time.time()-t_start:.1f}s")
+
+        # Add canopy shadows
+        canopy_shadow_geoms = []
+        if canopy_utm is not None and len(canopy_utm) > 0:
+            t_canopy = time.time()
+            for _, crow in canopy_utm.iterrows():
+                cgeom = crow.geometry
+                cheight = crow['canopy_height_m']
+                if cgeom is None or cgeom.is_empty or cheight <= 0:
+                    continue
+                cshadow = project_shadow(cgeom, cheight, alt, az)
+                if cshadow is not None and not cshadow.is_empty:
+                    canopy_shadow_geoms.append(cshadow)
+            shadow_geoms.extend(canopy_shadow_geoms)
+            print(f"    Projected {len(canopy_shadow_geoms)} canopy shadows in {time.time()-t_canopy:.1f}s")
 
         # Create GeoDataFrame of individual shadows
         shadow_gdf = gpd.GeoDataFrame(geometry=shadow_geoms, crs=UTM_CRS)
@@ -1165,6 +1304,15 @@ def main():
         ).to_crs('EPSG:4326')
         shadow_geojsons_wgs[hour] = shadow_wgs_embed.to_json()
 
+        # Prepare canopy-only shadow GeoJSON for 2D map toggle
+        if canopy_shadow_geoms:
+            canopy_union = unary_union(canopy_shadow_geoms).buffer(0)
+            canopy_simplified = canopy_union.simplify(5)
+            canopy_wgs_embed = gpd.GeoDataFrame(
+                geometry=[canopy_simplified], crs=UTM_CRS
+            ).to_crs('EPSG:4326')
+            canopy_shadow_geojsons_wgs[hour] = canopy_wgs_embed.to_json()
+
     # ── Step 4: Compile shade CSV ──
     print("\n[4/6] Compiling shade results...")
     shade_df = pd.DataFrame(index=streets.index)
@@ -1197,13 +1345,15 @@ def main():
     # ── Step 5: Generate HTML map ──
     print("\n[5/6] Generating interactive 2D map...")
     html_path = os.path.join(OUT_DIR, 'shade_map.html')
-    generate_html_map(streets, shade_df, shadow_geojsons_wgs, sun_positions, html_path)
+    generate_html_map(streets, shade_df, shadow_geojsons_wgs, sun_positions, html_path,
+                      canopy_shadow_geojsons=canopy_shadow_geojsons_wgs)
 
     # ── Step 6: Generate 3D HTML map ──
     print("\n[6/6] Generating 3D interactive map (deck.gl + SunLight)...")
     html_3d_path = os.path.join(OUT_DIR, 'shade_map_3d.html')
     buildings_with_height = buildings[buildings['height'].notna() & (buildings['height'] > 0)].copy()
-    generate_3d_html_map(buildings_with_height, streets, shade_df, sun_positions, html_3d_path)
+    generate_3d_html_map(buildings_with_height, streets, shade_df, sun_positions, html_3d_path,
+                         canopy_wgs=canopy)
 
     elapsed = time.time() - t0
     print(f"\n{'=' * 60}")

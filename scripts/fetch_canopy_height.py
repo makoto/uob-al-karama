@@ -14,6 +14,8 @@ import sys
 import json
 import time
 import numpy as np
+import geopandas as gpd
+from shapely.geometry import shape
 
 # ── Configuration ──
 BBOX = [55.290, 25.230, 55.320, 25.255]  # Al Karama bounding box
@@ -235,6 +237,108 @@ def sample_canopy_heights(canopy, aoi):
     return tree_points
 
 
+def assign_heights_to_polygons():
+    """
+    Assign canopy heights to polygons using IDW interpolation from sample points.
+
+    Loads canopy_polygons.geojson (no height) and canopy_samples.geojson (points
+    with heights), converts to UTM, finds k=3 nearest sample points for each
+    polygon centroid, and assigns IDW-interpolated height.
+
+    Outputs canopy_polygons_with_height.geojson.
+    """
+    from scipy.spatial import cKDTree
+
+    polygons_path = os.path.join(OUT_DIR, 'canopy_polygons.geojson')
+    samples_path = os.path.join(OUT_DIR, 'canopy_samples.geojson')
+    out_path = os.path.join(OUT_DIR, 'canopy_polygons_with_height.geojson')
+
+    print("\n[4/4] Assigning heights to canopy polygons via IDW interpolation...")
+
+    if not os.path.exists(polygons_path):
+        print(f"  ERROR: {polygons_path} not found")
+        return
+    if not os.path.exists(samples_path):
+        print(f"  ERROR: {samples_path} not found")
+        return
+
+    # Load data
+    polys = gpd.read_file(polygons_path)
+    samples = gpd.read_file(samples_path)
+    print(f"  Polygons: {len(polys)}, Sample points: {len(samples)}")
+
+    # Convert to UTM for metric distance calculations
+    utm_crs = 'EPSG:32640'  # UTM Zone 40N for Dubai
+    polys_utm = polys.to_crs(utm_crs)
+    samples_utm = samples.to_crs(utm_crs)
+
+    # Extract sample point coordinates and heights
+    sample_coords = np.array([(g.x, g.y) for g in samples_utm.geometry])
+    sample_heights = np.array([
+        f.get('canopy_height_m', 0) for f in samples['properties']
+    ] if 'properties' in samples.columns else [
+        samples_utm.iloc[i].get('canopy_height_m', 0) for i in range(len(samples_utm))
+    ])
+    # Handle case where canopy_height_m is a direct column
+    if 'canopy_height_m' in samples_utm.columns:
+        sample_heights = samples_utm['canopy_height_m'].values.astype(float)
+
+    median_height = float(np.median(sample_heights[sample_heights > 0]))
+    print(f"  Median sample height: {median_height:.1f}m")
+
+    # Build KD-tree from sample points
+    tree = cKDTree(sample_coords)
+
+    # For each polygon centroid, find k=3 nearest and IDW-interpolate
+    k = 3
+    max_dist = 500.0  # meters
+    heights = []
+
+    for i, row in polys_utm.iterrows():
+        centroid = row.geometry.centroid
+        cx, cy = centroid.x, centroid.y
+        dists, idxs = tree.query([cx, cy], k=k)
+
+        # cKDTree returns scalar if k=1, ensure array
+        if k == 1:
+            dists = [dists]
+            idxs = [idxs]
+
+        # Filter to within max_dist
+        valid = [(d, j) for d, j in zip(dists, idxs) if d <= max_dist and j < len(sample_heights)]
+
+        if not valid:
+            heights.append(median_height)
+            continue
+
+        # IDW: weight = 1/d^2 (avoid division by zero)
+        total_weight = 0.0
+        weighted_sum = 0.0
+        for d, j in valid:
+            if d < 0.1:
+                d = 0.1  # avoid inf weight
+            w = 1.0 / (d * d)
+            weighted_sum += w * sample_heights[j]
+            total_weight += w
+
+        h = weighted_sum / total_weight if total_weight > 0 else median_height
+        heights.append(round(h, 1))
+
+    polys['canopy_height_m'] = heights
+
+    # Drop the 'count' and 'label' columns from GEE if present
+    for col in ['count', 'label']:
+        if col in polys.columns:
+            polys = polys.drop(columns=[col])
+
+    # Save
+    polys.to_file(out_path, driver='GeoJSON')
+    h_arr = np.array(heights)
+    print(f"  Assigned heights: min={h_arr.min():.1f}m, max={h_arr.max():.1f}m, "
+          f"mean={h_arr.mean():.1f}m, median={np.median(h_arr):.1f}m")
+    print(f"  Saved: {out_path}")
+
+
 def main():
     t0 = time.time()
     os.makedirs(OUT_DIR, exist_ok=True)
@@ -256,6 +360,7 @@ def main():
     stats, tree_stats = compute_statistics(canopy, aoi)
     sample_canopy_heights(canopy, aoi)
     export_tree_vectors(canopy, aoi)
+    assign_heights_to_polygons()
 
     elapsed = time.time() - t0
     print(f"\n{'=' * 60}")
