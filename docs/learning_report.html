@@ -53,9 +53,10 @@
         <li><a href="#combined">6. Combined Analysis</a></li>
         <li><a href="#network">7. Network Analysis</a></li>
         <li><a href="#clusters">8. Cluster Analysis</a></li>
-        <li><a href="#findings">9. Key Findings</a></li>
-        <li><a href="#limitations">10. Limitations</a></li>
-        <li><a href="#files">11. Output Files Reference</a></li>
+        <li><a href="#shade">9. Building Shade Analysis</a></li>
+        <li><a href="#findings">10. Key Findings</a></li>
+        <li><a href="#limitations">11. Limitations</a></li>
+        <li><a href="#files">12. Output Files Reference</a></li>
     </ul>
 </div>
 
@@ -549,7 +550,82 @@ High priority = busy street that is uncomfortable
 </div>
 
 <!-- ============================================================ -->
-<h2 id="findings">9. Key Findings</h2>
+<h2 id="shade">9. Building Shade Analysis</h2>
+<div class="section">
+    <h3>9.1 Objective</h3>
+    <p>Quantify how much shade buildings cast on streets during peak summer, and identify which streets are most exposed to direct sun. This extends the building height data (Section 5) to evaluate its impact on pedestrian thermal comfort.</p>
+
+    <h3>9.2 Solar Position (NOAA Algorithm)</h3>
+    <p><strong>Method:</strong> Implemented the NOAA solar position spreadsheet algorithm using pure numpy/math (no external solar libraries). The algorithm computes solar altitude and azimuth from Julian Day, solar declination, hour angle, and observer coordinates.</p>
+
+    <div class="formula">
+        Julian Day &rarr; Solar Declination &rarr; Hour Angle &rarr; Altitude &amp; Azimuth
+    </div>
+
+    <p><strong>Analysis date:</strong> July 15 (peak summer in Dubai), 5 time slots.</p>
+
+    <table>
+        <tr><th>Local Time</th><th>Altitude</th><th>Azimuth</th><th>Shadow Length Factor</th></tr>
+        <tr><td>08:00</td><td>~35&deg;</td><td>~80&deg; (E)</td><td>1.43&times; height</td></tr>
+        <tr><td>10:00</td><td>~60&deg;</td><td>~95&deg; (E)</td><td>0.58&times;</td></tr>
+        <tr><td>12:00</td><td>~85&deg;</td><td>~180&deg; (S)</td><td>0.09&times; (near overhead)</td></tr>
+        <tr><td>14:00</td><td>~65&deg;</td><td>~265&deg; (W)</td><td>0.47&times;</td></tr>
+        <tr><td>16:00</td><td>~42&deg;</td><td>~280&deg; (W)</td><td>1.11&times;</td></tr>
+    </table>
+
+    <div class="highlight">
+        <strong>Key insight:</strong> At noon in July, the sun is nearly overhead (85&deg; altitude) so shadows are minimal. Morning and afternoon shadows are much longer, cast east-to-west, providing the most meaningful shade for pedestrians.
+    </div>
+
+    <h3>9.3 Shadow Projection Method</h3>
+    <p><strong>For each building at each time:</strong></p>
+    <ol>
+        <li>Calculate shadow length: <code>shadow_length = height / tan(altitude)</code></li>
+        <li>Determine shadow direction: opposite to sun azimuth</li>
+        <li>Create shadow polygon: convex hull of building footprint + translated tip footprint</li>
+        <li>All calculations in UTM Zone 40N (EPSG:32640) for metric accuracy</li>
+    </ol>
+
+    <div class="formula">
+        shadow_length = height / tan(solar_altitude)<br>
+        shadow_direction = sun_azimuth + 180&deg;
+    </div>
+
+    <h3>9.4 Street Shade Calculation</h3>
+    <p><strong>Method:</strong> For each time slot, union all building shadows using a chunked spatial approach (200m grid tiles), then calculate the fraction of each street segment that falls within shadow.</p>
+
+    <div class="formula">
+        shade_fraction = shaded_length / total_length
+    </div>
+
+    <p>Daily average shade is computed across all 5 time slots. Performance is managed via spatial indexing (STRtree) and chunked union operations (~3,243 buildings &times; 5 times = ~16,000 shadow projections).</p>
+
+    <h3>9.5 Results</h3>
+    <div class="finding">
+        <strong>Key outputs:</strong><br>
+        &bull; Shadow polygons for each of the 5 time slots (GeoJSON)<br>
+        &bull; Shade percentage per street per hour (CSV)<br>
+        &bull; Interactive map with time slider showing shade progression<br>
+        &bull; Streets colored by shade coverage (red=exposed, green=shaded)
+    </div>
+
+    <h3>9.6 Caveats</h3>
+    <div class="limitation">
+        <strong>1. Flat terrain assumed:</strong> No elevation model used &mdash; all buildings assumed on same ground plane.
+    </div>
+    <div class="limitation">
+        <strong>2. Buildings only:</strong> Trees, bridges, awnings, and other shade sources are not modeled.
+    </div>
+    <div class="limitation">
+        <strong>3. Quantized heights:</strong> GHSL height classes produce 5 discrete height values, leading to quantized shadow lengths.
+    </div>
+    <div class="limitation">
+        <strong>4. No diffusion:</strong> Shadow boundaries are binary (shaded/not shaded) &mdash; no partial shade or penumbra modeled.
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="findings">10. Key Findings</h2>
 <div class="section">
     <h3>9.1 Correlations</h3>
     <table>
@@ -576,7 +652,7 @@ High priority = busy street that is uncomfortable
 </div>
 
 <!-- ============================================================ -->
-<h2 id="limitations">10. Limitations</h2>
+<h2 id="limitations">11. Limitations</h2>
 <div class="section">
     <div class="limitation">
         <strong>1. Temporal mismatch:</strong> Street view images are from various dates, satellite data is from summer 2024. They don't represent the same moment in time.
@@ -608,7 +684,7 @@ High priority = busy street that is uncomfortable
 </div>
 
 <!-- ============================================================ -->
-<h2 id="files">11. Output Files Reference</h2>
+<h2 id="files">12. Output Files Reference</h2>
 <div class="section">
     <h3>Interactive Maps</h3>
     <table>
@@ -623,6 +699,7 @@ High priority = busy street that is uncomfortable
         <tr><td>network_analysis/network_analysis_map.html</td><td>Centrality metrics</td></tr>
         <tr><td>quick_analysis/quick_analysis_map.html</td><td>Clusters and green accessibility</td></tr>
         <tr><td>osm_3d/al_karama_3d.html</td><td>3D buildings with GEE-enhanced heights (color by height or source)</td></tr>
+        <tr><td>shade_analysis/shade_map.html</td><td>Building shade analysis with time slider (5 time slots, July 15)</td></tr>
     </table>
 
     <h3>Data Files (CSV)</h3>
@@ -634,6 +711,7 @@ High priority = busy street that is uncomfortable
         <tr><td>walking_routes/segment_comfort.csv</td><td>Comfort by street segment</td><td>420</td></tr>
         <tr><td>quick_analysis/correlations.csv</td><td>Correlation statistics</td><td>6</td></tr>
         <tr><td>quick_analysis/cluster_stats.csv</td><td>Cluster characteristics</td><td>4</td></tr>
+        <tr><td>shade_analysis/street_shade.csv</td><td>Shade % per street per hour + daily average</td><td>5,656</td></tr>
     </table>
 
     <h3>GIS Files</h3>
@@ -642,6 +720,7 @@ High priority = busy street that is uncomfortable
         <tr><td>gvi_svf_points.geojson</td><td>GeoJSON</td><td>Street view points with metrics</td></tr>
         <tr><td>network_analysis/street_network.geojson</td><td>GeoJSON</td><td>Street network with centrality</td></tr>
         <tr><td>osm_3d/al_karama_buildings.geojson</td><td>GeoJSON</td><td>Building footprints with GEE-enhanced heights and height_source field</td></tr>
+        <tr><td>shade_analysis/shadows_HH.geojson</td><td>GeoJSON</td><td>Shadow polygons per hour (x5 files: 08, 10, 12, 14, 16)</td></tr>
     </table>
 
     <h3>Python Scripts</h3>
@@ -657,6 +736,7 @@ High priority = busy street that is uncomfortable
         <tr><td>network_analysis_v3.py</td><td>Street network centrality</td></tr>
         <tr><td>quick_analyses.py</td><td>Correlations, clusters, accessibility</td></tr>
         <tr><td>gee_building_heights.py</td><td>Extract GHSL/nDSM building heights from GEE, merge with OSM</td></tr>
+        <tr><td>shade_analysis.py</td><td>Building shadow projection and street shade coverage analysis</td></tr>
     </table>
 </div>
 
