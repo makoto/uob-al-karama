@@ -39,6 +39,7 @@
     "clusters": "clusters.json",
     "distance_to_green": "distance_to_green.json",
     "combined_svi": "combined_svi.json",
+    "satellite_grid": "satellite_grid.json",
     "shadows": {
       "06": "shadows/shadows_06.geojson",
       "08": "shadows/shadows_08.geojson",

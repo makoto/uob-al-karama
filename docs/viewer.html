@@ -209,9 +209,8 @@
     <div class="nav-dropdown-wrap">
         <button class="nav-link" id="mapsMenuBtn" onclick="toggleMapsMenu()">2D Maps &#9662;</button>
         <div class="nav-dropdown" id="mapsMenu">
-            <a href="shade_analysis/shade_map.html">Shade Analysis (2D)</a>
+            <a href="viewer_2d.html" style="color:#4fc3f7;font-weight:500;">Unified 2D Viewer</a>
             <a href="gvi_point_map.html">GVI Point Map</a>
-            <a href="gvi_svf_comparison_map.html">GVI vs SVF</a>
             <a href="satellite_full/full_area_analysis_10m.html">Satellite Grid (10m)</a>
             <a href="thermal_sharpening/thermal_sharpening.html">Thermal Sharpening</a>
         </div>
@@ -238,6 +237,10 @@
     <button class="view-btn" onclick="setView('topdown')">Top-down</button>
     <button class="view-btn" onclick="setView('street')">Street</button>
     <button class="view-btn" onclick="setView('south')">South</button>
+    <span class="view-separator">|</span>
+    <button class="view-btn basemap-btn active" data-basemap="positron" onclick="setBasemap('positron')">Map</button>
+    <button class="view-btn basemap-btn" data-basemap="satellite" onclick="setBasemap('satellite')">Satellite</button>
+    <button class="view-btn basemap-btn" data-basemap="dark" onclick="setBasemap('dark')">Dark</button>
 </div>
 
 <!-- Dynamic legend -->
@@ -278,6 +281,23 @@ var playInterval = null;
 
 // Map
 var currentZoom = 15;
+var currentBasemap = 'positron';
+var BASEMAP_STYLES = {
+    positron: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+    satellite: {
+        version: 8,
+        sources: {
+            'esri-satellite': {
+                type: 'raster',
+                tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                tileSize: 256,
+                maxzoom: 19
+            }
+        },
+        layers: [{ id: 'satellite-tiles', type: 'raster', source: 'esri-satellite' }]
+    },
+    dark: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
+};
 
 // POI
 var poiCatFilters = {
@@ -1065,6 +1085,20 @@ function setView(preset) {
             })
         });
     }
+}
+
+// ═══════════════════════════════════════════════════════
+//  BASEMAP SWITCHER
+// ═══════════════════════════════════════════════════════
+
+function setBasemap(name) {
+    if (!deckgl || !BASEMAP_STYLES[name]) return;
+    currentBasemap = name;
+    deckgl.setProps({ mapStyle: BASEMAP_STYLES[name] });
+    // Update button active state
+    document.querySelectorAll('.basemap-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-basemap') === name);
+    });
 }
 
 // ═══════════════════════════════════════════════════════

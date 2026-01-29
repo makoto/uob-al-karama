@@ -168,157 +168,51 @@
     </div>
 
     <div class="container">
-        <!-- Unified 3D Viewer (Featured) -->
+        <!-- Unified Viewers (Featured) -->
         <div class="section">
-            <div class="section-title">&#127759; Unified 3D Viewer</div>
+            <div class="section-title">&#127759; Unified Viewers</div>
             <div class="cards">
                 <a href="viewer.html" class="card" style="border-color: rgba(79,195,247,0.5); background: rgba(79,195,247,0.08);">
                     <div class="card-icon">&#127751;</div>
-                    <div class="card-title">Urban Climate Viewer</div>
+                    <div class="card-title">3D Urban Climate Viewer</div>
                     <div class="card-desc">All analysis layers in one PLATEAU-inspired 3D viewer: buildings, shade, thermal, mobility, POIs with time-of-day controls</div>
                     <div class="card-tag">deck.gl 3D &mdash; 13 layers</div>
+                    <div class="card-tag">OSM &middot; Mapillary &middot; Landsat &middot; Sentinel-2</div>
+                </a>
+                <a href="viewer_2d.html" class="card" style="border-color: rgba(79,195,247,0.5); background: rgba(79,195,247,0.08);">
+                    <div class="card-icon">&#128506;</div>
+                    <div class="card-title">2D Analysis Viewer</div>
+                    <div class="card-desc">Unified Leaflet map with togglable layers: street centrality, pedestrian comfort, heat priority, combined SVI, satellite grid, clusters, green access</div>
+                    <div class="card-tag">Leaflet 2D &mdash; 7 layers</div>
+                    <div class="card-tag">Mapillary &middot; Landsat &middot; Sentinel-2 &middot; OSM</div>
                 </a>
             </div>
         </div>
 
-        <!-- Street View Analysis -->
+        <!-- Image Galleries -->
         <div class="section">
-            <div class="section-title">&#127807; Street View Analysis</div>
+            <div class="section-title">&#128247; Image Galleries</div>
             <div class="cards">
                 <a href="gvi_point_map.html" class="card">
                     <div class="card-icon">📍</div>
                     <div class="card-title">GVI Point Map</div>
                     <div class="card-desc">Individual street view locations with GVI values and image popups</div>
-                    <div class="card-tag">Interactive</div>
-                </a>
-                <a href="gvi_svf_comparison_map.html" class="card">
-                    <div class="card-icon">⚖️</div>
-                    <div class="card-title">GVI vs SVF Comparison</div>
-                    <div class="card-desc">Side-by-side comparison of vegetation and sky visibility</div>
-                    <div class="card-tag">Dual layer</div>
-                </a>
-                <a href="gvi_svf_scatter.html" class="card">
-                    <div class="card-icon">📊</div>
-                    <div class="card-title">GVI-SVF Scatter Plot</div>
-                    <div class="card-desc">Correlation analysis between Green View Index and Sky View Factor</div>
-                    <div class="card-tag">r = -0.007</div>
+                    <div class="card-tag">11,651 points</div>
+                    <div class="card-tag">Mapillary</div>
                 </a>
                 <a href="segmentation_gallery.html" class="card">
                     <div class="card-icon">🖼️</div>
                     <div class="card-title">Segmentation Gallery</div>
                     <div class="card-desc">Sample segmentation images showing high vs low vegetation detection</div>
                     <div class="card-tag">10 samples</div>
-                </a>
-            </div>
-        </div>
-
-        <!-- Satellite Analysis -->
-        <div class="section">
-            <div class="section-title">🛰️ Satellite Analysis</div>
-            <div class="cards">
-                <a href="satellite_analysis/satellite_analysis.html" class="card">
-                    <div class="card-icon">🌡️</div>
-                    <div class="card-title">Satellite Overview</div>
-                    <div class="card-desc">Summary of Landsat thermal and Sentinel-2 vegetation analysis</div>
-                    <div class="card-tag">Landsat + Sentinel-2</div>
-                </a>
-                <a href="satellite_full/full_area_analysis.html" class="card">
-                    <div class="card-icon">🗺️</div>
-                    <div class="card-title">Full Area Grid (30m)</div>
-                    <div class="card-desc">Temperature, NDVI, NDBI at 30m resolution across entire Al Karama</div>
-                    <div class="card-tag">10,101 cells</div>
-                </a>
-                <a href="satellite_full/full_area_analysis_10m.html" class="card">
-                    <div class="card-icon">🔍</div>
-                    <div class="card-title">Full Area Grid (10m)</div>
-                    <div class="card-desc">Higher resolution analysis at 10m - max native Sentinel-2 resolution</div>
-                    <div class="card-tag">90,300 cells</div>
-                </a>
-                <a href="thermal_sharpening/thermal_sharpening.html" class="card">
-                    <div class="card-icon">🔬</div>
-                    <div class="card-title">Thermal Sharpening (10m)</div>
-                    <div class="card-desc">Downscaled temperature using NDVI relationship - compare 30m vs 10m</div>
-                    <div class="card-tag">90,300 cells</div>
-                </a>
-                <a href="combined_analysis/combined_analysis.html" class="card">
-                    <div class="card-icon">🔗</div>
-                    <div class="card-title">Combined SVI + Satellite</div>
-                    <div class="card-desc">Street-level GVI/SVF overlaid with satellite temperature</div>
-                    <div class="card-tag">10,098 points</div>
-                </a>
-                <a href="heat_mitigation/priority_map.html" class="card">
-                    <div class="card-icon">🎯</div>
-                    <div class="card-title">Heat Mitigation Priorities</div>
-                    <div class="card-desc">Priority locations for tree planting and shade interventions</div>
-                    <div class="card-tag">2,892 critical spots</div>
-                </a>
-                <a href="walking_routes/pedestrian_comfort_map.html" class="card">
-                    <div class="card-icon">🚶</div>
-                    <div class="card-title">Pedestrian Comfort Map</div>
-                    <div class="card-desc">Walking comfort by street segment with route comparison</div>
-                    <div class="card-tag">420 segments</div>
-                </a>
-                <a href="network_analysis/network_analysis_map.html" class="card">
-                    <div class="card-icon">🕸️</div>
-                    <div class="card-title">Street Network Analysis</div>
-                    <div class="card-desc">Centrality metrics from OSM - betweenness, closeness, priority</div>
-                    <div class="card-tag">5,656 segments</div>
-                </a>
-                <a href="quick_analysis/quick_analysis_map.html" class="card">
-                    <div class="card-icon">📊</div>
-                    <div class="card-title">Clusters & Green Access</div>
-                    <div class="card-desc">K-means climate zones + distance to green space analysis</div>
-                    <div class="card-tag">4 clusters</div>
-                </a>
-            </div>
-        </div>
-
-        <!-- 3D & Depth Analysis -->
-        <div class="section">
-            <div class="section-title">🏗️ 3D & Depth Analysis</div>
-            <div class="cards">
-                <a href="osm_3d/al_karama_3d.html" class="card">
-                    <div class="card-icon">🏢</div>
-                    <div class="card-title">3D Buildings (GEE Enhanced)</div>
-                    <div class="card-desc">3D building visualization with heights improved from 2.4% to 99.5% coverage using GHSL and nDSM data from Google Earth Engine</div>
-                    <div class="card-tag">3,243 buildings</div>
+                    <div class="card-tag">Mapillary</div>
                 </a>
                 <a href="depth_gallery.html" class="card">
                     <div class="card-icon">🖼️</div>
                     <div class="card-title">Depth Map Gallery</div>
                     <div class="card-desc">Side-by-side original images and depth estimation results</div>
                     <div class="card-tag">26 images</div>
-                </a>
-                <a href="depth_map.html" class="card">
-                    <div class="card-icon">📍</div>
-                    <div class="card-title">Depth Map Locations</div>
-                    <div class="card-desc">Map showing test area depth estimation locations with popups</div>
-                    <div class="card-tag">50m radius</div>
-                </a>
-                <a href="shade_analysis/shade_map.html" class="card">
-                    <div class="card-icon">🌤️</div>
-                    <div class="card-title">Building &amp; Tree Shade Analysis</div>
-                    <div class="card-desc">Shadow projections from 3,243 buildings and 1,033 tree canopies at 7 times of day (6 AM&ndash;6 PM, July 15) with street shade coverage</div>
-                    <div class="card-tag">7 time slots</div>
-                </a>
-                <a href="shade_analysis/shade_map_3d.html" class="card">
-                    <div class="card-icon">🌇</div>
-                    <div class="card-title">3D Shade Analysis</div>
-                    <div class="card-desc">Extruded buildings and green tree canopy with projected shadow overlays and GPU sun shadows (deck.gl)</div>
-                    <div class="card-tag">deck.gl 3D</div>
-                </a>
-            </div>
-        </div>
-
-        <!-- Field Work -->
-        <div class="section">
-            <div class="section-title">📋 Field Survey</div>
-            <div class="cards">
-                <a href="field_survey_map.html" class="card">
-                    <div class="card-icon">🧭</div>
-                    <div class="card-title">Field Survey Guide</div>
-                    <div class="card-desc">Map and instructions for on-site building height measurement</div>
-                    <div class="card-tag">Data collection</div>
+                    <div class="card-tag">Mapillary</div>
                 </a>
             </div>
         </div>

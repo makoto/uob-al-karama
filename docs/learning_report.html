@@ -59,6 +59,7 @@
         <li><a href="#findings">10. Key Findings</a></li>
         <li><a href="#limitations">11. Limitations</a></li>
         <li><a href="#files">12. Output Files Reference</a></li>
+        <li><a href="#field-survey">13. Field Survey Guide</a></li>
     </ul>
 </div>
 
@@ -835,7 +836,6 @@ out center;
         <tr><td>osm_3d/al_karama_3d.html</td><td>3D buildings with GEE-enhanced heights (color by height or source)</td></tr>
         <tr><td>shade_analysis/shade_map.html</td><td>Building &amp; tree shade analysis with time slider (7 time slots, 6 AM&ndash;6 PM, July 15)</td></tr>
         <tr><td>shade_analysis/shade_map_3d.html</td><td>3D shade analysis with extruded buildings, tree canopy, projected shadows, and GPU sun shadows</td></tr>
-        <tr><td>shade_analysis/canopy_inspection.html</td><td>Canopy polygon inspection map</td></tr>
     </table>
 
     <h3>Data Files (CSV)</h3>
@@ -877,6 +877,56 @@ out center;
         <tr><td>shade_analysis.py</td><td>Building + tree canopy shadow projection and street shade coverage analysis</td></tr>
         <tr><td>fetch_canopy_height.py</td><td>Fetch Meta 1m canopy height data from GEE, extract polygons, and assign heights via IDW interpolation</td></tr>
     </table>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="field-survey">13. Field Survey Guide</h2>
+<div class="section">
+    <h3>13.1 Objective</h3>
+    <p>Validate estimated building heights by conducting on-site measurements using clinometer-based distance-angle methods. A 50m-radius test area was selected around a central Mapillary camera location.</p>
+
+    <h3>13.2 Test Area</h3>
+    <table>
+        <tr><th>Property</th><th>Value</th></tr>
+        <tr><td>Location</td><td>Al Karama, Dubai (25.2421&deg;N, 55.3048&deg;E)</td></tr>
+        <tr><td>Radius</td><td>50m</td></tr>
+        <tr><td>Camera positions</td><td>8 Mapillary camera locations within the test area</td></tr>
+        <tr><td>Center camera ID</td><td>827604215891753</td></tr>
+    </table>
+
+    <h3>13.3 Measurement Protocol</h3>
+    <p><strong>Buildings to measure:</strong></p>
+    <ol>
+        <li>Select 3&ndash;5 buildings for calibration</li>
+        <li>Vary heights: include low-rise, mid-rise, and high-rise</li>
+        <li>Note GPS coordinates for each building</li>
+        <li>Take reference photos</li>
+    </ol>
+
+    <p><strong>For each building:</strong></p>
+    <ul>
+        <li>Stand 20&ndash;50m away</li>
+        <li>Measure distance to base (GPS or tape measure)</li>
+        <li>Measure angle to rooftop (clinometer app)</li>
+        <li>Count floors as backup estimate</li>
+        <li>Take a photo with a person or car for scale reference</li>
+    </ul>
+
+    <div class="formula">
+Building Height = Distance &times; tan(Angle) + Observer Height
+    </div>
+
+    <h3>13.4 Recommended Apps</h3>
+    <table>
+        <tr><th>Platform</th><th>Apps</th></tr>
+        <tr><td>iOS</td><td>Measure (built-in), Theodolite</td></tr>
+        <tr><td>Android</td><td>Smart Measure, Clinometer</td></tr>
+        <tr><td>Both</td><td>GPS Coordinates app</td></tr>
+    </table>
+
+    <div class="highlight">
+        <strong>Tip:</strong> Measure buildings visible from the Mapillary camera positions. The center point (camera 827604215891753) is at 25.242071&deg;N, 55.304779&deg;E. Measurement points at the NE, NW, SE, and SW corners of the 50m radius provide good vantage points for surveying nearby buildings.
+    </div>
 </div>
 
 <!-- ============================================================ -->

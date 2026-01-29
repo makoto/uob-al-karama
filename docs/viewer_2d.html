@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>2D Analysis Viewer - Al Karama</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+            background: #111;
+            color: #eee;
+        }
+        #map { position: absolute; top: 0; left: 0; right: 300px; bottom: 40px; z-index: 0; }
+
+        /* Right panel */
+        #panel {
+            position: absolute; top: 0; right: 0; bottom: 40px;
+            width: 300px;
+            background: rgba(0,0,0,0.92);
+            border-left: 1px solid rgba(255,255,255,0.1);
+            display: flex; flex-direction: column;
+            z-index: 2;
+            overflow-y: auto;
+        }
+        #panel::-webkit-scrollbar { width: 6px; }
+        #panel::-webkit-scrollbar-track { background: transparent; }
+        #panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
+
+        .panel-header {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        .panel-header h2 { margin: 0; font-size: 15px; color: #4fc3f7; }
+        .panel-header p { margin: 4px 0 0; font-size: 11px; color: #888; }
+
+        .layer-section-title {
+            font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+            color: #888; padding: 12px 16px 4px; font-weight: 600;
+        }
+
+        .layer-radio-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 16px; cursor: pointer;
+            transition: background 0.15s;
+        }
+        .layer-radio-row:hover { background: rgba(255,255,255,0.04); }
+        .layer-radio-row.active { background: rgba(79,195,247,0.08); }
+        .layer-radio-row input[type="radio"] {
+            accent-color: #4fc3f7; width: 14px; height: 14px; flex-shrink: 0;
+        }
+        .layer-radio-label { font-size: 13px; color: #ccc; flex: 1; }
+        .layer-radio-row.active .layer-radio-label { color: #fff; }
+
+        .layer-loading-spinner {
+            width: 14px; height: 14px;
+            border: 2px solid #333; border-top-color: #4fc3f7;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+            display: none;
+        }
+
+        .sub-options {
+            padding: 4px 16px 8px 42px;
+            display: none;
+        }
+        .sub-options.visible { display: block; }
+        .sub-options label {
+            display: inline-flex; align-items: center; gap: 4px;
+            margin-right: 10px; font-size: 11px; color: #999; cursor: pointer;
+        }
+        .sub-options input[type="radio"] { accent-color: #4fc3f7; width: 12px; height: 12px; }
+
+        /* Legend */
+        #legend-container {
+            padding: 12px 16px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            margin-top: auto;
+        }
+        .legend-title {
+            font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+            color: #aaa; margin-bottom: 6px;
+        }
+        .legend-item {
+            display: flex; align-items: center; margin: 3px 0;
+            font-size: 11px; color: #bbb;
+        }
+        .legend-swatch {
+            width: 24px; height: 4px; margin-right: 8px;
+            border-radius: 2px; flex-shrink: 0;
+        }
+        .legend-gradient {
+            height: 8px; border-radius: 4px; margin: 4px 0;
+        }
+        .legend-labels {
+            display: flex; justify-content: space-between;
+            font-size: 10px; color: #888;
+        }
+
+        /* Nav bar */
+        .nav-bar {
+            position: absolute; top: 0; left: 0; right: 300px;
+            z-index: 10;
+            display: flex; align-items: center;
+            padding: 8px 12px; gap: 8px;
+            background: rgba(0,0,0,0.75);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        }
+        .nav-link {
+            background: rgba(255,255,255,0.08);
+            padding: 6px 12px; border-radius: 6px;
+            color: #4fc3f7; text-decoration: none;
+            font-size: 13px; font-weight: 500;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: background 0.2s;
+        }
+        .nav-link:hover { background: rgba(79,195,247,0.15); }
+        .nav-title { flex: 1; text-align: center; font-size: 15px; font-weight: 600; color: #eee; }
+        .area-dropdown {
+            appearance: none; -webkit-appearance: none;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.15);
+            color: #4fc3f7; padding: 6px 28px 6px 12px;
+            border-radius: 6px; cursor: pointer; font-size: 13px;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234fc3f7'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 10px center;
+            background-size: 10px 6px;
+        }
+        .area-dropdown option { background: #1a1a1a; color: #eee; }
+
+        /* Basemap bar */
+        #basemap-bar {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            height: 40px; z-index: 10;
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            background: rgba(0,0,0,0.85);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+        }
+        .basemap-label { font-size: 12px; color: #888; margin-right: 4px; }
+        .basemap-btn {
+            padding: 4px 10px; border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(0,0,0,0.5); color: #ccc;
+            cursor: pointer; font-size: 11px; border-radius: 4px;
+            transition: background 0.15s, color 0.15s;
+        }
+        .basemap-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
+        .basemap-btn.active {
+            background: rgba(79,195,247,0.25); color: #4fc3f7;
+            border-color: rgba(79,195,247,0.4);
+        }
+
+        /* Loading overlay */
+        .loading-overlay {
+            position: absolute; top: 0; left: 0; right: 300px; bottom: 40px;
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.5);
+            z-index: 5; pointer-events: none;
+            opacity: 0; transition: opacity 0.3s;
+        }
+        .loading-overlay.active { opacity: 1; }
+        .loading-spinner {
+            width: 40px; height: 40px;
+            border: 3px solid rgba(79,195,247,0.2);
+            border-top-color: #4fc3f7; border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Leaflet overrides for dark theme */
+        .leaflet-control-zoom a {
+            background: rgba(0,0,0,0.8) !important;
+            color: #ccc !important;
+            border-color: rgba(255,255,255,0.15) !important;
+        }
+        .leaflet-control-zoom a:hover {
+            background: rgba(40,40,40,0.9) !important;
+            color: #fff !important;
+        }
+        .leaflet-popup-content-wrapper {
+            background: rgba(0,0,0,0.9);
+            color: #eee;
+            border-radius: 8px;
+            font-size: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        .leaflet-popup-tip { background: rgba(0,0,0,0.9); }
+        .leaflet-popup-content b { color: #4fc3f7; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            #map { right: 0; bottom: 50vh; }
+            #panel { top: 50vh; bottom: 40px; width: 100%; border-left: none; border-top: 1px solid rgba(255,255,255,0.1); }
+            .nav-bar { right: 0; }
+            .loading-overlay { right: 0; bottom: 50vh; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="loading-spinner"></div>
+</div>
+
+<!-- Layer panel -->
+<div id="panel">
+    <div class="panel-header">
+        <h2>2D Analysis Viewer</h2>
+        <p id="areaSubtitle">Al Karama, Dubai</p>
+    </div>
+
+    <div class="layer-section-title">Analysis Layers</div>
+
+    <!-- Street Centrality -->
+    <div class="layer-radio-row" onclick="selectLayer('centrality')">
+        <input type="radio" name="layer" value="centrality" id="radio-centrality">
+        <span class="layer-radio-label">Street Centrality</span>
+        <div class="layer-loading-spinner" id="load-centrality"></div>
+    </div>
+    <div class="sub-options" id="sub-centrality">
+        <label><input type="radio" name="centrality-metric" value="betweenness" checked onchange="setCentralityMetric('betweenness')"> Betweenness</label>
+        <label><input type="radio" name="centrality-metric" value="closeness" onchange="setCentralityMetric('closeness')"> Closeness</label>
+    </div>
+
+    <!-- Pedestrian Comfort -->
+    <div class="layer-radio-row" onclick="selectLayer('comfort')">
+        <input type="radio" name="layer" value="comfort" id="radio-comfort">
+        <span class="layer-radio-label">Pedestrian Comfort</span>
+        <div class="layer-loading-spinner" id="load-comfort"></div>
+    </div>
+
+    <!-- Heat Mitigation Priority -->
+    <div class="layer-radio-row" onclick="selectLayer('priority')">
+        <input type="radio" name="layer" value="priority" id="radio-priority">
+        <span class="layer-radio-label">Heat Mitigation Priority</span>
+        <div class="layer-loading-spinner" id="load-priority"></div>
+    </div>
+
+    <!-- Combined SVI+Satellite -->
+    <div class="layer-radio-row" onclick="selectLayer('combined')">
+        <input type="radio" name="layer" value="combined" id="radio-combined">
+        <span class="layer-radio-label">Combined SVI + Satellite</span>
+        <div class="layer-loading-spinner" id="load-combined"></div>
+    </div>
+    <div class="sub-options" id="sub-combined">
+        <label><input type="radio" name="combined-metric" value="lst" checked onchange="setCombinedMetric('lst')"> LST</label>
+        <label><input type="radio" name="combined-metric" value="gvi" onchange="setCombinedMetric('gvi')"> GVI</label>
+        <label><input type="radio" name="combined-metric" value="svf" onchange="setCombinedMetric('svf')"> SVF</label>
+    </div>
+
+    <!-- Climate Clusters -->
+    <div class="layer-radio-row" onclick="selectLayer('clusters')">
+        <input type="radio" name="layer" value="clusters" id="radio-clusters">
+        <span class="layer-radio-label">Climate Clusters</span>
+        <div class="layer-loading-spinner" id="load-clusters"></div>
+    </div>
+
+    <!-- Satellite Grid -->
+    <div class="layer-radio-row" onclick="selectLayer('satellite')">
+        <input type="radio" name="layer" value="satellite" id="radio-satellite">
+        <span class="layer-radio-label">Satellite Grid (30m)</span>
+        <div class="layer-loading-spinner" id="load-satellite"></div>
+    </div>
+    <div class="sub-options" id="sub-satellite">
+        <label><input type="radio" name="satellite-metric" value="lst" checked onchange="setSatelliteMetric('lst')"> LST</label>
+        <label><input type="radio" name="satellite-metric" value="ndvi" onchange="setSatelliteMetric('ndvi')"> NDVI</label>
+        <label><input type="radio" name="satellite-metric" value="ndbi" onchange="setSatelliteMetric('ndbi')"> NDBI</label>
+    </div>
+
+    <!-- Green Access -->
+    <div class="layer-radio-row" onclick="selectLayer('green-access')">
+        <input type="radio" name="layer" value="green-access" id="radio-green-access">
+        <span class="layer-radio-label">Green Space Access</span>
+        <div class="layer-loading-spinner" id="load-green-access"></div>
+    </div>
+
+    <!-- Legend -->
+    <div id="legend-container"></div>
+</div>
+
+<!-- Nav bar -->
+<div class="nav-bar">
+    <a href="index.html" class="nav-link">&#8592; Dashboard</a>
+    <a href="viewer.html" class="nav-link">3D Viewer</a>
+    <span class="nav-title">2D Analysis Viewer</span>
+    <select class="area-dropdown" id="areaSelect" onchange="switchArea(this.value)">
+        <option value="al_karama">Al Karama</option>
+    </select>
+</div>
+
+<!-- Basemap bar -->
+<div id="basemap-bar">
+    <span class="basemap-label">Basemap:</span>
+    <button class="basemap-btn active" data-basemap="positron" onclick="setBasemap('positron')">Map</button>
+    <button class="basemap-btn" data-basemap="satellite" onclick="setBasemap('satellite')">Satellite</button>
+    <button class="basemap-btn" data-basemap="dark" onclick="setBasemap('dark')">Dark</button>
+</div>
+
+<script>
+// ============================================================
+//  STATE
+// ============================================================
+
+var AREA = null;
+var DATA_BASE = '';
+var CACHE = {};
+var map = null;
+var activeLayerGroup = null;
+var currentLayer = null;
+var centralityMetric = 'betweenness';
+var combinedMetric = 'lst';
+var satelliteMetric = 'lst';
+var currentBasemap = 'positron';
+var basemapTileLayer = null;
+
+var BASEMAPS = {
+    positron: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    satellite: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    dark: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+};
+var BASEMAP_ATTR = {
+    positron: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>',
+    satellite: '&copy; <a href="https://www.esri.com/">Esri</a>',
+    dark: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+};
+
+// Data key mapping for each layer
+var LAYER_DATA_KEYS = {
+    centrality: 'streets',
+    comfort: 'segment_comfort',
+    priority: 'priority',
+    combined: 'combined_svi',
+    clusters: 'clusters',
+    satellite: 'satellite_grid',
+    'green-access': 'distance_to_green'
+};
+
+// ============================================================
+//  DATA LOADING
+// ============================================================
+
+async function loadData(key) {
+    if (CACHE[key]) return CACHE[key];
+
+    var path = null;
+    if (AREA.layers[key]) {
+        path = AREA.layers[key];
+    } else {
+        path = AREA.layers[key.replace(/-/g, '_')];
+    }
+    if (!path) { console.warn('No path for data key:', key); return null; }
+
+    var url = DATA_BASE + path;
+    var resp = await fetch(url);
+    if (!resp.ok) { console.warn('Failed to load:', url); return null; }
+
+    CACHE[key] = await resp.json();
+    return CACHE[key];
+}
+
+function showLoading(key, show) {
+    var el = document.getElementById('load-' + key);
+    if (el) el.style.display = show ? 'inline-block' : 'none';
+}
+
+function showOverlay(show) {
+    var el = document.getElementById('loadingOverlay');
+    if (show) el.classList.add('active');
+    else el.classList.remove('active');
+}
+
+// ============================================================
+//  COLOR FUNCTIONS
+// ============================================================
+
+function centralityColor(val, metric) {
+    var ratio;
+    if (metric === 'betweenness') {
+        ratio = Math.min(1, val / 0.196);
+        if (ratio < 0.2) return '#e1bee7';
+        if (ratio < 0.4) return '#ce93d8';
+        if (ratio < 0.6) return '#ab47bc';
+        if (ratio < 0.8) return '#8e24aa';
+        return '#4a148c';
+    } else {
+        ratio = Math.min(1, val / 0.00058);
+        if (ratio < 0.2) return '#bbdefb';
+        if (ratio < 0.4) return '#90caf9';
+        if (ratio < 0.6) return '#42a5f5';
+        if (ratio < 0.8) return '#1e88e5';
+        return '#0d47a1';
+    }
+}
+
+function centralityWeight(val, metric) {
+    var max = metric === 'betweenness' ? 0.196 : 0.00058;
+    return 2 + (Math.min(1, (val || 0) / max)) * 5;
+}
+
+function comfortColor(pci) {
+    if (pci >= 0.6) return '#1b5e20';
+    if (pci >= 0.5) return '#4caf50';
+    if (pci >= 0.4) return '#ffeb3b';
+    if (pci >= 0.3) return '#ff9800';
+    return '#e53935';
+}
+
+function priorityColor(level) {
+    if (level === 'Critical') return '#d32f2f';
+    if (level === 'High') return '#f57c00';
+    if (level === 'Medium') return '#ffeb3b';
+    return '#388e3c';
+}
+
+function lstColor(lst) {
+    var ratio = Math.max(0, Math.min(1, (lst - 46) / (53 - 46)));
+    if (ratio < 0.25) return '#3c50c8';
+    if (ratio < 0.5) return '#3cc8c8';
+    if (ratio < 0.75) return '#f0b428';
+    return '#dc3220';
+}
+
+function gviColor(gvi) {
+    if (gvi < 0.02) return '#f7f7f7';
+    if (gvi < 0.05) return '#c7e9c0';
+    if (gvi < 0.1) return '#74c476';
+    if (gvi < 0.2) return '#238b45';
+    return '#006d2c';
+}
+
+function svfColor(svf) {
+    var r = Math.round(50 + 180 * svf);
+    var g = Math.round(50 + 180 * svf);
+    var b = Math.round(100 + 155 * svf);
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+}
+
+function clusterColor(cluster) {
+    var colors = ['#e53935', '#ff9800', '#4caf50', '#2196f3'];
+    return colors[cluster] || '#999';
+}
+
+function greenAccessColor(dist) {
+    if (dist < 100) return '#1b5e20';
+    if (dist < 200) return '#66bb6a';
+    if (dist < 400) return '#ffb74d';
+    return '#d32f2f';
+}
+
+function satLSTColor(v) {
+    var ratio = Math.max(0, Math.min(1, (v - 36) / (54 - 36)));
+    var colors = [[49,54,149],[69,117,180],[171,217,233],[254,224,144],[244,109,67],[165,0,38]];
+    var idx = Math.min(Math.floor(ratio * 5), 4);
+    var t = (ratio * 5) - idx;
+    var c1 = colors[idx], c2 = colors[idx + 1];
+    return 'rgb(' + Math.round(c1[0]+(c2[0]-c1[0])*t) + ',' +
+                    Math.round(c1[1]+(c2[1]-c1[1])*t) + ',' +
+                    Math.round(c1[2]+(c2[2]-c1[2])*t) + ')';
+}
+
+function satNDVIColor(v) {
+    if (v < 0) return '#8B4513';
+    if (v < 0.1) return '#D2691E';
+    if (v < 0.2) return '#F5DEB3';
+    if (v < 0.3) return '#90EE90';
+    if (v < 0.4) return '#228B22';
+    return '#006400';
+}
+
+function satNDBIColor(v) {
+    if (v < -0.1) return '#1a9850';
+    if (v < 0) return '#91cf60';
+    if (v < 0.1) return '#fee08b';
+    if (v < 0.2) return '#fc8d59';
+    return '#d73027';
+}
+
+// ============================================================
+//  LAYER BUILDERS
+// ============================================================
+
+function buildCentralityLayer(data) {
+    var group = L.layerGroup();
+    L.geoJSON(data, {
+        style: function(feature) {
+            var val = centralityMetric === 'betweenness'
+                ? feature.properties.betweenness
+                : feature.properties.closeness;
+            return {
+                color: centralityColor(val || 0, centralityMetric),
+                weight: centralityWeight(val || 0, centralityMetric),
+                opacity: 0.85
+            };
+        },
+        onEachFeature: function(feature, layer) {
+            var p = feature.properties;
+            layer.bindPopup(
+                '<b>Street Centrality</b><br>' +
+                'Betweenness: ' + (p.betweenness || 0).toFixed(4) +
+                '<br>Closeness: ' + (p.closeness || 0).toFixed(6) +
+                '<br>Centrality: ' + (p.centrality || 0).toFixed(3) +
+                (p.pci ? '<br>PCI: ' + p.pci.toFixed(3) : '') +
+                '<br>Priority: ' + (p.priority || 0).toFixed(3)
+            );
+        }
+    }).addTo(group);
+    return group;
+}
+
+function buildComfortLayer(data) {
+    var group = L.layerGroup();
+    data.forEach(function(d) {
+        L.circleMarker([d.lat, d.lon], {
+            radius: 8,
+            fillColor: comfortColor(d.pci_mean),
+            fillOpacity: 0.8,
+            color: '#000',
+            weight: 0.5,
+            opacity: 0.5
+        }).bindPopup(
+            '<b>Pedestrian Comfort</b><br>' +
+            'Rank: #' + (d.rank || '-') +
+            '<br>PCI: ' + (d.pci_mean || 0).toFixed(3) +
+            '<br>LST: ' + (d.lst_mean || 0).toFixed(1) + '&deg;C' +
+            '<br>GVI: ' + ((d.gvi_mean || 0) * 100).toFixed(1) + '%' +
+            '<br>Shade: ' + ((d.shade_mean || 0) * 100).toFixed(1) + '%'
+        ).addTo(group);
+    });
+    return group;
+}
+
+function buildPriorityLayer(data) {
+    var group = L.layerGroup();
+    data.forEach(function(d) {
+        L.circleMarker([d.lat, d.lon], {
+            radius: 4,
+            fillColor: priorityColor(d.priority_level),
+            fillOpacity: 0.7,
+            color: '#000',
+            weight: 0.3,
+            opacity: 0.3
+        }).bindPopup(
+            '<b>Heat Mitigation</b><br>' +
+            'Priority: <span style="color:' +
+                (d.priority_level === 'Critical' ? '#f44' : d.priority_level === 'High' ? '#ff9800' : '#4caf50') +
+                '"><b>' + d.priority_level + '</b></span>' +
+            '<br>Score: ' + (d.priority_score || 0).toFixed(3) +
+            '<br>LST: ' + (d.lst || 0).toFixed(1) + '&deg;C' +
+            '<br>GVI: ' + ((d.gvi || 0) * 100).toFixed(1) + '%' +
+            '<br>NDVI: ' + (d.ndvi || 0).toFixed(3) +
+            '<br>SVF: ' + ((d.svf || 0) * 100).toFixed(1) + '%'
+        ).addTo(group);
+    });
+    return group;
+}
+
+function buildCombinedLayer(data) {
+    var group = L.layerGroup();
+    data.forEach(function(d) {
+        var color;
+        if (combinedMetric === 'lst') color = lstColor(d.lst);
+        else if (combinedMetric === 'gvi') color = gviColor(d.gvi);
+        else color = svfColor(d.svf);
+
+        L.circleMarker([d.lat, d.lon], {
+            radius: 4,
+            fillColor: color,
+            fillOpacity: 0.75,
+            color: '#000',
+            weight: 0.3,
+            opacity: 0.3
+        }).bindPopup(
+            '<b>SVI + Satellite</b><br>' +
+            'LST: ' + (d.lst || 0).toFixed(1) + '&deg;C' +
+            '<br>GVI: ' + ((d.gvi || 0) * 100).toFixed(1) + '%' +
+            '<br>SVF: ' + ((d.svf || 0) * 100).toFixed(1) + '%'
+        ).addTo(group);
+    });
+    return group;
+}
+
+function buildClustersLayer(data) {
+    var group = L.layerGroup();
+    data.forEach(function(d) {
+        L.circleMarker([d.lat, d.lon], {
+            radius: 4,
+            fillColor: clusterColor(d.cluster),
+            fillOpacity: 0.75,
+            color: '#000',
+            weight: 0.3,
+            opacity: 0.3
+        }).bindPopup(
+            '<b>' + (d.cluster_label || 'Cluster ' + d.cluster) + '</b><br>' +
+            'GVI: ' + ((d.gvi || 0) * 100).toFixed(1) + '%' +
+            '<br>SVF: ' + ((d.svf || 0) * 100).toFixed(1) + '%' +
+            '<br>LST: ' + (d.lst || 0).toFixed(1) + '&deg;C'
+        ).addTo(group);
+    });
+    return group;
+}
+
+function buildGreenAccessLayer(data) {
+    var group = L.layerGroup();
+    data.forEach(function(d) {
+        L.circleMarker([d.lat, d.lon], {
+            radius: 4,
+            fillColor: greenAccessColor(d.dist_to_green_m),
+            fillOpacity: 0.75,
+            color: '#000',
+            weight: 0.3,
+            opacity: 0.3
+        }).bindPopup(
+            '<b>Green Space Access</b><br>' +
+            'Distance: ' + (d.dist_to_green_m || 0).toFixed(0) + 'm'
+        ).addTo(group);
+    });
+    return group;
+}
+
+function buildSatelliteLayer(data) {
+    var group = L.layerGroup();
+    for (var i = 0; i < data.length; i++) {
+        var d = data[i];
+        var color;
+        if (satelliteMetric === 'lst') color = satLSTColor(d.lst);
+        else if (satelliteMetric === 'ndvi') color = satNDVIColor(d.ndvi);
+        else color = satNDBIColor(d.ndbi);
+
+        L.circleMarker([d.lat, d.lon], {
+            radius: 3,
+            fillColor: color,
+            fillOpacity: 0.8,
+            weight: 0
+        }).bindPopup(
+            '<b>Satellite Grid</b><br>' +
+            'LST: ' + (d.lst || 0).toFixed(1) + '&deg;C' +
+            '<br>NDVI: ' + (d.ndvi || 0).toFixed(3) +
+            '<br>NDBI: ' + (d.ndbi || 0).toFixed(3)
+        ).addTo(group);
+    }
+    return group;
+}
+
+// ============================================================
+//  LAYER SWITCHING
+// ============================================================
+
+async function selectLayer(name) {
+    // Update radio button state
+    var radio = document.getElementById('radio-' + name);
+    if (radio) radio.checked = true;
+
+    // Highlight active row
+    document.querySelectorAll('.layer-radio-row').forEach(function(row) {
+        row.classList.remove('active');
+    });
+    var activeRow = radio ? radio.closest('.layer-radio-row') : null;
+    if (activeRow) activeRow.classList.add('active');
+
+    // Show/hide sub-options
+    document.querySelectorAll('.sub-options').forEach(function(el) {
+        el.classList.remove('visible');
+    });
+    var subEl = document.getElementById('sub-' + name);
+    if (subEl) subEl.classList.add('visible');
+
+    // Clear current layer
+    if (activeLayerGroup) {
+        map.removeLayer(activeLayerGroup);
+        activeLayerGroup = null;
+    }
+
+    currentLayer = name;
+
+    // Load data
+    var dataKey = LAYER_DATA_KEYS[name];
+    if (!dataKey) return;
+
+    if (!CACHE[dataKey]) {
+        showLoading(name, true);
+        showOverlay(true);
+        await loadData(dataKey);
+        showLoading(name, false);
+        showOverlay(false);
+    }
+
+    var data = CACHE[dataKey];
+    if (!data) return;
+
+    // Build layer
+    switch (name) {
+        case 'centrality':
+            activeLayerGroup = buildCentralityLayer(data);
+            break;
+        case 'comfort':
+            activeLayerGroup = buildComfortLayer(data);
+            break;
+        case 'priority':
+            activeLayerGroup = buildPriorityLayer(data);
+            break;
+        case 'combined':
+            activeLayerGroup = buildCombinedLayer(data);
+            break;
+        case 'clusters':
+            activeLayerGroup = buildClustersLayer(data);
+            break;
+        case 'satellite':
+            activeLayerGroup = buildSatelliteLayer(data);
+            break;
+        case 'green-access':
+            activeLayerGroup = buildGreenAccessLayer(data);
+            break;
+    }
+
+    if (activeLayerGroup) {
+        activeLayerGroup.addTo(map);
+    }
+
+    updateLegend();
+}
+
+// ============================================================
+//  SUB-METRIC SETTERS
+// ============================================================
+
+function setCentralityMetric(m) {
+    centralityMetric = m;
+    if (currentLayer === 'centrality') selectLayer('centrality');
+}
+
+function setCombinedMetric(m) {
+    combinedMetric = m;
+    if (currentLayer === 'combined') selectLayer('combined');
+}
+
+function setSatelliteMetric(m) {
+    satelliteMetric = m;
+    if (currentLayer === 'satellite') selectLayer('satellite');
+}
+
+// ============================================================
+//  LEGEND
+// ============================================================
+
+function updateLegend() {
+    var el = document.getElementById('legend-container');
+    var html = '';
+
+    switch (currentLayer) {
+        case 'centrality':
+            if (centralityMetric === 'betweenness') {
+                html = '<div class="legend-title">Betweenness Centrality</div>' +
+                    legendItem('#e1bee7', 'Low') +
+                    legendItem('#ce93d8', 'Low-Medium') +
+                    legendItem('#ab47bc', 'Medium') +
+                    legendItem('#8e24aa', 'Medium-High') +
+                    legendItem('#4a148c', 'High');
+            } else {
+                html = '<div class="legend-title">Closeness Centrality</div>' +
+                    legendItem('#bbdefb', 'Low') +
+                    legendItem('#90caf9', 'Low-Medium') +
+                    legendItem('#42a5f5', 'Medium') +
+                    legendItem('#1e88e5', 'Medium-High') +
+                    legendItem('#0d47a1', 'High');
+            }
+            break;
+        case 'comfort':
+            html = '<div class="legend-title">Pedestrian Comfort (PCI)</div>' +
+                legendItem('#1b5e20', 'High (&ge;0.6)') +
+                legendItem('#4caf50', 'Good (0.5&ndash;0.6)') +
+                legendItem('#ffeb3b', 'Fair (0.4&ndash;0.5)') +
+                legendItem('#ff9800', 'Poor (0.3&ndash;0.4)') +
+                legendItem('#e53935', 'Bad (&lt;0.3)');
+            break;
+        case 'priority':
+            html = '<div class="legend-title">Heat Mitigation Priority</div>' +
+                legendItem('#d32f2f', 'Critical') +
+                legendItem('#f57c00', 'High') +
+                legendItem('#ffeb3b', 'Medium') +
+                legendItem('#388e3c', 'Low');
+            break;
+        case 'combined':
+            var metricLabels = { lst: 'Temperature (&deg;C)', gvi: 'Green View Index', svf: 'Sky View Factor' };
+            html = '<div class="legend-title">' + metricLabels[combinedMetric] + '</div>';
+            if (combinedMetric === 'lst') {
+                html += '<div class="legend-gradient" style="background:linear-gradient(to right,#3c50c8,#3cc8c8,#f0b428,#dc3220)"></div>' +
+                    '<div class="legend-labels"><span>46&deg;C</span><span>53&deg;C</span></div>';
+            } else if (combinedMetric === 'gvi') {
+                html += '<div class="legend-gradient" style="background:linear-gradient(to right,#f7f7f7,#c7e9c0,#74c476,#238b45,#006d2c)"></div>' +
+                    '<div class="legend-labels"><span>0%</span><span>20%+</span></div>';
+            } else {
+                html += '<div class="legend-gradient" style="background:linear-gradient(to right,rgb(50,50,100),rgb(140,140,178),rgb(230,230,255))"></div>' +
+                    '<div class="legend-labels"><span>0%</span><span>100%</span></div>';
+            }
+            break;
+        case 'satellite':
+            if (satelliteMetric === 'lst') {
+                html = '<div class="legend-title">Land Surface Temperature</div>' +
+                    '<div class="legend-gradient" style="background:linear-gradient(to right,rgb(49,54,149),rgb(69,117,180),rgb(171,217,233),rgb(254,224,144),rgb(244,109,67),rgb(165,0,38))"></div>' +
+                    '<div class="legend-labels"><span>36&deg;C</span><span>54&deg;C</span></div>';
+            } else if (satelliteMetric === 'ndvi') {
+                html = '<div class="legend-title">Vegetation (NDVI)</div>' +
+                    legendItem('#8B4513', '&lt;0 (Bare)') +
+                    legendItem('#D2691E', '0&ndash;0.1') +
+                    legendItem('#F5DEB3', '0.1&ndash;0.2') +
+                    legendItem('#90EE90', '0.2&ndash;0.3') +
+                    legendItem('#228B22', '0.3&ndash;0.4') +
+                    legendItem('#006400', '&gt;0.4 (Dense)');
+            } else {
+                html = '<div class="legend-title">Built-up Index (NDBI)</div>' +
+                    legendItem('#1a9850', '&lt;-0.1 (Green)') +
+                    legendItem('#91cf60', '-0.1&ndash;0') +
+                    legendItem('#fee08b', '0&ndash;0.1') +
+                    legendItem('#fc8d59', '0.1&ndash;0.2') +
+                    legendItem('#d73027', '&gt;0.2 (Built-up)');
+            }
+            break;
+        case 'clusters':
+            html = '<div class="legend-title">Climate Clusters</div>' +
+                legendItem('#e53935', 'Hot &amp; Barren') +
+                legendItem('#ff9800', 'Warm Urban') +
+                legendItem('#4caf50', 'Shaded Urban') +
+                legendItem('#2196f3', 'Cool &amp; Green');
+            break;
+        case 'green-access':
+            html = '<div class="legend-title">Distance to Green Space</div>' +
+                legendItem('#1b5e20', '&lt;100m') +
+                legendItem('#66bb6a', '100&ndash;200m') +
+                legendItem('#ffb74d', '200&ndash;400m') +
+                legendItem('#d32f2f', '&gt;400m');
+            break;
+    }
+
+    el.innerHTML = html;
+}
+
+function legendItem(color, label) {
+    return '<div class="legend-item"><div class="legend-swatch" style="background:' + color + '"></div>' + label + '</div>';
+}
+
+// ============================================================
+//  BASEMAP
+// ============================================================
+
+function setBasemap(name) {
+    if (!BASEMAPS[name]) return;
+    currentBasemap = name;
+
+    if (basemapTileLayer) {
+        map.removeLayer(basemapTileLayer);
+    }
+    basemapTileLayer = L.tileLayer(BASEMAPS[name], {
+        attribution: BASEMAP_ATTR[name],
+        maxZoom: 19,
+        subdomains: name === 'satellite' ? [] : 'abcd'
+    }).addTo(map);
+
+    // Update button state
+    document.querySelectorAll('.basemap-btn').forEach(function(btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-basemap') === name);
+    });
+}
+
+// ============================================================
+//  AREA SWITCHING
+// ============================================================
+
+async function switchArea(areaId) {
+    DATA_BASE = 'data/' + areaId + '/';
+    CACHE = {};
+
+    var resp = await fetch(DATA_BASE + 'area.json');
+    AREA = await resp.json();
+
+    document.getElementById('areaSubtitle').textContent =
+        AREA.name + ', ' + AREA.city;
+    document.title = '2D Analysis Viewer - ' + AREA.name;
+
+    // Recenter map
+    if (map) {
+        map.setView([AREA.center[1], AREA.center[0]], AREA.zoom);
+    }
+
+    // Reload current layer
+    if (currentLayer) {
+        selectLayer(currentLayer);
+    }
+}
+
+// ============================================================
+//  INIT
+// ============================================================
+
+async function init() {
+    // Load areas list
+    try {
+        var areasResp = await fetch('data/areas.json');
+        var areas = await areasResp.json();
+        var select = document.getElementById('areaSelect');
+        select.innerHTML = '';
+        areas.forEach(function(a) {
+            var opt = document.createElement('option');
+            opt.value = a.id;
+            opt.textContent = a.name;
+            select.appendChild(opt);
+        });
+    } catch (e) {
+        console.warn('Could not load areas.json, using default');
+    }
+
+    // Load area manifest
+    DATA_BASE = 'data/al_karama/';
+    var resp = await fetch(DATA_BASE + 'area.json');
+    AREA = await resp.json();
+
+    document.getElementById('areaSubtitle').textContent =
+        AREA.name + ', ' + AREA.city;
+
+    // Init Leaflet map with canvas renderer for performance (10K+ markers)
+    map = L.map('map', {
+        center: [AREA.center[1], AREA.center[0]],
+        zoom: AREA.zoom,
+        zoomControl: true,
+        preferCanvas: true
+    });
+
+    // Default basemap
+    basemapTileLayer = L.tileLayer(BASEMAPS.positron, {
+        attribution: BASEMAP_ATTR.positron,
+        maxZoom: 19,
+        subdomains: 'abcd'
+    }).addTo(map);
+
+    // Show default layer
+    selectLayer('centrality');
+}
+
+init();
+</script>
+</body>
+</html>
