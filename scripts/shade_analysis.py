@@ -666,6 +666,7 @@ def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, 
                 'height': round(float(height), 1),
                 'levels': row.get('levels', '') or '',
                 'building_type': row.get('building_type', '') or '',
+                'building_usage': row.get('building_usage', '') or '',
             },
             'geometry': {
                 'type': 'Polygon',
@@ -904,6 +905,9 @@ def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, 
     <div class="toggle-row" style="padding-left:18px;">
         <label><input type="checkbox" id="toggleHeightColor"> Color by height</label>
     </div>
+    <div class="toggle-row" style="padding-left:18px;">
+        <label><input type="checkbox" id="toggleUsageColor"> Color by usage</label>
+    </div>
     <div class="toggle-row">
         <label><input type="checkbox" id="toggleCanopy" checked> Tree canopy (extruded)</label>
     </div>
@@ -944,6 +948,12 @@ def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, 
         <div class="legend-item"><div class="legend-color" style="background:rgb(80,120,220)"></div> 10&ndash;25m</div>
         <div class="legend-item"><div class="legend-color" style="background:rgb(100,60,180)"></div> 25&ndash;50m</div>
         <div class="legend-item"><div class="legend-color" style="background:rgb(180,40,100)"></div> &gt;50m (tall)</div>
+    </div>
+    <div class="legend" id="legendUsage" style="display:none;">
+        <div class="legend-title">Building Usage (GHSL Built-C)</div>
+        <div class="legend-item"><div class="legend-color" style="background:rgb(66,133,244)"></div> Residential</div>
+        <div class="legend-item"><div class="legend-color" style="background:rgb(234,67,53)"></div> Non-residential</div>
+        <div class="legend-item"><div class="legend-color" style="background:rgb(160,170,180)"></div> Unknown</div>
     </div>
 
     <h4 style="margin:12px 0 4px 0; color:#aaa; font-size:12px; text-transform:uppercase; letter-spacing:1px;">Camera</h4>
@@ -1007,6 +1017,7 @@ var currentTimeIdx = 3; // start at noon
 var showBuildings = true;
 var showCanopy = true;
 var colorByHeight = false;
+var colorByUsage = false;
 var showProjectedShadows = true;
 var showTreeShadows = true;
 var streetMode = 'neutral'; // 'neutral' | 'shade' | 'off'
@@ -1029,6 +1040,13 @@ function heightColor(h) {{
     if (h >= 25) return [100, 60, 180];
     if (h >= 10) return [80, 120, 220];
     return [130, 200, 255];
+}}
+
+function usageColor(d) {{
+    var u = d.properties.building_usage;
+    if (u === 'residential') return [66, 133, 244];       // blue
+    if (u === 'non-residential') return [234, 67, 53];    // red
+    return [160, 170, 180]; // unknown/gray
 }}
 
 // ── Street mode switcher ──
@@ -1067,9 +1085,11 @@ function buildLayers() {{
             opacity: 0.85,
             getPolygon: function(d) {{ return d.geometry.coordinates; }},
             getElevation: function(d) {{ return d.properties.height || 9; }},
-            getFillColor: colorByHeight
-                ? function(d) {{ return heightColor(d.properties.height || 9); }}
-                : [160, 170, 180],
+            getFillColor: colorByUsage
+                ? function(d) {{ return usageColor(d); }}
+                : colorByHeight
+                    ? function(d) {{ return heightColor(d.properties.height || 9); }}
+                    : [160, 170, 180],
             material: {{
                 ambient: 0.6,
                 diffuse: 0.7,
@@ -1078,7 +1098,7 @@ function buildLayers() {{
             }},
             pickable: true,
             updateTriggers: {{
-                getFillColor: [colorByHeight]
+                getFillColor: [colorByHeight, colorByUsage]
             }}
         }}));
     }}
@@ -1222,6 +1242,7 @@ var deckgl = new deck.DeckGL({{
                     'Height: ' + p.height + 'm' +
                     (p.levels ? '<br>Levels: ' + p.levels : '') +
                     (p.building_type && p.building_type !== 'yes' ? '<br>Type: ' + p.building_type : '') +
+                    '<br>Usage: ' + (p.building_usage || 'unknown') +
                     '</div>',
                 style: {{ background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }}
             }};
@@ -1365,7 +1386,22 @@ document.getElementById('toggleBuildings').addEventListener('change', function()
 }});
 document.getElementById('toggleHeightColor').addEventListener('change', function() {{
     colorByHeight = this.checked;
+    if (this.checked) {{
+        colorByUsage = false;
+        document.getElementById('toggleUsageColor').checked = false;
+        document.getElementById('legendUsage').style.display = 'none';
+    }}
     document.getElementById('legendHeight').style.display = this.checked ? '' : 'none';
+    updateMap(currentTimeIdx);
+}});
+document.getElementById('toggleUsageColor').addEventListener('change', function() {{
+    colorByUsage = this.checked;
+    if (this.checked) {{
+        colorByHeight = false;
+        document.getElementById('toggleHeightColor').checked = false;
+        document.getElementById('legendHeight').style.display = 'none';
+    }}
+    document.getElementById('legendUsage').style.display = this.checked ? '' : 'none';
     updateMap(currentTimeIdx);
 }});
 document.getElementById('toggleCanopy').addEventListener('change', function() {{

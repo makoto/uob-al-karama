@@ -40,6 +40,11 @@ BUILTC_CLASS_TO_HEIGHT = {
     21: 3.0, 22: 4.5, 23: 10.5, 24: 22.5, 25: 45.0,
 }
 
+# GHSL Built-C usage type from the tens digit of the class code
+# Classes 1-5: open space (vegetation/water/roads), 11-15: residential, 21-25: non-residential
+BUILTC_USAGE = {1: 'residential', 2: 'non-residential'}
+# Note: 0 = open space (values 1-5), not a building usage type
+
 # Batch size for reduceRegions (GEE has limits on feature collection size)
 BATCH_SIZE = 500
 
@@ -93,14 +98,20 @@ def buildings_to_ee_features(features):
 
 def extract_ghsl_builtc(ee_features):
     """
-    Extract GHSL Built-C (10m) height classes per building.
-    Uses mode reducer to get the dominant height class.
+    Extract GHSL Built-C (10m) height classes and usage type per building.
+    Uses mode reducer to get the dominant built characteristic class.
+
+    Returns
+    -------
+    height_results : dict[id -> height]
+    usage_results : dict[id -> usage_label]
     """
     print("\n--- GHSL Built-C (10m resolution) ---")
     image = ee.Image("JRC/GHSL/P2023A/GHS_BUILT_C/2018")
     band = image.select('built_characteristics')
 
-    results = {}
+    height_results = {}
+    usage_results = {}
     n_batches = (len(ee_features) + BATCH_SIZE - 1) // BATCH_SIZE
 
     for i in range(0, len(ee_features), BATCH_SIZE):
@@ -121,16 +132,23 @@ def extract_ghsl_builtc(ee_features):
                 bid = r['properties']['id']
                 mode_val = r['properties'].get('mode')
                 if mode_val is not None:
+                    int_val = int(mode_val)
                     # Extract height band: class % 10 gives height category
-                    height_band = int(mode_val) % 10
+                    height_band = int_val % 10
                     height = BUILTC_CLASS_TO_HEIGHT.get(height_band)
                     if height is not None:
-                        results[bid] = height
+                        height_results[bid] = height
+                    # Extract usage type: class // 10 gives usage category
+                    usage_code = int_val // 10
+                    usage_label = BUILTC_USAGE.get(usage_code)
+                    if usage_label is not None:
+                        usage_results[bid] = usage_label
         except Exception as e:
             print(f"    Error in batch {batch_num}: {e}")
 
-    print(f"  Got Built-C heights for {len(results)} buildings")
-    return results
+    print(f"  Got Built-C heights for {len(height_results)} buildings")
+    print(f"  Got Built-C usage for {len(usage_results)} buildings")
+    return height_results, usage_results
 
 
 def extract_ghsl_builth(ee_features):
@@ -211,7 +229,7 @@ def extract_ndsm(ee_features):
     return results
 
 
-def merge_heights(geojson, builtc, builth, ndsm_data):
+def merge_heights(geojson, builtc, builth, ndsm_data, builtc_usage=None):
     """
     Merge height data with priority:
       1. OSM real height (!=9m) - keep as-is
@@ -219,8 +237,13 @@ def merge_heights(geojson, builtc, builth, ndsm_data):
       3. GHSL Built-H (100m)
       4. nDSM (30m)
       5. Default 9m
+
+    Also merges building_usage from Built-C (independent of height priority).
     """
     print("\n--- Merging heights ---")
+    if builtc_usage is None:
+        builtc_usage = {}
+
     stats = {
         'osm_real': 0,
         'ghsl_builtc': 0,
@@ -234,6 +257,12 @@ def merge_heights(geojson, builtc, builth, ndsm_data):
         props = feat['properties']
         bid = props['id']
         current_height = props['height']
+
+        # Set building usage (independent of height source)
+        # Clear any stale value first, then set if we have data
+        props.pop('building_usage', None)
+        if bid in builtc_usage:
+            props['building_usage'] = builtc_usage[bid]
 
         # Priority 1: Real OSM height
         if current_height != 9.0:
@@ -499,12 +528,13 @@ def main():
     print(f"Converted {len(ee_features)} buildings")
 
     # Extract heights from each source
-    builtc_heights = extract_ghsl_builtc(ee_features)
+    builtc_heights, builtc_usage = extract_ghsl_builtc(ee_features)
     builth_heights = extract_ghsl_builth(ee_features)
     ndsm_heights = extract_ndsm(ee_features)
 
     # Merge with priority system
-    geojson, stats = merge_heights(geojson, builtc_heights, builth_heights, ndsm_heights)
+    geojson, stats = merge_heights(geojson, builtc_heights, builth_heights, ndsm_heights,
+                                   builtc_usage=builtc_usage)
 
     # Save updated GeoJSON
     print(f"\nSaving updated GeoJSON to {GEOJSON_OUTPUT}...")
