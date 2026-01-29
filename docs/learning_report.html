@@ -686,8 +686,8 @@ High priority = busy street that is uncomfortable
     <h3>9.7 Visualisation</h3>
     <p>Two interactive HTML maps are provided:</p>
     <ul>
-        <li><strong>2D shade map</strong> (<a href="shade_analysis/shade_map.html">shade_map.html</a>): Leaflet map with a time slider (6 AM &ndash; 6 PM). Three toggle layers: building shadows (dark gray), tree shadows (green), and street shade percentages (color-coded). Shadow polygons update as you scrub the slider.</li>
-        <li><strong>3D shade map</strong> (<a href="shade_analysis/shade_map_3d.html">shade_map_3d.html</a>): deck.gl map with extruded buildings, green tree canopy polygons, and 1,290 Overpass API Points of Interest shown as emoji icons (&#127828;&#128717;&#65039;&#127976; etc.) with category filter pills. Features both pre-computed projected shadow overlays (building + tree, toggleable) and GPU-rendered sun shadows via deck.gl <code>_SunLight</code>. Tooltips show building height, tree height, PoI name/category, and per-street shade percentage.</li>
+        <li><strong>2D viewer</strong> (<a href="viewer_2d.html">viewer_2d.html</a>): Leaflet map with togglable analysis layers including street centrality, pedestrian comfort, heat priority, combined SVI, satellite grid, clusters, and green access. Exportable as SVG and PDF.</li>
+        <li><strong>3D Digital Twin</strong> (<a href="viewer.html">viewer.html</a>): deck.gl map with extruded buildings, green tree canopy polygons, and 1,290 Overpass API Points of Interest shown as emoji icons (&#127835;&#128717;&#65039;&#127976; etc.) with category filter pills. Features both pre-computed projected shadow overlays (building + tree, toggleable) and GPU-rendered sun shadows via deck.gl <code>_SunLight</code>. Time slider controls shade simulation from 6 AM to 6 PM. Tooltips show building height, tree height, PoI name/category, and per-street shade percentage.</li>
     </ul>
 
     <h3 id="shade-poi">9.8 Points of Interest (Overpass API)</h3>
@@ -724,7 +724,7 @@ out center;
             <tr><th>Category</th><th>Emoji</th><th>Count</th><th>Example OSM tags</th></tr>
             <tr><td>Shopping</td><td>&#128717;&#65039;</td><td>462</td><td>supermarket, clothes, electronics, jewelry</td></tr>
             <tr><td>Services</td><td>&#127974;</td><td>362</td><td>bank, atm, laundry, hairdresser, police</td></tr>
-            <tr><td>Food</td><td>&#127828;</td><td>282</td><td>restaurant, cafe, fast_food, bakery</td></tr>
+            <tr><td>Food</td><td>&#127835;</td><td>282</td><td>restaurant, cafe, fast_food, bakery</td></tr>
             <tr><td>Hotel</td><td>&#127976;</td><td>64</td><td>hotel, guest_house, apartment</td></tr>
             <tr><td>Leisure</td><td>&#9917;</td><td>51</td><td>park, sports_centre, cinema, playground</td></tr>
             <tr><td>Health</td><td>&#9877;&#65039;</td><td>48</td><td>pharmacy, clinic, hospital, dentist</td></tr>
@@ -744,7 +744,7 @@ out center;
     </ul>
 
     <div class="highlight">
-        <strong>Design decision &mdash; emoji over colored dots:</strong> Initial implementation used colored circles, but 8 categories produced too many similar colors (e.g., orange food vs amber education; green leisure vs green tree canopy). Emoji icons (&#127828; &#128717;&#65039; &#127976; etc.) are instantly distinguishable without relying on color differentiation.
+        <strong>Design decision &mdash; emoji over colored dots:</strong> Initial implementation used colored circles, but 8 categories produced too many similar colors (e.g., orange food vs amber education; green leisure vs green tree canopy). Emoji icons (&#127835; &#128717;&#65039; &#127976; etc.) are instantly distinguishable without relying on color differentiation.
     </div>
 
     <h3>9.9 Caveats</h3>
