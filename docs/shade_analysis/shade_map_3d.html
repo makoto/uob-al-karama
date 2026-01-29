@@ -69,7 +69,7 @@
 
         .controls-hint {
             position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%);
-            z-index: 1; color: #aaa; font-size: 11px; text-align: center;
+            z-index: 1; color: #555; font-size: 11px; text-align: center;
         }
     </style>
 </head>
@@ -243,12 +243,12 @@ function buildLayers() {
             opacity: 0.85,
             getPolygon: function(d) { return d.geometry.coordinates; },
             getElevation: function(d) { return d.properties.height || 9; },
-            getFillColor: [74, 80, 87],
+            getFillColor: [160, 170, 180],
             material: {
-                ambient: 0.35,
-                diffuse: 0.6,
+                ambient: 0.6,
+                diffuse: 0.7,
                 shininess: 32,
-                specularColor: [60, 64, 70]
+                specularColor: [120, 125, 130]
             },
             pickable: true
         }));
@@ -264,12 +264,12 @@ function buildLayers() {
             opacity: 0.7,
             getPolygon: function(d) { return d.geometry.coordinates; },
             getElevation: function(d) { return d.properties.height || 3; },
-            getFillColor: [34, 120, 50],
+            getFillColor: [70, 180, 90],
             material: {
-                ambient: 0.4,
-                diffuse: 0.6,
+                ambient: 0.6,
+                diffuse: 0.7,
                 shininess: 20,
-                specularColor: [30, 80, 40]
+                specularColor: [60, 140, 70]
             },
             pickable: true
         }));
@@ -325,14 +325,14 @@ function buildLightingEffect(timeIdx) {
 
     var ambientLight = new deck.AmbientLight({
         color: [255, 255, 255],
-        intensity: 0.4
+        intensity: 0.8
     });
 
     var lightingEffect = new deck.LightingEffect({
         ambientLight: ambientLight,
         sunLight: sunLight
     });
-    lightingEffect.shadowColor = [0, 0, 0, showShadows ? 0.5 : 0.0];
+    lightingEffect.shadowColor = [0, 0, 0, showShadows ? 0.35 : 0.0];
 
     return lightingEffect;
 }
@@ -340,7 +340,7 @@ function buildLightingEffect(timeIdx) {
 // ── Initialize deck.gl ──
 var deckgl = new deck.DeckGL({
     container: 'container',
-    mapStyle: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+    mapStyle: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
     initialViewState: {
         longitude: 55.3025,
         latitude: 25.2485,
