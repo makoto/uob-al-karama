@@ -53,7 +53,9 @@
         <li><a href="#combined">6. Combined Analysis</a></li>
         <li><a href="#network">7. Network Analysis</a></li>
         <li><a href="#clusters">8. Cluster Analysis</a></li>
-        <li><a href="#shade">9. Building Shade Analysis</a></li>
+        <li><a href="#shade">9. Building Shade Analysis</a>
+            <ul><li><a href="#shade-poi">9.8 Points of Interest (Overpass API)</a></li></ul>
+        </li>
         <li><a href="#findings">10. Key Findings</a></li>
         <li><a href="#limitations">11. Limitations</a></li>
         <li><a href="#files">12. Output Files Reference</a></li>
@@ -660,10 +662,67 @@ High priority = busy street that is uncomfortable
     <p>Two interactive HTML maps are provided:</p>
     <ul>
         <li><strong>2D shade map</strong> (<a href="shade_analysis/shade_map.html">shade_map.html</a>): Leaflet map with a time slider (6 AM &ndash; 6 PM). Three toggle layers: building shadows (dark gray), tree shadows (green), and street shade percentages (color-coded). Shadow polygons update as you scrub the slider.</li>
-        <li><strong>3D shade map</strong> (<a href="shade_analysis/shade_map_3d.html">shade_map_3d.html</a>): deck.gl map with extruded buildings and green tree canopy polygons. Features both pre-computed projected shadow overlays (building + tree, toggleable) and GPU-rendered sun shadows via deck.gl <code>_SunLight</code>. Tooltips show building height, tree height, and per-street shade percentage.</li>
+        <li><strong>3D shade map</strong> (<a href="shade_analysis/shade_map_3d.html">shade_map_3d.html</a>): deck.gl map with extruded buildings, green tree canopy polygons, and 1,290 Overpass API Points of Interest shown as emoji icons (&#127828;&#128717;&#65039;&#127976; etc.) with category filter pills. Features both pre-computed projected shadow overlays (building + tree, toggleable) and GPU-rendered sun shadows via deck.gl <code>_SunLight</code>. Tooltips show building height, tree height, PoI name/category, and per-street shade percentage.</li>
     </ul>
 
-    <h3>9.8 Caveats</h3>
+    <h3 id="shade-poi">9.8 Points of Interest (Overpass API)</h3>
+    <p><strong>Objective:</strong> Overlay a rich, categorized layer of Points of Interest on the 3D shade map so users can see which amenities (restaurants, shops, clinics, schools, etc.) exist in relation to shade coverage.</p>
+
+    <h4>Data Source</h4>
+    <p>PoIs are fetched from the <strong>Overpass API</strong>, the public query interface for OpenStreetMap. A single bounding-box query retrieves all nodes and ways tagged with <code>amenity</code>, <code>shop</code>, <code>tourism</code>, <code>office</code>, <code>leisure</code>, or <code>healthcare</code> within the Al Karama study area.</p>
+
+    <div class="code">
+// Overpass QL query (simplified)
+[out:json][timeout:60];
+(
+  node["amenity"](25.238,55.292,25.259,55.313);
+  way["amenity"](25.238,55.292,25.259,55.313);
+  node["shop"](25.238,55.292,25.259,55.313);
+  // ... + tourism, office, leisure, healthcare
+);
+out center;
+    </div>
+
+    <h4>Processing Pipeline</h4>
+    <ol>
+        <li><strong>Fetch:</strong> HTTP POST to <code>overpass-api.de</code>; returned 1,419 raw elements</li>
+        <li><strong>Parse positions:</strong> Nodes use <code>lat/lon</code> directly; ways use <code>center.lat/center.lon</code> (via <code>out center</code>)</li>
+        <li><strong>Filter noise:</strong> Remove "urban furniture" types (bench, waste_basket, parking, shelter, bollard, etc.) &mdash; 18 noise types excluded</li>
+        <li><strong>Categorize:</strong> Map ~50 OSM tag values to 8 categories using a lookup table; unmapped <code>shop=*</code> tags default to "shopping"; all others default to "services"</li>
+        <li><strong>Label:</strong> Use the <code>name</code> tag if available; otherwise title-case the OSM type (e.g., <code>fast_food</code> &rarr; "Fast Food")</li>
+        <li><strong>Cache:</strong> Results saved to <code>pois_cache.json</code> (146 KB); subsequent runs load from cache without an API call</li>
+    </ol>
+
+    <div class="finding">
+        <strong>Result:</strong> 1,290 PoIs across 8 categories:
+        <table>
+            <tr><th>Category</th><th>Emoji</th><th>Count</th><th>Example OSM tags</th></tr>
+            <tr><td>Shopping</td><td>&#128717;&#65039;</td><td>462</td><td>supermarket, clothes, electronics, jewelry</td></tr>
+            <tr><td>Services</td><td>&#127974;</td><td>362</td><td>bank, atm, laundry, hairdresser, police</td></tr>
+            <tr><td>Food</td><td>&#127828;</td><td>282</td><td>restaurant, cafe, fast_food, bakery</td></tr>
+            <tr><td>Hotel</td><td>&#127976;</td><td>64</td><td>hotel, guest_house, apartment</td></tr>
+            <tr><td>Leisure</td><td>&#9917;</td><td>51</td><td>park, sports_centre, cinema, playground</td></tr>
+            <tr><td>Health</td><td>&#9877;&#65039;</td><td>48</td><td>pharmacy, clinic, hospital, dentist</td></tr>
+            <tr><td>Religious</td><td>&#128332;</td><td>12</td><td>place_of_worship</td></tr>
+            <tr><td>Education</td><td>&#127891;</td><td>9</td><td>school, kindergarten, driving_school</td></tr>
+        </table>
+    </div>
+
+    <h4>Visualisation</h4>
+    <p>PoIs are rendered on the 3D map as <strong>emoji icons</strong> using deck.gl's <code>IconLayer</code>. Each category emoji is pre-rendered onto a 64&times;64 HTML canvas and converted to a PNG data URL at page load, which the <code>IconLayer</code> displays as a full-color bitmap texture.</p>
+
+    <ul>
+        <li><strong>Collision filtering:</strong> deck.gl's <code>CollisionFilterExtension</code> automatically hides overlapping icons, keeping the display clean at any zoom level</li>
+        <li><strong>Text labels:</strong> PoI names appear (via <code>TextLayer</code>) only when zoomed past level 18, also with collision filtering</li>
+        <li><strong>Category filter pills:</strong> 8 toggle pills in the control panel let users show/hide individual categories; All/None buttons for bulk control</li>
+        <li><strong>Depth-test disabled:</strong> Icons render on top of extruded 3D buildings (<code>parameters: { depthTest: false }</code>)</li>
+    </ul>
+
+    <div class="highlight">
+        <strong>Design decision &mdash; emoji over colored dots:</strong> Initial implementation used colored circles, but 8 categories produced too many similar colors (e.g., orange food vs amber education; green leisure vs green tree canopy). Emoji icons (&#127828; &#128717;&#65039; &#127976; etc.) are instantly distinguishable without relying on color differentiation.
+    </div>
+
+    <h3>9.9 Caveats</h3>
     <div class="limitation">
         <strong>1. Flat terrain assumed:</strong> No elevation model used &mdash; all buildings and trees assumed on same ground plane.
     </div>
@@ -781,6 +840,7 @@ High priority = busy street that is uncomfortable
         <tr><td>osm_3d/al_karama_buildings.geojson</td><td>GeoJSON</td><td>Building footprints with GEE-enhanced heights and height_source field</td></tr>
         <tr><td>shade_analysis/shadows_HH.geojson</td><td>GeoJSON</td><td>Shadow polygons per hour (x7 files: 06, 08, 10, 12, 14, 16, 18)</td></tr>
         <tr><td>shade_analysis/canopy_polygons_with_height.geojson</td><td>GeoJSON</td><td>1,033 tree canopy polygons with IDW-interpolated heights</td></tr>
+        <tr><td>shade_analysis/pois_cache.json</td><td>JSON</td><td>1,290 Overpass API PoIs (8 categories) &mdash; cached to avoid repeat API calls</td></tr>
     </table>
 
     <h3>Python Scripts</h3>
