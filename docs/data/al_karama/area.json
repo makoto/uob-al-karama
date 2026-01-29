@@ -28,6 +28,7 @@
     "6:00 PM"
   ],
   "layers": {
+    "boundary": "boundary.geojson",
     "buildings": "buildings.geojson",
     "canopy": "canopy.geojson",
     "streets": "streets.geojson",

@@ -191,6 +191,25 @@
         .leaflet-popup-tip { background: rgba(0,0,0,0.9); }
         .leaflet-popup-content b { color: #4fc3f7; }
 
+        /* Export buttons */
+        .export-section {
+            padding: 12px 16px;
+            border-top: 1px solid rgba(255,255,255,0.08);
+        }
+        .export-section-title {
+            font-size: 10px; text-transform: uppercase; letter-spacing: 1px;
+            color: #888; margin-bottom: 8px; font-weight: 600;
+        }
+        .export-btn {
+            padding: 6px 12px; border: 1px solid rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.06); color: #ccc;
+            cursor: pointer; font-size: 12px; border-radius: 4px;
+            transition: background 0.15s, color 0.15s;
+            margin-right: 6px;
+        }
+        .export-btn:hover { background: rgba(79,195,247,0.15); color: #4fc3f7; }
+
+
         /* Responsive */
         @media (max-width: 768px) {
             #map { right: 0; bottom: 50vh; }
@@ -214,6 +233,12 @@
     <div class="panel-header">
         <h2>2D Analysis Viewer</h2>
         <p id="areaSubtitle">Al Karama, Dubai</p>
+    </div>
+
+    <div class="layer-section-title">Overlays</div>
+    <div class="layer-radio-row" style="cursor:default;">
+        <input type="checkbox" id="tog-boundary" checked onchange="toggleBoundary()" style="accent-color:#4fc3f7;width:14px;height:14px;flex-shrink:0;cursor:pointer;">
+        <label class="layer-radio-label" for="tog-boundary" style="cursor:pointer;">District Boundary</label>
     </div>
 
     <div class="layer-section-title">Analysis Layers</div>
@@ -281,6 +306,17 @@
         <div class="layer-loading-spinner" id="load-green-access"></div>
     </div>
 
+    <!-- Export -->
+    <div class="export-section">
+        <div class="export-section-title">Export Current Layer</div>
+        <a class="export-btn" id="export-svg-link" style="text-decoration:none;" download>SVG</a>
+        <a class="export-btn" id="export-pdf-link" style="text-decoration:none;" download>PDF</a>
+    </div>
+    <div class="export-section">
+        <div class="export-section-title">All Layers (Bundled)</div>
+        <a class="export-btn" id="export-all-link" style="text-decoration:none;" href="data/al_karama/exports/all_layers.svg" download="all_layers.svg">SVG (15 MB)</a>
+    </div>
+
     <!-- Legend -->
     <div id="legend-container"></div>
 </div>
@@ -313,6 +349,8 @@ var DATA_BASE = '';
 var CACHE = {};
 var map = null;
 var activeLayerGroup = null;
+var boundaryLayer = null;
+var boundaryVisible = true;
 var currentLayer = null;
 var centralityMetric = 'betweenness';
 var combinedMetric = 'lst';
@@ -363,6 +401,37 @@ async function loadData(key) {
 
     CACHE[key] = await resp.json();
     return CACHE[key];
+}
+
+async function loadBoundary() {
+    try {
+        var resp = await fetch(DATA_BASE + 'boundary.geojson');
+        if (!resp.ok) return;
+        var geojson = await resp.json();
+        boundaryLayer = L.geoJSON(geojson, {
+            style: {
+                color: '#4fc3f7',
+                weight: 2.5,
+                dashArray: '8,6',
+                fillColor: '#4fc3f7',
+                fillOpacity: 0.03
+            },
+            interactive: false
+        });
+        if (boundaryVisible) boundaryLayer.addTo(map);
+    } catch (e) {
+        console.warn('Could not load boundary:', e);
+    }
+}
+
+function toggleBoundary() {
+    boundaryVisible = document.getElementById('tog-boundary').checked;
+    if (!boundaryLayer) return;
+    if (boundaryVisible) {
+        boundaryLayer.addTo(map);
+    } else {
+        map.removeLayer(boundaryLayer);
+    }
 }
 
 function showLoading(key, show) {
@@ -724,6 +793,7 @@ async function selectLayer(name) {
     }
 
     updateLegend();
+    updateExportLinks();
     updateHash();
 }
 
@@ -898,6 +968,41 @@ function setBasemap(name) {
 }
 
 // ============================================================
+//  EXPORT LINKS
+// ============================================================
+
+var EXPORT_FILE_MAP = {
+    'centrality': { betweenness: 'centrality_betweenness', closeness: 'centrality_closeness' },
+    'comfort': 'comfort',
+    'priority': 'priority',
+    'combined': { lst: 'combined_lst', gvi: 'combined_gvi', svf: 'combined_svf' },
+    'satellite': { lst: 'satellite_lst', ndvi: 'satellite_ndvi', ndbi: 'satellite_ndbi' },
+    'clusters': 'clusters',
+    'green-access': 'green_access'
+};
+
+function updateExportLinks() {
+    var entry = EXPORT_FILE_MAP[currentLayer];
+    var basename;
+    if (typeof entry === 'object') {
+        if (currentLayer === 'centrality') basename = entry[centralityMetric];
+        else if (currentLayer === 'combined') basename = entry[combinedMetric];
+        else if (currentLayer === 'satellite') basename = entry[satelliteMetric];
+    } else {
+        basename = entry;
+    }
+    if (!basename) basename = 'centrality_betweenness';
+
+    var base = DATA_BASE + 'exports/';
+    var svgLink = document.getElementById('export-svg-link');
+    var pdfLink = document.getElementById('export-pdf-link');
+    svgLink.href = base + basename + '.svg';
+    svgLink.download = basename + '.svg';
+    pdfLink.href = base + basename + '.pdf';
+    pdfLink.download = basename + '.pdf';
+}
+
+// ============================================================
 //  AREA SWITCHING
 // ============================================================
 
@@ -916,6 +1021,13 @@ async function switchArea(areaId) {
     if (map) {
         map.setView([AREA.center[1], AREA.center[0]], AREA.zoom);
     }
+
+    // Reload boundary
+    if (boundaryLayer) {
+        map.removeLayer(boundaryLayer);
+        boundaryLayer = null;
+    }
+    loadBoundary();
 
     // Reload current layer
     if (currentLayer) {
@@ -966,6 +1078,9 @@ async function init() {
         maxZoom: 19,
         subdomains: 'abcd'
     }).addTo(map);
+
+    // Load district boundary overlay
+    loadBoundary();
 
     // Parse URL hash for deep-linking (e.g. #combined-gvi, #satellite-ndbi)
     var parsed = parseHash();

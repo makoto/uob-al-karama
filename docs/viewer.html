@@ -46,6 +46,11 @@
                         <label class="layer-label" for="tog-canopy">Tree Canopy</label>
                         <span class="layer-loading" id="load-canopy" style="display:none"></span>
                     </div>
+                    <div class="layer-row">
+                        <input type="checkbox" class="layer-toggle" id="tog-boundary" checked onchange="onLayerToggle('boundary')">
+                        <label class="layer-label" for="tog-boundary">District Boundary</label>
+                        <span class="layer-loading" id="load-boundary" style="display:none"></span>
+                    </div>
                 </div>
             </div>
 
@@ -258,6 +263,7 @@ var deckgl = null;
 
 // Layer visibility
 var layerState = {
+    boundary: true,
     buildings: true, canopy: true,
     'gpu-shadows': true, 'building-shadows': true, 'tree-shadows': true,
     'street-shade': false,
@@ -433,6 +439,7 @@ async function onLayerToggle(key) {
 
 async function ensureDataLoaded(key) {
     var dataKeyMap = {
+        'boundary': 'boundary',
         'buildings': 'buildings',
         'canopy': 'canopy',
         'building-shadows': 'shadows_' + padHour(TIMES[currentTimeIdx]),
@@ -577,6 +584,20 @@ function buildLayers() {
     var hPad = padHour(h);
     var shadeKey = 'shade_' + hPad;
     var layers = [];
+
+    // === URBAN FORM: District Boundary ===
+    if (layerState.boundary && CACHE.boundary) {
+        layers.push(new deck.GeoJsonLayer({
+            id: 'boundary',
+            data: CACHE.boundary,
+            stroked: true,
+            filled: false,
+            getLineColor: [79, 195, 247, 200],
+            getLineWidth: 3,
+            lineWidthMinPixels: 2,
+            pickable: false
+        }));
+    }
 
     // === URBAN FORM: Buildings ===
     if (layerState.buildings && CACHE.buildings) {
@@ -1295,6 +1316,7 @@ async function switchArea(areaId) {
     // Load immediate-tier data
     document.getElementById('initLoader').classList.add('active');
     await Promise.all([
+        loadData('boundary'),
         loadData('buildings'),
         loadData('canopy'),
         loadData('street_shade')
