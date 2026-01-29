@@ -1,0 +1,705 @@
+/* ============================================================
+   PLATEAU-Inspired Unified 3D Viewer — Stylesheet
+   Dark theme: rgba(0,0,0,0.88) backgrounds, #4fc3f7 accent,
+   #eee text, -apple-system font stack.
+   ============================================================ */
+
+/* === Reset & Layout === */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  overflow: hidden;
+  background: #111;
+  color: #eee;
+}
+
+#app {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  display: flex;
+}
+
+#map-canvas {
+  flex: 1;
+  position: relative;
+}
+
+#layer-panel {
+  width: 340px;
+  background: rgba(0, 0, 0, 0.92);
+  color: #eee;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  z-index: 1;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* === Navigation Bar === */
+
+.nav-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 340px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  gap: 8px;
+}
+
+.nav-link {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 6px 12px;
+  border-radius: 6px;
+  color: #4fc3f7;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.nav-link:hover {
+  background: rgba(79, 195, 247, 0.15);
+}
+
+.nav-title {
+  flex: 1;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  color: #eee;
+}
+
+.area-dropdown {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #4fc3f7;
+  padding: 6px 28px 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%234fc3f7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 10px 6px;
+  transition: background-color 0.2s, border-color 0.2s;
+}
+
+.area-dropdown:hover {
+  background-color: rgba(255, 255, 255, 0.12);
+}
+
+.area-dropdown:focus {
+  outline: none;
+  border-color: #4fc3f7;
+}
+
+.area-dropdown option {
+  background: #1a1a1a;
+  color: #eee;
+}
+
+/* === Nav Dropdown Menu === */
+
+.nav-dropdown-wrap {
+  position: relative;
+}
+
+.nav-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background: rgba(0, 0, 0, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  padding: 4px 0;
+  min-width: 200px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 20;
+}
+
+.nav-dropdown.open {
+  display: block;
+}
+
+.nav-dropdown a {
+  display: block;
+  padding: 8px 14px;
+  color: #ccc;
+  text-decoration: none;
+  font-size: 12px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.nav-dropdown a:hover {
+  background: rgba(79, 195, 247, 0.12);
+  color: #4fc3f7;
+}
+
+/* === Panel Header === */
+
+.panel-header {
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.panel-header h2 {
+  margin: 0;
+  font-size: 15px;
+  color: #4fc3f7;
+}
+
+.panel-header p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #888;
+}
+
+/* === Accordion Groups === */
+
+.panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 60px;
+}
+
+.accordion-group {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.accordion-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+  gap: 8px;
+}
+
+.accordion-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.accordion-arrow {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s;
+  color: #888;
+  font-size: 12px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.accordion-group.open .accordion-arrow {
+  transform: rotate(90deg);
+}
+
+.accordion-title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #aaa;
+}
+
+.accordion-body {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+}
+
+.accordion-group.open .accordion-body {
+  max-height: 800px;
+}
+
+/* === Layer Toggle Rows === */
+
+.layer-row {
+  display: flex;
+  align-items: center;
+  padding: 6px 16px 6px 40px;
+  gap: 8px;
+}
+
+.layer-row:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.layer-toggle {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 2px solid #666;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.layer-toggle:checked {
+  background: #4fc3f7;
+  border-color: #4fc3f7;
+}
+
+.layer-toggle:checked::after {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 4px;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.layer-label {
+  font-size: 13px;
+  color: #ccc;
+  cursor: pointer;
+  flex: 1;
+}
+
+.layer-loading {
+  width: 14px;
+  height: 14px;
+  border: 2px solid #333;
+  border-top-color: #4fc3f7;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* === Sub-options (radio buttons for metrics) === */
+
+.layer-options {
+  padding: 4px 16px 8px 64px;
+}
+
+.layer-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-right: 10px;
+  font-size: 11px;
+  color: #999;
+  cursor: pointer;
+}
+
+.layer-options input[type="radio"] {
+  accent-color: #4fc3f7;
+  width: 12px;
+  height: 12px;
+}
+
+/* === POI Filter Pills === */
+
+.poi-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 16px 10px 40px;
+}
+
+.poi-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 9px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ccc;
+  font-size: 11px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  user-select: none;
+}
+
+.poi-pill.active {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+.poi-meta-btn {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #999;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.poi-meta-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ccc;
+}
+
+/* === Sun Info Panel === */
+
+.sun-panel {
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 160, 0, 0.06);
+}
+
+.sun-panel .sun-title {
+  font-weight: bold;
+  color: #ffb300;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.sun-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sun-info-text {
+  font-size: 12px;
+  color: #ccc;
+}
+
+.sun-info-text div {
+  margin: 2px 0;
+}
+
+/* === Time Slider === */
+
+.time-slider-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 340px;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.85);
+  padding: 10px 24px 14px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.time-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.play-btn {
+  background: none;
+  border: 2px solid #4fc3f7;
+  color: #4fc3f7;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.play-btn:hover {
+  background: rgba(79, 195, 247, 0.15);
+}
+
+.play-btn.playing {
+  background: #4fc3f7;
+  color: #111;
+}
+
+.time-slider-input {
+  flex: 1;
+  accent-color: #4fc3f7;
+}
+
+.time-label {
+  font-weight: bold;
+  font-size: 15px;
+  color: #4fc3f7;
+  min-width: 80px;
+  text-align: center;
+}
+
+.time-marks {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #666;
+  padding: 0 42px 0 42px;
+  margin-top: 2px;
+}
+
+/* === Shade Chart === */
+
+.shade-chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 36px;
+  margin: 6px 16px 2px;
+}
+
+.shade-bar {
+  flex: 1;
+  background: #4fc3f7;
+  border-radius: 2px 2px 0 0;
+  transition: height 0.3s, opacity 0.3s;
+  opacity: 0.35;
+}
+
+.shade-bar.active {
+  opacity: 1;
+}
+
+.shade-bar-labels {
+  display: flex;
+  gap: 3px;
+  font-size: 9px;
+  color: #888;
+  margin: 0 16px 8px;
+}
+
+.shade-bar-labels span {
+  flex: 1;
+  text-align: center;
+}
+
+/* === View Presets === */
+
+.view-presets {
+  position: absolute;
+  bottom: 60px;
+  left: 12px;
+  z-index: 5;
+  display: flex;
+  gap: 4px;
+}
+
+.view-btn {
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(0, 0, 0, 0.75);
+  color: #ccc;
+  cursor: pointer;
+  font-size: 11px;
+  border-radius: 4px;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  transition: background 0.15s, color 0.15s;
+}
+
+.view-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* === Legend === */
+
+.legend-overlay {
+  position: absolute;
+  bottom: 70px;
+  right: 352px;
+  z-index: 5;
+  background: rgba(0, 0, 0, 0.85);
+  padding: 10px 14px;
+  border-radius: 8px;
+  max-width: 200px;
+  font-size: 12px;
+  color: #ccc;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+
+.legend-title {
+  color: #aaa;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin: 3px 0;
+  font-size: 11px;
+  color: #bbb;
+}
+
+.legend-color {
+  width: 24px;
+  height: 4px;
+  margin-right: 8px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.legend-gradient {
+  height: 8px;
+  border-radius: 4px;
+  margin: 4px 0;
+}
+
+.legend-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #888;
+}
+
+/* === Tooltip === */
+
+.deck-tooltip {
+  position: absolute;
+  z-index: 100;
+  pointer-events: none;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.9);
+  color: #eee;
+  font-size: 12px;
+  border-radius: 6px;
+  max-width: 280px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.deck-tooltip b {
+  color: #4fc3f7;
+}
+
+/* === Loading Overlay === */
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.loading-overlay.active {
+  opacity: 1;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(79, 195, 247, 0.2);
+  border-top-color: #4fc3f7;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* === Keyframes === */
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* === Scrollbar === */
+
+#layer-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+#layer-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+#layer-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.panel-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+.panel-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panel-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+/* === Responsive === */
+
+@media (max-width: 768px) {
+  #app {
+    flex-direction: column;
+  }
+
+  #layer-panel {
+    width: 100%;
+    height: 50vh;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    order: 2;
+  }
+
+  #map-canvas {
+    order: 1;
+    height: 50vh;
+  }
+
+  .nav-bar {
+    right: 0;
+  }
+
+  .time-slider-bar {
+    right: 0;
+    position: relative;
+    order: 3;
+  }
+
+  .legend-overlay {
+    right: 12px;
+    bottom: 12px;
+  }
+
+  .view-presets {
+    bottom: 12px;
+  }
+}

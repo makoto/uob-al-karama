@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Urban Climate Viewer - Al Karama</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://unpkg.com/deck.gl@8.9.0/dist.min.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet">
+    <link href="viewer.css" rel="stylesheet">
+</head>
+<body>
+<div id="app">
+    <!-- Map canvas -->
+    <div id="map-canvas">
+        <div class="loading-overlay" id="initLoader"><div class="loading-spinner"></div></div>
+    </div>
+
+    <!-- Layer panel -->
+    <div id="layer-panel">
+        <div class="panel-header">
+            <h2>Urban Climate Viewer</h2>
+            <p id="areaSubtitle">July 15 (peak summer) &mdash; Al Karama, Dubai</p>
+        </div>
+
+        <div class="panel-body" id="panelBody">
+            <!-- URBAN FORM -->
+            <div class="accordion-group open" data-group="urban">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span class="accordion-arrow">&#9654;</span>
+                    <span class="accordion-title">Urban Form</span>
+                </div>
+                <div class="accordion-body">
+                    <div class="layer-row">
+                        <input type="checkbox" class="layer-toggle" id="tog-buildings" checked onchange="onLayerToggle('buildings')">
+                        <label class="layer-label" for="tog-buildings">Buildings</label>
+                        <span class="layer-loading" id="load-buildings" style="display:none"></span>
+                    </div>
+                    <div class="layer-options" id="opt-buildings">
+                        <label><input type="radio" name="bldg-color" value="default" checked onchange="setBuildingColor('default')"> Default</label>
+                        <label><input type="radio" name="bldg-color" value="height" onchange="setBuildingColor('height')"> Height</label>
+                        <label><input type="radio" name="bldg-color" value="usage" onchange="setBuildingColor('usage')"> Land Use</label>
+                    </div>
+                    <div class="layer-row">
+                        <input type="checkbox" class="layer-toggle" id="tog-canopy" checked onchange="onLayerToggle('canopy')">
+                        <label class="layer-label" for="tog-canopy">Tree Canopy</label>
+                        <span class="layer-loading" id="load-canopy" style="display:none"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SHADE & SHADOWS -->
+            <div class="accordion-group open" data-group="shade">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span class="accordion-arrow">&#9654;</span>
+                    <span class="accordion-title">Shade &amp; Shadows</span>
+                </div>
+                <div class="accordion-body">
+                    <div class="layer-row">
+                        <input type="checkbox" class="layer-toggle" id="tog-gpu-shadows" checked onchange="onLayerToggle('gpu-shadows')">
+                        <label class="layer-label" for="tog-gpu-shadows">GPU Sun Shadows</label>
+                    </div>
+                    <div class="layer-row">
+                        <input type="checkbox" class="layer-toggle" id="tog-building-shadows" checked onchange="onLayerToggle('building-shadows')">
+                        <label class="layer-label" for="tog-building-shadows">Building Shadows (projected)</label>
+                        <span class="layer-loading" id="load-building-shadows" style="display:none"></span>
+                    </div>
+                    <div class="layer-row">
+                        <input type="checkbox" class="layer-toggle" id="tog-tree-shadows" checked onchange="onLayerToggle('tree-shadows')">
+                        <label class="layer-label" for="tog-tree-shadows">Tree Shadows (projected)</label>
+                        <span class="layer-loading" id="load-tree-shadows" style="display:none"></span>
+                    </div>
+                    <div class="layer-row">
+                        <input type="checkbox" class="layer-toggle" id="tog-street-shade" onchange="onLayerToggle('street-shade')">
+                        <label class="layer-label" for="tog-street-shade">Street Shade %</label>
+                        <span class="layer-loading" id="load-street-shade" style="display:none"></span>
+                    </div>
+                    <div class="layer-options" id="opt-street-shade" style="display:none">
+                        <label><input type="radio" name="street-mode" value="shade" checked onchange="setStreetMode('shade')"> Shade color</label>
+                        <label><input type="radio" name="street-mode" value="neutral" onchange="setStreetMode('neutral')"> Neutral</label>
+                    </div>
+                    <!-- Shade chart -->
+                    <div class="shade-chart" id="shadeChart"></div>
+                    <div class="shade-bar-labels" id="shadeChartLabels"></div>
+                </div>
+            </div>
+
+            <!-- THERMAL & VEGETATION -->
+            <div class="accordion-group" data-group="thermal">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span class="accordion-arrow">&#9654;</span>
+                    <span class="accordion-title">Thermal &amp; Vegetation</span>
+                </div>
+                <div class="accordion-body">
+                    <div class="layer-row">
+                        <input type="checkbox" class="layer-toggle" id="tog-priority" onchange="onLayerToggle('priority')">
+                        <label class="layer-label" for="tog-priority">Heat Mitigation Priority</label>
+                        <span class="layer-loading" id="load-priority" style="display:none"></span>
+                    </div>
+                    <div class="layer-row">
+                        <input type="checkbox" class="layer-toggle" id="tog-combined" onchange="onLayerToggle('combined')">
+                        <label class="layer-label" for="tog-combined">Combined SVI+Satellite</label>
+                        <span class="layer-loading" id="load-combined" style="display:none"></span>
+                    </div>
+                    <div class="layer-options" id="opt-combined" style="display:none">
+                        <label><input type="radio" name="combined-metric" value="lst" checked onchange="setCombinedMetric('lst')"> LST</label>
+                        <label><input type="radio" name="combined-metric" value="gvi" onchange="setCombinedMetric('gvi')"> GVI</label>
+                        <label><input type="radio" name="combined-metric" value="svf" onchange="setCombinedMetric('svf')"> SVF</label>
+                    </div>
+                    <div class="layer-row">
+                        <input type="checkbox" class="layer-toggle" id="tog-clusters" onchange="onLayerToggle('clusters')">
+                        <label class="layer-label" for="tog-clusters">Climate Clusters</label>
+                        <span class="layer-loading" id="load-clusters" style="display:none"></span>
+                    </div>
+                    <div class="layer-row">
+                        <input type="checkbox" class="layer-toggle" id="tog-green-access" onchange="onLayerToggle('green-access')">
+                        <label class="layer-label" for="tog-green-access">Green Space Access</label>
+                        <span class="layer-loading" id="load-green-access" style="display:none"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MOBILITY & NETWORK -->
+            <div class="accordion-group" data-group="mobility">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span class="accordion-arrow">&#9654;</span>
+                    <span class="accordion-title">Mobility &amp; Network</span>
+                </div>
+                <div class="accordion-body">
+                    <div class="layer-row">
+                        <input type="checkbox" class="layer-toggle" id="tog-centrality" onchange="onLayerToggle('centrality')">
+                        <label class="layer-label" for="tog-centrality">Street Centrality</label>
+                        <span class="layer-loading" id="load-centrality" style="display:none"></span>
+                    </div>
+                    <div class="layer-options" id="opt-centrality" style="display:none">
+                        <label><input type="radio" name="centrality-metric" value="betweenness" checked onchange="setCentralityMetric('betweenness')"> Betweenness</label>
+                        <label><input type="radio" name="centrality-metric" value="closeness" onchange="setCentralityMetric('closeness')"> Closeness</label>
+                    </div>
+                    <div class="layer-row">
+                        <input type="checkbox" class="layer-toggle" id="tog-comfort" onchange="onLayerToggle('comfort')">
+                        <label class="layer-label" for="tog-comfort">Pedestrian Comfort</label>
+                        <span class="layer-loading" id="load-comfort" style="display:none"></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- POINTS OF INTEREST -->
+            <div class="accordion-group" data-group="poi">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <span class="accordion-arrow">&#9654;</span>
+                    <span class="accordion-title">Points of Interest</span>
+                </div>
+                <div class="accordion-body">
+                    <div class="layer-row">
+                        <input type="checkbox" class="layer-toggle" id="tog-pois" onchange="onLayerToggle('pois')">
+                        <label class="layer-label" for="tog-pois">POIs</label>
+                        <span class="layer-loading" id="load-pois" style="display:none"></span>
+                    </div>
+                    <div class="poi-pills" id="poiPills" style="display:none">
+                        <button class="poi-meta-btn" onclick="setAllPOICats(true)">All</button>
+                        <button class="poi-meta-btn" onclick="setAllPOICats(false)">None</button>
+                        <span class="poi-pill active" data-cat="food" onclick="togglePOICat(this)">&#127828; Food</span>
+                        <span class="poi-pill active" data-cat="shopping" onclick="togglePOICat(this)">&#128717;&#65039; Shopping</span>
+                        <span class="poi-pill active" data-cat="hotel" onclick="togglePOICat(this)">&#127976; Hotel</span>
+                        <span class="poi-pill active" data-cat="health" onclick="togglePOICat(this)">&#9877;&#65039; Health</span>
+                        <span class="poi-pill active" data-cat="religious" onclick="togglePOICat(this)">&#128332; Religious</span>
+                        <span class="poi-pill active" data-cat="services" onclick="togglePOICat(this)">&#127974; Services</span>
+                        <span class="poi-pill active" data-cat="leisure" onclick="togglePOICat(this)">&#9917; Leisure</span>
+                        <span class="poi-pill active" data-cat="education" onclick="togglePOICat(this)">&#127891; Education</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sun info panel (fixed at bottom of sidebar) -->
+        <div class="sun-panel" id="sunPanel">
+            <div class="sun-title">&#9788; Sun Position</div>
+            <div class="sun-row">
+                <svg id="sunCompass" width="70" height="70" viewBox="0 0 80 80" style="flex-shrink:0;">
+                    <circle cx="40" cy="40" r="36" fill="none" stroke="#555" stroke-width="1"/>
+                    <circle cx="40" cy="40" r="2" fill="#888"/>
+                    <text x="40" y="9" text-anchor="middle" font-size="8" fill="#888">N</text>
+                    <text x="73" y="43" text-anchor="middle" font-size="8" fill="#888">E</text>
+                    <text x="40" y="78" text-anchor="middle" font-size="8" fill="#888">S</text>
+                    <text x="7" y="43" text-anchor="middle" font-size="8" fill="#888">W</text>
+                    <line x1="40" y1="5" x2="40" y2="10" stroke="#666" stroke-width="1"/>
+                    <line x1="75" y1="40" x2="70" y2="40" stroke="#666" stroke-width="1"/>
+                    <line x1="40" y1="75" x2="40" y2="70" stroke="#666" stroke-width="1"/>
+                    <line x1="5" y1="40" x2="10" y2="40" stroke="#666" stroke-width="1"/>
+                    <g id="compassNeedle">
+                        <line x1="40" y1="40" x2="40" y2="12" stroke="#ffb300" stroke-width="2" stroke-opacity="0.6"/>
+                        <circle cx="40" cy="10" r="6" fill="#ffb300" opacity="0.9"/>
+                        <text x="40" y="13" text-anchor="middle" font-size="7" font-weight="bold" fill="#333">&#9788;</text>
+                    </g>
+                </svg>
+                <div class="sun-info-text">
+                    <div id="sunAlt">Altitude: --</div>
+                    <div id="sunAz">Azimuth: --</div>
+                    <div id="sunShadow">Shadow: --</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Navigation bar -->
+<div class="nav-bar">
+    <a href="index.html" class="nav-link">&#8592; Dashboard</a>
+    <div class="nav-dropdown-wrap">
+        <button class="nav-link" id="mapsMenuBtn" onclick="toggleMapsMenu()">2D Maps &#9662;</button>
+        <div class="nav-dropdown" id="mapsMenu">
+            <a href="shade_analysis/shade_map.html">Shade Analysis (2D)</a>
+            <a href="gvi_point_map.html">GVI Point Map</a>
+            <a href="gvi_svf_comparison_map.html">GVI vs SVF</a>
+            <a href="satellite_full/full_area_analysis_10m.html">Satellite Grid (10m)</a>
+            <a href="thermal_sharpening/thermal_sharpening.html">Thermal Sharpening</a>
+        </div>
+    </div>
+    <span class="nav-title">Urban Climate Viewer</span>
+    <select class="area-dropdown" id="areaSelect" onchange="switchArea(this.value)">
+        <option value="al_karama">Al Karama</option>
+    </select>
+</div>
+
+<!-- Time slider -->
+<div class="time-slider-bar" id="timeSlider">
+    <div class="time-slider-row">
+        <button class="play-btn" id="playBtn" onclick="togglePlay()" title="Auto-play">&#9654;</button>
+        <input type="range" class="time-slider-input" id="timeRange" min="0" max="6" value="3" oninput="onTimeChange(+this.value)">
+        <span class="time-label" id="timeLabel">12:00 PM</span>
+    </div>
+    <div class="time-marks" id="timeMarks"></div>
+</div>
+
+<!-- View presets -->
+<div class="view-presets">
+    <button class="view-btn" onclick="setView('overview')">Overview</button>
+    <button class="view-btn" onclick="setView('topdown')">Top-down</button>
+    <button class="view-btn" onclick="setView('street')">Street</button>
+    <button class="view-btn" onclick="setView('south')">South</button>
+</div>
+
+<!-- Dynamic legend -->
+<div class="legend-overlay" id="legend" style="display:none"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CONFIG & STATE
+// ═══════════════════════════════════════════════════════
+
+var AREA = null;                 // area.json manifest
+var DATA_BASE = '';              // e.g. "data/al_karama/"
+var CACHE = {};                  // data cache: key → fetched data
+var deckgl = null;
+
+// Layer visibility
+var layerState = {
+    buildings: true, canopy: true,
+    'gpu-shadows': true, 'building-shadows': true, 'tree-shadows': true,
+    'street-shade': false,
+    priority: false, combined: false, clusters: false, 'green-access': false,
+    centrality: false, comfort: false,
+    pois: false
+};
+
+// Sub-options
+var buildingColorMode = 'default';   // 'default' | 'height' | 'usage'
+var streetMode = 'shade';            // 'shade' | 'neutral'
+var combinedMetric = 'lst';          // 'lst' | 'gvi' | 'svf'
+var centralityMetric = 'betweenness'; // 'betweenness' | 'closeness'
+
+// Time
+var TIMES = [6, 8, 10, 12, 14, 16, 18];
+var TIME_LABELS = ['6:00 AM', '8:00 AM', '10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM', '6:00 PM'];
+var currentTimeIdx = 3;
+var playing = false;
+var playInterval = null;
+
+// Map
+var currentZoom = 15;
+
+// POI
+var poiCatFilters = {
+    food: true, shopping: true, hotel: true, health: true,
+    religious: true, services: true, leisure: true, education: true
+};
+var POI_CAT_EMOJI = {
+    food: '\ud83c\udf54', shopping: '\ud83d\udecd\ufe0f', hotel: '\ud83c\udfe8',
+    health: '\u2695\ufe0f', religious: '\ud83d\udd4c', services: '\ud83c\udfe6',
+    leisure: '\u26bd', education: '\ud83c\udf93'
+};
+
+// Pre-render emoji to data URLs for IconLayer
+var POI_ICON_SIZE = 64;
+var POI_ICON_MAPPING = {};
+function emojiToDataURL(emoji, size) {
+    var c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    var ctx = c.getContext('2d');
+    ctx.font = (size * 0.7) + 'px serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(emoji, size / 2, size / 2);
+    return c.toDataURL();
+}
+for (var _cat in POI_CAT_EMOJI) {
+    POI_ICON_MAPPING[_cat] = {
+        url: emojiToDataURL(POI_CAT_EMOJI[_cat], POI_ICON_SIZE),
+        width: POI_ICON_SIZE, height: POI_ICON_SIZE,
+        anchorY: POI_ICON_SIZE / 2
+    };
+}
+
+// ═══════════════════════════════════════════════════════
+//  DATA LOADING
+// ═══════════════════════════════════════════════════════
+
+async function loadData(key) {
+    if (CACHE[key]) return CACHE[key];
+    var path = null;
+
+    // Resolve path from area manifest
+    if (key.startsWith('shadows_')) {
+        var hour = key.replace('shadows_', '');
+        path = AREA.layers.shadows[hour];
+    } else if (AREA.layers[key]) {
+        path = AREA.layers[key];
+    } else {
+        // Try direct key match (e.g. 'distance_to_green')
+        path = AREA.layers[key.replace(/-/g, '_')];
+    }
+    if (!path) { console.warn('No path for data key:', key); return null; }
+
+    var url = DATA_BASE + path;
+    var resp = await fetch(url);
+    if (!resp.ok) { console.warn('Failed to load:', url); return null; }
+
+    if (path.endsWith('.csv')) {
+        CACHE[key] = parseCSV(await resp.text());
+    } else {
+        CACHE[key] = await resp.json();
+    }
+    return CACHE[key];
+}
+
+function parseCSV(text) {
+    var lines = text.trim().split('\n');
+    var headers = lines[0].split(',');
+    var rows = [];
+    for (var i = 1; i < lines.length; i++) {
+        var vals = lines[i].split(',');
+        var row = {};
+        for (var j = 0; j < headers.length; j++) {
+            var v = vals[j];
+            var n = parseFloat(v);
+            row[headers[j]] = (v !== '' && !isNaN(n)) ? n : v;
+        }
+        rows.push(row);
+    }
+    return rows;
+}
+
+function showLoading(layerKey, show) {
+    var el = document.getElementById('load-' + layerKey);
+    if (el) el.style.display = show ? 'inline-block' : 'none';
+}
+
+// ═══════════════════════════════════════════════════════
+//  LAYER TOGGLE HANDLERS
+// ═══════════════════════════════════════════════════════
+
+async function onLayerToggle(key) {
+    var cb = document.getElementById('tog-' + key);
+    layerState[key] = cb.checked;
+
+    // Show/hide sub-options
+    var optEl = document.getElementById('opt-' + key);
+    if (optEl && key !== 'buildings') {
+        optEl.style.display = cb.checked ? '' : 'none';
+    }
+
+    // POI pills
+    if (key === 'pois') {
+        document.getElementById('poiPills').style.display = cb.checked ? 'flex' : 'none';
+    }
+
+    // Show street-shade options
+    if (key === 'street-shade') {
+        var ssOpt = document.getElementById('opt-street-shade');
+        if (ssOpt) ssOpt.style.display = cb.checked ? '' : 'none';
+    }
+
+    // Show combined options
+    if (key === 'combined') {
+        var cOpt = document.getElementById('opt-combined');
+        if (cOpt) cOpt.style.display = cb.checked ? '' : 'none';
+    }
+
+    // Show centrality options
+    if (key === 'centrality') {
+        var crOpt = document.getElementById('opt-centrality');
+        if (crOpt) crOpt.style.display = cb.checked ? '' : 'none';
+    }
+
+    // Lazy-load data if needed
+    if (cb.checked) {
+        await ensureDataLoaded(key);
+    }
+
+    rebuildDeck();
+    updateLegend();
+}
+
+async function ensureDataLoaded(key) {
+    var dataKeyMap = {
+        'buildings': 'buildings',
+        'canopy': 'canopy',
+        'building-shadows': 'shadows_' + padHour(TIMES[currentTimeIdx]),
+        'tree-shadows': 'shadows_' + padHour(TIMES[currentTimeIdx]),
+        'street-shade': 'street_shade',
+        'priority': 'priority',
+        'combined': 'combined_svi',
+        'clusters': 'clusters',
+        'green-access': 'distance_to_green',
+        'centrality': 'streets',
+        'comfort': 'segment_comfort',
+        'pois': 'pois'
+    };
+
+    var dataKey = dataKeyMap[key];
+    if (!dataKey || CACHE[dataKey]) return;
+
+    showLoading(key, true);
+    await loadData(dataKey);
+
+    // Street shade needs both CSV data AND streets geometry
+    if (key === 'street-shade' && !CACHE['streets']) {
+        await loadData('streets');
+    }
+
+    showLoading(key, false);
+}
+
+function padHour(h) { return h < 10 ? '0' + h : '' + h; }
+
+// ═══════════════════════════════════════════════════════
+//  SUB-OPTION SETTERS
+// ═══════════════════════════════════════════════════════
+
+function setBuildingColor(mode) { buildingColorMode = mode; rebuildDeck(); updateLegend(); }
+function setStreetMode(mode) { streetMode = mode; rebuildDeck(); }
+function setCombinedMetric(m) { combinedMetric = m; rebuildDeck(); updateLegend(); }
+function setCentralityMetric(m) { centralityMetric = m; rebuildDeck(); updateLegend(); }
+
+// ═══════════════════════════════════════════════════════
+//  COLOR FUNCTIONS
+// ═══════════════════════════════════════════════════════
+
+function heightColor(h) {
+    if (h < 5) return [180, 210, 230];
+    if (h < 10) return [130, 180, 210];
+    if (h < 20) return [80, 140, 200];
+    if (h < 40) return [50, 100, 180];
+    return [30, 60, 150];
+}
+
+function usageColor(d) {
+    var u = d.properties.building_usage;
+    if (u === 'residential') return [100, 180, 100];
+    if (u === 'commercial') return [100, 100, 220];
+    if (u === 'retail') return [220, 160, 60];
+    if (u === 'office') return [160, 100, 200];
+    if (u === 'industrial') return [200, 100, 80];
+    if (u === 'religious') return [220, 200, 120];
+    return [160, 170, 180];
+}
+
+function shadeColor(pct) {
+    if (pct >= 0.7) return [30, 100, 50, 200];
+    if (pct >= 0.5) return [80, 170, 80, 200];
+    if (pct >= 0.3) return [220, 200, 60, 200];
+    if (pct >= 0.1) return [230, 140, 50, 200];
+    return [220, 60, 40, 200];
+}
+
+function lstColor(lst) {
+    var ratio = Math.max(0, Math.min(1, (lst - 46) / (53 - 46)));
+    if (ratio < 0.25) return [60, 80, 200];
+    if (ratio < 0.5) return [60, 200, 200];
+    if (ratio < 0.75) return [240, 180, 40];
+    return [220, 50, 30];
+}
+
+function gviColor(gvi) {
+    if (gvi < 0.02) return [240, 240, 240, 160];
+    if (gvi < 0.05) return [199, 233, 192, 180];
+    if (gvi < 0.1) return [116, 196, 118, 200];
+    if (gvi < 0.2) return [35, 139, 69, 220];
+    return [0, 90, 50, 240];
+}
+
+function svfColor(svf) {
+    var r = Math.round(50 + 180 * svf);
+    var g = Math.round(50 + 180 * svf);
+    var b = Math.round(100 + 155 * svf);
+    return [r, g, b, 200];
+}
+
+function priorityColor(level) {
+    if (level === 'Critical') return [211, 47, 47, 200];
+    if (level === 'High') return [245, 124, 0, 200];
+    if (level === 'Medium') return [255, 235, 59, 180];
+    return [129, 199, 132, 180];
+}
+
+function clusterColor(cluster) {
+    var colors = [[229, 57, 53, 200], [255, 152, 0, 200], [76, 175, 80, 200], [33, 150, 243, 200]];
+    return colors[cluster] || [150, 150, 150, 200];
+}
+
+function greenAccessColor(dist) {
+    if (dist < 100) return [27, 94, 32, 220];
+    if (dist < 200) return [102, 187, 106, 200];
+    if (dist < 400) return [255, 183, 77, 200];
+    return [211, 47, 47, 200];
+}
+
+function centralityColor(val, metric) {
+    var ratio;
+    if (metric === 'betweenness') {
+        ratio = Math.min(1, val / 0.196);
+        if (ratio < 0.2) return [225, 190, 231, 200];
+        if (ratio < 0.5) return [171, 71, 188, 220];
+        return [106, 27, 154, 240];
+    } else {
+        ratio = Math.min(1, val / 0.00058);
+        if (ratio < 0.3) return [187, 222, 251, 200];
+        if (ratio < 0.6) return [66, 165, 245, 220];
+        return [21, 101, 192, 240];
+    }
+}
+
+function comfortColor(pci) {
+    if (pci >= 0.6) return [27, 94, 32, 220];
+    if (pci >= 0.5) return [76, 175, 80, 200];
+    if (pci >= 0.4) return [255, 235, 59, 200];
+    if (pci >= 0.3) return [255, 152, 0, 200];
+    return [211, 47, 47, 200];
+}
+
+// ═══════════════════════════════════════════════════════
+//  BUILD LAYERS
+// ═══════════════════════════════════════════════════════
+
+function buildLayers() {
+    var h = TIMES[currentTimeIdx];
+    var hPad = padHour(h);
+    var shadeKey = 'shade_' + hPad;
+    var layers = [];
+
+    // === URBAN FORM: Buildings ===
+    if (layerState.buildings && CACHE.buildings) {
+        layers.push(new deck.PolygonLayer({
+            id: 'buildings',
+            data: CACHE.buildings.features,
+            extruded: true,
+            wireframe: false,
+            opacity: 0.85,
+            getPolygon: function(d) { return d.geometry.coordinates; },
+            getElevation: function(d) { return d.properties.height || 9; },
+            getFillColor: buildingColorMode === 'usage'
+                ? function(d) { return usageColor(d); }
+                : buildingColorMode === 'height'
+                    ? function(d) { return heightColor(d.properties.height || 9); }
+                    : [160, 170, 180],
+            material: { ambient: 0.6, diffuse: 0.7, shininess: 30, specularColor: [200, 200, 200] },
+            pickable: true,
+            updateTriggers: { getFillColor: [buildingColorMode] }
+        }));
+    }
+
+    // === URBAN FORM: Canopy ===
+    if (layerState.canopy && CACHE.canopy) {
+        layers.push(new deck.PolygonLayer({
+            id: 'canopy',
+            data: CACHE.canopy.features,
+            extruded: true,
+            wireframe: false,
+            opacity: 0.7,
+            getPolygon: function(d) { return d.geometry.coordinates; },
+            getElevation: function(d) { return d.properties.height || 3; },
+            getFillColor: [70, 180, 90],
+            material: { ambient: 0.6, diffuse: 0.7, shininess: 20, specularColor: [60, 140, 70] },
+            pickable: true
+        }));
+    }
+
+    // === SHADE: Projected building shadows ===
+    var shadowKey = 'shadows_' + hPad;
+    if (layerState['building-shadows'] && CACHE[shadowKey]) {
+        var shadowData = CACHE[shadowKey];
+        // Shadow data may contain both building and tree shadows in one file,
+        // or separate. Check for features.
+        if (shadowData && shadowData.features) {
+            layers.push(new deck.GeoJsonLayer({
+                id: 'projected-shadows',
+                data: shadowData,
+                filled: true,
+                stroked: false,
+                getFillColor: [30, 30, 60, 80],
+                pickable: false,
+                updateTriggers: { data: [hPad] }
+            }));
+        }
+    }
+
+    // === SHADE: Tree shadows (using same shadow data - separate ID for toggling) ===
+    if (layerState['tree-shadows'] && CACHE[shadowKey]) {
+        // Tree shadows are in the same geojson but we filter by source
+        // If separate tree shadow data exists, use it; otherwise skip
+        // (the existing shade_map_3d.html had separate TREE_SHADOW_DATA)
+        // For now, tree shadows are bundled in the main shadow files
+    }
+
+    // === SHADE: Street shade % ===
+    // streets.geojson (geometry) + street_shade CSV (shade_XX values) share the same index order
+    if (layerState['street-shade'] && CACHE.streets) {
+        var streetsData = CACHE.streets;
+        if (streetMode === 'neutral') {
+            layers.push(new deck.PathLayer({
+                id: 'streets-neutral',
+                data: streetsData.features,
+                getPath: function(d) { return d.geometry.coordinates; },
+                getColor: [220, 220, 220, 90],
+                getWidth: 4,
+                widthUnits: 'pixels',
+                pickable: true,
+                opacity: 1.0
+            }));
+        } else if (CACHE.street_shade) {
+            layers.push(new deck.PathLayer({
+                id: 'streets-shade',
+                data: streetsData.features,
+                getPath: function(d) { return d.geometry.coordinates; },
+                getColor: function(d, info) {
+                    var row = CACHE.street_shade[info.index];
+                    var shade = row ? (row[shadeKey] || 0) : 0;
+                    return shadeColor(shade);
+                },
+                getWidth: 3,
+                widthUnits: 'pixels',
+                pickable: true,
+                opacity: 0.9,
+                updateTriggers: { getColor: [shadeKey] }
+            }));
+        }
+    }
+
+    // === THERMAL: Heat Mitigation Priority ===
+    if (layerState.priority && CACHE.priority) {
+        layers.push(new deck.ScatterplotLayer({
+            id: 'priority-points',
+            data: CACHE.priority,
+            getPosition: function(d) { return [d.lon, d.lat]; },
+            getRadius: 8,
+            radiusUnits: 'pixels',
+            getFillColor: function(d) { return priorityColor(d.priority_level); },
+            pickable: true,
+            opacity: 0.8
+        }));
+    }
+
+    // === THERMAL: Combined SVI+Satellite ===
+    if (layerState.combined && CACHE.combined_svi) {
+        layers.push(new deck.ScatterplotLayer({
+            id: 'combined-points',
+            data: CACHE.combined_svi,
+            getPosition: function(d) { return [d.lon, d.lat]; },
+            getRadius: 5,
+            radiusUnits: 'pixels',
+            getFillColor: function(d) {
+                if (combinedMetric === 'lst') return lstColor(d.lst);
+                if (combinedMetric === 'gvi') return gviColor(d.gvi);
+                return svfColor(d.svf);
+            },
+            pickable: true,
+            opacity: 0.8,
+            updateTriggers: { getFillColor: [combinedMetric] }
+        }));
+    }
+
+    // === THERMAL: Climate Clusters ===
+    if (layerState.clusters && CACHE.clusters) {
+        layers.push(new deck.ScatterplotLayer({
+            id: 'cluster-points',
+            data: CACHE.clusters,
+            getPosition: function(d) { return [d.lon, d.lat]; },
+            getRadius: 6,
+            radiusUnits: 'pixels',
+            getFillColor: function(d) { return clusterColor(d.cluster); },
+            pickable: true,
+            opacity: 0.8
+        }));
+    }
+
+    // === THERMAL: Green Space Access ===
+    if (layerState['green-access'] && CACHE.distance_to_green) {
+        layers.push(new deck.ScatterplotLayer({
+            id: 'green-access-points',
+            data: CACHE.distance_to_green,
+            getPosition: function(d) { return [d.lon, d.lat]; },
+            getRadius: 5,
+            radiusUnits: 'pixels',
+            getFillColor: function(d) { return greenAccessColor(d.dist_to_green_m); },
+            pickable: true,
+            opacity: 0.8
+        }));
+    }
+
+    // === MOBILITY: Street Centrality ===
+    // Centrality metrics (betweenness, closeness, etc.) are embedded in streets.geojson properties
+    if (layerState.centrality && CACHE.streets) {
+        layers.push(new deck.PathLayer({
+            id: 'centrality-paths',
+            data: CACHE.streets.features,
+            getPath: function(d) { return d.geometry.coordinates; },
+            getColor: function(d) {
+                var p = d.properties;
+                var val = centralityMetric === 'betweenness' ? p.betweenness : p.closeness;
+                return centralityColor(val || 0, centralityMetric);
+            },
+            getWidth: function(d) {
+                var p = d.properties;
+                var val = centralityMetric === 'betweenness' ? p.betweenness : p.closeness;
+                var max = centralityMetric === 'betweenness' ? 0.196 : 0.00058;
+                return 2 + ((val || 0) / max) * 5;
+            },
+            widthUnits: 'pixels',
+            pickable: true,
+            opacity: 0.85,
+            updateTriggers: { getColor: [centralityMetric], getWidth: [centralityMetric] }
+        }));
+    }
+
+    // === MOBILITY: Pedestrian Comfort ===
+    if (layerState.comfort && CACHE.segment_comfort) {
+        layers.push(new deck.ScatterplotLayer({
+            id: 'comfort-points',
+            data: CACHE.segment_comfort,
+            getPosition: function(d) { return [d.lon, d.lat]; },
+            getRadius: 10,
+            radiusUnits: 'pixels',
+            getFillColor: function(d) { return comfortColor(d.pci_mean); },
+            pickable: true,
+            opacity: 0.8
+        }));
+    }
+
+    // === POI ===
+    if (layerState.pois && CACHE.pois) {
+        var filtered = getFilteredPOIs();
+        var _collide = new deck.CollisionFilterExtension();
+        layers.push(new deck.IconLayer({
+            id: 'poi-icons',
+            data: filtered,
+            getPosition: function(d) { return d.position; },
+            getIcon: function(d) { return POI_ICON_MAPPING[d.category] || POI_ICON_MAPPING.food; },
+            getSize: 28,
+            sizeUnits: 'pixels',
+            billboard: true,
+            pickable: true,
+            parameters: { depthTest: false },
+            extensions: [_collide],
+            collisionGroup: 'poi',
+            updateTriggers: { getIcon: [poiFilterKey()] }
+        }));
+        if (currentZoom > 18) {
+            layers.push(new deck.TextLayer({
+                id: 'poi-labels',
+                data: filtered,
+                getPosition: function(d) { return d.position; },
+                getText: function(d) { return d.label; },
+                getSize: 13,
+                getColor: [255, 255, 255, 230],
+                getAngle: 0,
+                getTextAnchor: 'middle',
+                getAlignmentBaseline: 'top',
+                getPixelOffset: [0, 16],
+                fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+                fontWeight: 'bold',
+                outlineWidth: 3,
+                outlineColor: [0, 0, 0, 220],
+                billboard: true,
+                pickable: false,
+                parameters: { depthTest: false }
+            }));
+        }
+    }
+
+    return layers;
+}
+
+// ═══════════════════════════════════════════════════════
+//  LIGHTING / SUN
+// ═══════════════════════════════════════════════════════
+
+function buildLightingEffect(timeIdx) {
+    var h = TIMES[timeIdx];
+    var ts = AREA.utc_timestamps[h];
+    var timestamp = new Date(ts);
+
+    var sunLight = new deck._SunLight({
+        timestamp: timestamp.getTime(),
+        color: [255, 255, 255],
+        intensity: 1.0
+    });
+    var ambientLight = new deck.AmbientLight({
+        color: [255, 255, 255],
+        intensity: 0.8
+    });
+    var lightingEffect = new deck.LightingEffect({
+        ambientLight: ambientLight,
+        sunLight: sunLight
+    });
+    lightingEffect.shadowColor = [0, 0, 0, layerState['gpu-shadows'] ? 0.35 : 0.0];
+    return lightingEffect;
+}
+
+function updateSunInfo(timeIdx) {
+    var h = TIMES[timeIdx];
+    var si = AREA.sun_info[h];
+    if (!si) return;
+    document.getElementById('sunAlt').textContent = 'Altitude: ' + si.altitude + '\u00b0';
+    document.getElementById('sunAz').textContent = 'Azimuth: ' + si.azimuth + '\u00b0';
+    document.getElementById('sunShadow').textContent = 'Shadow: \u00d7' + si.shadow_factor.toFixed(1);
+
+    // Rotate compass needle
+    var needle = document.getElementById('compassNeedle');
+    if (needle) {
+        needle.setAttribute('transform', 'rotate(' + si.azimuth + ', 40, 40)');
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  POI HELPERS
+// ═══════════════════════════════════════════════════════
+
+function getFilteredPOIs() {
+    if (!CACHE.pois) return [];
+    return CACHE.pois.filter(function(p) { return poiCatFilters[p.category]; });
+}
+
+function poiFilterKey() {
+    return Object.values(poiCatFilters).map(function(v) { return v ? '1' : '0'; }).join('');
+}
+
+function togglePOICat(el) {
+    var cat = el.getAttribute('data-cat');
+    poiCatFilters[cat] = !poiCatFilters[cat];
+    el.classList.toggle('active');
+    rebuildDeck();
+}
+
+function setAllPOICats(val) {
+    for (var c in poiCatFilters) poiCatFilters[c] = val;
+    var pills = document.querySelectorAll('.poi-pill');
+    pills.forEach(function(p) { val ? p.classList.add('active') : p.classList.remove('active'); });
+    rebuildDeck();
+}
+
+// ═══════════════════════════════════════════════════════
+//  TOOLTIP
+// ═══════════════════════════════════════════════════════
+
+function getTooltip(info) {
+    if (!info.object) return null;
+    var d = info.object;
+    var lid = info.layer ? info.layer.id : '';
+
+    // POI
+    if (lid === 'poi-icons' || lid === 'poi-labels') {
+        var emoji = POI_CAT_EMOJI[d.category] || '';
+        return {
+            html: '<div style="padding:6px;max-width:250px;"><span style="font-size:16px;margin-right:4px;">' + emoji + '</span><b>' + d.label + '</b><br><span style="color:#aaa;">' + d.category + ' &middot; ' + d.type + '</span></div>',
+            style: { background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }
+        };
+    }
+
+    // Buildings
+    if (lid === 'buildings') {
+        var p = d.properties;
+        return {
+            html: '<div style="padding:6px;max-width:250px;"><b>' + (p.name || 'Building') + '</b><br>Height: ' + (p.height || '?') + 'm' +
+                (p.levels ? '<br>Levels: ' + p.levels : '') +
+                (p.building_type && p.building_type !== 'yes' ? '<br>Type: ' + p.building_type : '') +
+                '<br>Usage: ' + (p.building_usage || 'unknown') + '</div>',
+            style: { background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }
+        };
+    }
+
+    // Canopy
+    if (lid === 'canopy') {
+        return {
+            html: '<div style="padding:6px;"><b>Tree Canopy</b><br>Height: ' + (d.properties.height || 3) + 'm</div>',
+            style: { background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }
+        };
+    }
+
+    // Streets (shade or neutral)
+    if (lid.startsWith('streets-')) {
+        var h = TIMES[currentTimeIdx];
+        var sk = 'shade_' + padHour(h);
+        // Shade data is in the CSV cache, matched by index
+        var shadeRow = CACHE.street_shade ? CACHE.street_shade[info.index] : null;
+        var sv = shadeRow ? (shadeRow[sk] || 0) : 0;
+        var avg = shadeRow ? (shadeRow.shade_avg || 0) : 0;
+        return {
+            html: '<div style="padding:6px;"><b>Street Segment</b><br>Shade at ' + TIME_LABELS[currentTimeIdx] + ': ' + (sv * 100).toFixed(1) + '%' +
+                '<br>Avg shade: ' + (avg * 100).toFixed(1) + '%</div>',
+            style: { background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }
+        };
+    }
+
+    // Priority
+    if (lid === 'priority-points') {
+        return {
+            html: '<div style="padding:6px;"><b>Heat Mitigation</b><br>Priority: <span style="color:' + (d.priority_level === 'Critical' ? '#f44' : d.priority_level === 'High' ? '#ff9800' : '#4caf50') + '">' + d.priority_level + '</span>' +
+                '<br>Score: ' + (d.priority_score || 0).toFixed(3) +
+                '<br>LST: ' + (d.lst || 0).toFixed(1) + '°C' +
+                '<br>GVI: ' + ((d.gvi || 0) * 100).toFixed(1) + '%</div>',
+            style: { background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }
+        };
+    }
+
+    // Combined SVI
+    if (lid === 'combined-points') {
+        return {
+            html: '<div style="padding:6px;"><b>SVI + Satellite</b><br>LST: ' + (d.lst || 0).toFixed(1) + '°C' +
+                '<br>GVI: ' + ((d.gvi || 0) * 100).toFixed(1) + '%' +
+                '<br>SVF: ' + ((d.svf || 0) * 100).toFixed(1) + '%</div>',
+            style: { background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }
+        };
+    }
+
+    // Clusters
+    if (lid === 'cluster-points') {
+        return {
+            html: '<div style="padding:6px;"><b>' + (d.cluster_label || 'Cluster ' + d.cluster) + '</b>' +
+                '<br>GVI: ' + ((d.gvi || 0) * 100).toFixed(1) + '%' +
+                '<br>SVF: ' + ((d.svf || 0) * 100).toFixed(1) + '%' +
+                '<br>LST: ' + (d.lst || 0).toFixed(1) + '°C</div>',
+            style: { background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }
+        };
+    }
+
+    // Green access
+    if (lid === 'green-access-points') {
+        return {
+            html: '<div style="padding:6px;"><b>Green Space Access</b><br>Distance: ' + (d.dist_to_green_m || 0).toFixed(0) + 'm</div>',
+            style: { background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }
+        };
+    }
+
+    // Centrality
+    if (lid === 'centrality-paths') {
+        var p = d.properties;
+        return {
+            html: '<div style="padding:6px;"><b>Street Centrality</b><br>Betweenness: ' + (p.betweenness || 0).toFixed(4) +
+                '<br>Closeness: ' + (p.closeness || 0).toFixed(6) +
+                '<br>Centrality: ' + (p.centrality || 0).toFixed(3) +
+                (p.pci ? '<br>PCI: ' + p.pci.toFixed(3) : '') +
+                '<br>Priority: ' + (p.priority || 0).toFixed(3) + '</div>',
+            style: { background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }
+        };
+    }
+
+    // Comfort
+    if (lid === 'comfort-points') {
+        return {
+            html: '<div style="padding:6px;"><b>Pedestrian Comfort</b><br>PCI: ' + (d.pci_mean || 0).toFixed(3) +
+                '<br>LST: ' + (d.lst_mean || 0).toFixed(1) + '°C' +
+                '<br>GVI: ' + ((d.gvi_mean || 0) * 100).toFixed(1) + '%' +
+                '<br>Shade: ' + ((d.shade_mean || 0) * 100).toFixed(1) + '%</div>',
+            style: { background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }
+        };
+    }
+
+    return null;
+}
+
+// ═══════════════════════════════════════════════════════
+//  TIME CONTROLS
+// ═══════════════════════════════════════════════════════
+
+async function onTimeChange(idx) {
+    currentTimeIdx = idx;
+    document.getElementById('timeLabel').textContent = TIME_LABELS[idx];
+    updateSunInfo(idx);
+    updateShadeChart();
+
+    // Load shadow data for this time if needed
+    var hPad = padHour(TIMES[idx]);
+    var shadowKey = 'shadows_' + hPad;
+    if ((layerState['building-shadows'] || layerState['tree-shadows']) && !CACHE[shadowKey]) {
+        showLoading('building-shadows', true);
+        await loadData(shadowKey);
+        showLoading('building-shadows', false);
+    }
+
+    // Pre-fetch neighbors
+    prefetchNeighborShadows(idx);
+
+    rebuildDeck();
+}
+
+function prefetchNeighborShadows(idx) {
+    var neighbors = [idx - 1, idx + 1];
+    neighbors.forEach(function(ni) {
+        if (ni >= 0 && ni < TIMES.length) {
+            var hPad = padHour(TIMES[ni]);
+            var key = 'shadows_' + hPad;
+            if (!CACHE[key]) {
+                loadData(key); // fire and forget
+            }
+        }
+    });
+}
+
+function togglePlay() {
+    var btn = document.getElementById('playBtn');
+    if (playing) {
+        clearInterval(playInterval);
+        playing = false;
+        btn.classList.remove('playing');
+        btn.innerHTML = '&#9654;';
+    } else {
+        playing = true;
+        btn.classList.add('playing');
+        btn.innerHTML = '&#9646;&#9646;';
+        playInterval = setInterval(function() {
+            var next = (currentTimeIdx + 1) % TIMES.length;
+            document.getElementById('timeRange').value = next;
+            onTimeChange(next);
+        }, 2000);
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  VIEW PRESETS
+// ═══════════════════════════════════════════════════════
+
+function setView(preset) {
+    var views = {
+        overview: { longitude: 55.3025, latitude: 25.2485, zoom: 15, pitch: 55, bearing: -20 },
+        topdown:  { longitude: 55.3025, latitude: 25.2485, zoom: 16, pitch: 0, bearing: 0 },
+        street:   { longitude: 55.3025, latitude: 25.2485, zoom: 18, pitch: 70, bearing: 30 },
+        south:    { longitude: 55.3025, latitude: 25.245, zoom: 16, pitch: 60, bearing: 180 }
+    };
+    var v = views[preset];
+    if (v && deckgl) {
+        deckgl.setProps({
+            initialViewState: Object.assign({}, v, {
+                transitionDuration: 1000,
+                transitionInterpolator: new deck.FlyToInterpolator()
+            })
+        });
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  ACCORDION
+// ═══════════════════════════════════════════════════════
+
+function toggleAccordion(header) {
+    var group = header.parentElement;
+    group.classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════════════════
+//  2D MAPS DROPDOWN
+// ═══════════════════════════════════════════════════════
+
+function toggleMapsMenu() {
+    document.getElementById('mapsMenu').classList.toggle('open');
+}
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.nav-dropdown-wrap')) {
+        document.getElementById('mapsMenu').classList.remove('open');
+    }
+});
+
+// ═══════════════════════════════════════════════════════
+//  SHADE CHART
+// ═══════════════════════════════════════════════════════
+
+function buildShadeChart() {
+    if (!CACHE.street_shade) return;
+    var chart = document.getElementById('shadeChart');
+    var labels = document.getElementById('shadeChartLabels');
+    chart.innerHTML = '';
+    labels.innerHTML = '';
+
+    TIMES.forEach(function(h, i) {
+        var shadeKey = 'shade_' + padHour(h);
+        var total = 0, count = 0;
+        CACHE.street_shade.forEach(function(row) {
+            if (row[shadeKey] !== undefined && row[shadeKey] !== '') {
+                total += row[shadeKey];
+                count++;
+            }
+        });
+        var avg = count > 0 ? total / count : 0;
+
+        var bar = document.createElement('div');
+        bar.className = 'shade-bar' + (i === currentTimeIdx ? ' active' : '');
+        bar.style.height = Math.max(2, avg * 100) + '%';
+        bar.title = TIME_LABELS[i] + ': ' + (avg * 100).toFixed(1) + '%';
+        chart.appendChild(bar);
+
+        var lbl = document.createElement('span');
+        lbl.textContent = (h < 10 ? '' : '') + h;
+        labels.appendChild(lbl);
+    });
+}
+
+function updateShadeChart() {
+    var bars = document.querySelectorAll('.shade-bar');
+    bars.forEach(function(b, i) {
+        b.classList.toggle('active', i === currentTimeIdx);
+    });
+}
+
+// ═══════════════════════════════════════════════════════
+//  LEGEND
+// ═══════════════════════════════════════════════════════
+
+function updateLegend() {
+    var el = document.getElementById('legend');
+    var items = [];
+
+    if (layerState.buildings && buildingColorMode === 'height') {
+        items.push('<div class="legend-title">Building Height</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:rgb(180,210,230)"></div> &lt;5m</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:rgb(130,180,210)"></div> 5-10m</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:rgb(80,140,200)"></div> 10-20m</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:rgb(50,100,180)"></div> 20-40m</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:rgb(30,60,150)"></div> &gt;40m</div>');
+    }
+    if (layerState.buildings && buildingColorMode === 'usage') {
+        items.push('<div class="legend-title">Building Usage</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:rgb(100,180,100)"></div> Residential</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:rgb(100,100,220)"></div> Commercial</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:rgb(220,160,60)"></div> Retail</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:rgb(160,100,200)"></div> Office</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:rgb(160,170,180)"></div> Other</div>');
+    }
+    if (layerState['street-shade'] && streetMode === 'shade') {
+        items.push('<div class="legend-title">Street Shade</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:rgb(30,100,50)"></div> &ge;70%</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:rgb(80,170,80)"></div> 50-70%</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:rgb(220,200,60)"></div> 30-50%</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:rgb(230,140,50)"></div> 10-30%</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:rgb(220,60,40)"></div> &lt;10%</div>');
+    }
+    if (layerState.priority) {
+        items.push('<div class="legend-title">Heat Priority</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#d32f2f"></div> Critical</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#f57c00"></div> High</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#ffeb3b"></div> Medium</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#81c784"></div> Low</div>');
+    }
+    if (layerState.combined) {
+        var metricLabels = { lst: 'Temperature (°C)', gvi: 'Green View Index', svf: 'Sky View Factor' };
+        items.push('<div class="legend-title">' + metricLabels[combinedMetric] + '</div>');
+        if (combinedMetric === 'lst') {
+            items.push('<div class="legend-gradient" style="background:linear-gradient(to right,rgb(60,80,200),rgb(60,200,200),rgb(240,180,40),rgb(220,50,30))"></div>');
+            items.push('<div class="legend-labels"><span>46°C</span><span>53°C</span></div>');
+        } else if (combinedMetric === 'gvi') {
+            items.push('<div class="legend-gradient" style="background:linear-gradient(to right,#f7f7f7,#c7e9c0,#74c476,#238b45,#005a32)"></div>');
+            items.push('<div class="legend-labels"><span>0%</span><span>20%+</span></div>');
+        } else {
+            items.push('<div class="legend-gradient" style="background:linear-gradient(to right,rgb(50,50,100),rgb(140,140,178),rgb(230,230,255))"></div>');
+            items.push('<div class="legend-labels"><span>0%</span><span>100%</span></div>');
+        }
+    }
+    if (layerState.clusters) {
+        items.push('<div class="legend-title">Climate Clusters</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#e53935"></div> Hot &amp; Barren</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#ff9800"></div> Warm Urban</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#4caf50"></div> Shaded Urban</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#2196f3"></div> Cool &amp; Green</div>');
+    }
+    if (layerState['green-access']) {
+        items.push('<div class="legend-title">Green Access (m)</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#1b5e20"></div> &lt;100m</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#66bb6a"></div> 100-200m</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#ffb74d"></div> 200-400m</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#d32f2f"></div> &gt;400m</div>');
+    }
+    if (layerState.centrality) {
+        var cLabel = centralityMetric === 'betweenness' ? 'Betweenness' : 'Closeness';
+        items.push('<div class="legend-title">' + cLabel + ' Centrality</div>');
+        if (centralityMetric === 'betweenness') {
+            items.push('<div class="legend-item"><div class="legend-color" style="background:#e1bee7"></div> Low</div>');
+            items.push('<div class="legend-item"><div class="legend-color" style="background:#ab47bc"></div> Medium</div>');
+            items.push('<div class="legend-item"><div class="legend-color" style="background:#6a1b9a"></div> High</div>');
+        } else {
+            items.push('<div class="legend-item"><div class="legend-color" style="background:#bbdefb"></div> Low</div>');
+            items.push('<div class="legend-item"><div class="legend-color" style="background:#42a5f5"></div> Medium</div>');
+            items.push('<div class="legend-item"><div class="legend-color" style="background:#1565c0"></div> High</div>');
+        }
+    }
+    if (layerState.comfort) {
+        items.push('<div class="legend-title">Pedestrian Comfort</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#1b5e20"></div> High (&ge;0.6)</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#4caf50"></div> Good (0.5-0.6)</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#ffeb3b"></div> Fair (0.4-0.5)</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#ff9800"></div> Poor (0.3-0.4)</div>');
+        items.push('<div class="legend-item"><div class="legend-color" style="background:#d32f2f"></div> Bad (&lt;0.3)</div>');
+    }
+
+    if (items.length > 0) {
+        el.innerHTML = items.join('');
+        el.style.display = '';
+    } else {
+        el.style.display = 'none';
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+//  DECK.GL REBUILD
+// ═══════════════════════════════════════════════════════
+
+function rebuildDeck() {
+    if (!deckgl) return;
+    deckgl.setProps({
+        layers: buildLayers(),
+        effects: [buildLightingEffect(currentTimeIdx)]
+    });
+}
+
+// ═══════════════════════════════════════════════════════
+//  AREA SWITCHING
+// ═══════════════════════════════════════════════════════
+
+async function switchArea(areaId) {
+    DATA_BASE = 'data/' + areaId + '/';
+
+    // Clear cache
+    CACHE = {};
+
+    // Load area manifest
+    var resp = await fetch(DATA_BASE + 'area.json');
+    AREA = await resp.json();
+
+    // Update UI
+    document.getElementById('areaSubtitle').textContent =
+        AREA.analysis_date + ' \u2014 ' + AREA.name + ', ' + AREA.city;
+    document.title = 'Urban Climate Viewer - ' + AREA.name;
+
+    // Load immediate-tier data
+    document.getElementById('initLoader').classList.add('active');
+    await Promise.all([
+        loadData('buildings'),
+        loadData('canopy'),
+        loadData('street_shade')
+    ]);
+
+    // Load initial shadow
+    var hPad = padHour(TIMES[currentTimeIdx]);
+    await loadData('shadows_' + hPad);
+
+    document.getElementById('initLoader').classList.remove('active');
+
+    // Build shade chart
+    buildShadeChart();
+    updateSunInfo(currentTimeIdx);
+
+    // Init or update deck
+    if (!deckgl) {
+        initDeck();
+    } else {
+        deckgl.setProps({
+            initialViewState: {
+                longitude: AREA.center[0],
+                latitude: AREA.center[1],
+                zoom: AREA.zoom,
+                pitch: 55,
+                bearing: -20,
+                transitionDuration: 1000,
+                transitionInterpolator: new deck.FlyToInterpolator()
+            },
+            layers: buildLayers(),
+            effects: [buildLightingEffect(currentTimeIdx)]
+        });
+    }
+
+    updateLegend();
+    prefetchNeighborShadows(currentTimeIdx);
+}
+
+function initDeck() {
+    deckgl = new deck.DeckGL({
+        container: 'map-canvas',
+        mapStyle: 'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json',
+        initialViewState: {
+            longitude: AREA.center[0],
+            latitude: AREA.center[1],
+            zoom: AREA.zoom,
+            pitch: 55,
+            bearing: -20,
+            maxPitch: 85
+        },
+        controller: true,
+        layers: buildLayers(),
+        effects: [buildLightingEffect(currentTimeIdx)],
+        onViewStateChange: function(params) {
+            var newZoom = params.viewState.zoom;
+            var crossed = (currentZoom <= 18 && newZoom > 18) || (currentZoom > 18 && newZoom <= 18);
+            currentZoom = newZoom;
+            if (crossed && layerState.pois) {
+                rebuildDeck();
+            }
+        },
+        getTooltip: getTooltip
+    });
+}
+
+// ═══════════════════════════════════════════════════════
+//  TIME MARKS
+// ═══════════════════════════════════════════════════════
+
+function buildTimeMarks() {
+    var el = document.getElementById('timeMarks');
+    el.innerHTML = TIME_LABELS.map(function(l) { return '<span>' + l.replace(':00 ', '') + '</span>'; }).join('');
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+
+async function init() {
+    buildTimeMarks();
+
+    // Load areas list and populate dropdown
+    try {
+        var areasResp = await fetch('data/areas.json');
+        var areas = await areasResp.json();
+        var select = document.getElementById('areaSelect');
+        select.innerHTML = '';
+        areas.forEach(function(a) {
+            var opt = document.createElement('option');
+            opt.value = a.id;
+            opt.textContent = a.name;
+            select.appendChild(opt);
+        });
+    } catch (e) {
+        console.warn('Could not load areas.json, using default');
+    }
+
+    // Load default area
+    await switchArea('al_karama');
+}
+
+init();
+</script>
+</body>
+</html>

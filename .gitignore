@@ -30,3 +30,4 @@ input/*.dbf
 input/*.prj
 input/*.cpg
 cache
+.playwright-mcp

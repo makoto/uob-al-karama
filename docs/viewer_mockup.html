@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Unified Viewer Mockup - Al Karama Urban Climate Analysis</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; background: #1a1a2e; color: #eee; }
+
+        /* ── Top bar ── */
+        .topbar {
+            position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+            height: 44px; background: rgba(0,0,0,0.92);
+            display: flex; align-items: center; padding: 0 16px;
+            border-bottom: 1px solid #333;
+        }
+        .topbar-left { display: flex; align-items: center; gap: 12px; }
+        .topbar-center { flex: 1; text-align: center; }
+        .topbar-right { display: flex; align-items: center; gap: 10px; }
+        .topbar-title { font-size: 14px; font-weight: 600; color: #4fc3f7; letter-spacing: 0.5px; }
+        .nav-pill {
+            padding: 4px 12px; border-radius: 14px; font-size: 12px;
+            text-decoration: none; color: #aaa; background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1); cursor: pointer;
+            transition: all 0.2s;
+        }
+        .nav-pill:hover { background: rgba(79,195,247,0.15); color: #4fc3f7; border-color: rgba(79,195,247,0.3); }
+        .area-select {
+            padding: 4px 10px; border-radius: 6px; font-size: 12px;
+            background: rgba(255,255,255,0.08); color: #ccc;
+            border: 1px solid rgba(255,255,255,0.15); cursor: pointer;
+        }
+        .area-select:hover { border-color: #4fc3f7; }
+
+        /* ── Map canvas placeholder ── */
+        .map-canvas {
+            position: absolute; top: 44px; left: 0; right: 350px; bottom: 100px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            display: flex; align-items: center; justify-content: center;
+        }
+        .map-placeholder {
+            text-align: center; color: #445; font-size: 14px;
+        }
+        .map-placeholder .big { font-size: 48px; color: #334; margin-bottom: 10px; }
+
+        /* ── Right panel ── */
+        .panel {
+            position: absolute; top: 44px; right: 0; bottom: 100px; width: 350px;
+            background: rgba(0,0,0,0.92); border-left: 1px solid #333;
+            overflow-y: auto; overflow-x: hidden;
+        }
+        .panel::-webkit-scrollbar { width: 4px; }
+        .panel::-webkit-scrollbar-thumb { background: #444; border-radius: 2px; }
+
+        /* Accordion group */
+        .group { border-bottom: 1px solid #222; }
+        .group-header {
+            padding: 12px 16px; cursor: pointer; display: flex; align-items: center;
+            justify-content: space-between; user-select: none;
+            transition: background 0.15s;
+        }
+        .group-header:hover { background: rgba(255,255,255,0.04); }
+        .group-title {
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 1.2px; color: #888;
+        }
+        .group-header.active .group-title { color: #4fc3f7; }
+        .group-arrow { color: #555; font-size: 10px; transition: transform 0.2s; }
+        .group-header.active .group-arrow { transform: rotate(90deg); }
+        .group-body { display: none; padding: 0 16px 12px; }
+        .group-header.active + .group-body { display: block; }
+
+        /* Layer toggle row */
+        .layer-row {
+            display: flex; align-items: center; padding: 6px 0;
+            gap: 8px;
+        }
+        .layer-row input[type=checkbox] { accent-color: #4fc3f7; }
+        .layer-label { font-size: 13px; color: #ccc; cursor: pointer; flex: 1; }
+        .layer-label.active { color: #fff; }
+        .layer-badge {
+            font-size: 10px; color: #888; background: rgba(255,255,255,0.06);
+            padding: 1px 6px; border-radius: 8px;
+        }
+
+        /* Sub-options (radio buttons, etc.) */
+        .sub-options {
+            padding: 4px 0 4px 24px; display: flex; flex-wrap: wrap; gap: 4px;
+        }
+        .radio-pill {
+            padding: 3px 9px; border-radius: 12px; font-size: 11px;
+            background: rgba(255,255,255,0.06); color: #999;
+            border: 1px solid transparent; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .radio-pill.selected {
+            background: rgba(79,195,247,0.15); color: #4fc3f7;
+            border-color: rgba(79,195,247,0.3);
+        }
+        .radio-pill:hover { background: rgba(255,255,255,0.1); color: #ccc; }
+
+        /* POI pills */
+        .poi-pills { padding: 6px 0 2px 24px; display: flex; flex-wrap: wrap; gap: 4px; }
+        .poi-pill {
+            display: inline-flex; align-items: center; gap: 3px;
+            padding: 3px 8px; border-radius: 12px;
+            background: rgba(255,255,255,0.08); color: #ccc;
+            font-size: 11px; cursor: pointer; border: 1px solid transparent;
+            user-select: none;
+        }
+        .poi-pill.on { background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.25); color: #fff; }
+        .meta-btn {
+            padding: 2px 7px; border-radius: 10px; font-size: 10px;
+            background: rgba(255,255,255,0.06); color: #777;
+            border: 1px solid rgba(255,255,255,0.1); cursor: pointer;
+        }
+        .meta-btn:hover { background: rgba(255,255,255,0.12); color: #aaa; }
+
+        /* Sun info */
+        .sun-box {
+            margin: 0; padding: 12px 16px; border-top: 1px solid #222;
+            background: rgba(255,160,0,0.06);
+        }
+        .sun-title { font-size: 11px; font-weight: 700; color: #ffb300; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+        .sun-row { display: flex; align-items: center; gap: 10px; }
+        .sun-compass {
+            width: 64px; height: 64px; border-radius: 50%;
+            border: 1px solid #444; background: rgba(0,0,0,0.3);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 24px; flex-shrink: 0;
+        }
+        .sun-stats { font-size: 12px; color: #aaa; line-height: 1.6; }
+        .sun-stats b { color: #ccc; }
+
+        /* ── Bottom bar: time slider ── */
+        .bottom-bar {
+            position: absolute; bottom: 0; left: 0; right: 0; height: 100px;
+            background: rgba(0,0,0,0.92); border-top: 1px solid #333;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 0 20px;
+        }
+        .time-row {
+            display: flex; align-items: center; gap: 12px; margin-bottom: 6px;
+        }
+        .play-btn {
+            width: 32px; height: 32px; border-radius: 50%;
+            border: 2px solid #4fc3f7; background: none; color: #4fc3f7;
+            font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+        }
+        .time-label { font-size: 16px; font-weight: 700; color: #4fc3f7; min-width: 90px; text-align: center; }
+        .slider-wrap { width: 500px; max-width: 60vw; }
+        .slider-wrap input[type=range] { width: 100%; accent-color: #4fc3f7; }
+        .time-marks { display: flex; justify-content: space-between; font-size: 10px; color: #666; margin-top: 2px; }
+        .view-presets {
+            display: flex; gap: 6px; margin-top: 6px;
+        }
+        .view-btn {
+            padding: 3px 10px; border-radius: 4px; font-size: 10px;
+            background: rgba(255,255,255,0.06); color: #888;
+            border: 1px solid rgba(255,255,255,0.1); cursor: pointer;
+        }
+        .view-btn:hover { background: rgba(255,255,255,0.12); color: #ccc; }
+
+        /* Legend overlay */
+        .legend-box {
+            position: absolute; bottom: 110px; left: 16px; z-index: 5;
+            background: rgba(0,0,0,0.85); padding: 10px 14px; border-radius: 8px;
+            font-size: 11px; color: #aaa; min-width: 160px;
+        }
+        .legend-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #666; margin-bottom: 6px; }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+        .legend-swatch { width: 20px; height: 4px; border-radius: 2px; flex-shrink: 0; }
+
+        /* Loading indicator */
+        .loading-dot {
+            display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+            background: #4fc3f7; animation: pulse 1s infinite;
+        }
+        @keyframes pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 1; } }
+
+        /* 2D Maps dropdown */
+        .dropdown { position: relative; display: inline-block; }
+        .dropdown-content {
+            display: none; position: absolute; top: 100%; left: 0;
+            background: rgba(0,0,0,0.95); border: 1px solid #333;
+            border-radius: 6px; min-width: 220px; padding: 6px 0;
+            margin-top: 4px; z-index: 20;
+        }
+        .dropdown:hover .dropdown-content { display: block; }
+        .dropdown-item {
+            display: block; padding: 6px 14px; font-size: 12px; color: #aaa;
+            text-decoration: none; white-space: nowrap;
+        }
+        .dropdown-item:hover { background: rgba(79,195,247,0.1); color: #4fc3f7; }
+        .dropdown-divider { border-top: 1px solid #333; margin: 4px 0; }
+    </style>
+</head>
+<body>
+
+<!-- ── Top Bar ── -->
+<div class="topbar">
+    <div class="topbar-left">
+        <a href="index.html" class="nav-pill">&larr; Dashboard</a>
+        <div class="dropdown">
+            <span class="nav-pill">2D Maps &darr;</span>
+            <div class="dropdown-content">
+                <a class="dropdown-item" href="#">GVI Point Map (11,651 pts)</a>
+                <a class="dropdown-item" href="#">GVI vs SVF Comparison</a>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="#">Satellite Grid 10m (90K cells)</a>
+                <a class="dropdown-item" href="#">Satellite Grid 30m</a>
+                <a class="dropdown-item" href="#">Thermal Sharpening</a>
+                <div class="dropdown-divider"></div>
+                <a class="dropdown-item" href="#">2D Shade Map (lightweight)</a>
+            </div>
+        </div>
+    </div>
+    <div class="topbar-center">
+        <span class="topbar-title">Urban Climate Viewer</span>
+    </div>
+    <div class="topbar-right">
+        <select class="area-select">
+            <option>Al Karama, Dubai</option>
+            <option disabled>+ Add area...</option>
+        </select>
+    </div>
+</div>
+
+<!-- ── Map Canvas (placeholder) ── -->
+<div class="map-canvas">
+    <div class="map-placeholder">
+        <div class="big">&#127961;</div>
+        deck.gl + MapLibre 3D canvas<br>
+        <span style="color:#556;">Buildings, shadows, streets, overlays render here</span>
+    </div>
+</div>
+
+<!-- ── Dynamic Legend ── -->
+<div class="legend-box">
+    <div class="legend-title">Building Height</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgb(130,200,255)"></div> &lt;10m</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgb(80,120,220)"></div> 10&ndash;25m</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgb(100,60,180)"></div> 25&ndash;50m</div>
+    <div class="legend-item"><div class="legend-swatch" style="background:rgb(180,40,100)"></div> &gt;50m</div>
+</div>
+
+<!-- ── Right Panel ── -->
+<div class="panel">
+
+    <!-- Urban Form -->
+    <div class="group">
+        <div class="group-header active" onclick="this.classList.toggle('active')">
+            <span class="group-title">Urban Form</span>
+            <span class="group-arrow">&#9654;</span>
+        </div>
+        <div class="group-body">
+            <div class="layer-row">
+                <input type="checkbox" checked id="lyr-buildings">
+                <label class="layer-label active" for="lyr-buildings">Buildings</label>
+                <span class="layer-badge">3,243</span>
+            </div>
+            <div class="sub-options">
+                <span class="radio-pill selected">Default</span>
+                <span class="radio-pill">Height</span>
+                <span class="radio-pill">Land Use</span>
+            </div>
+            <div class="layer-row">
+                <input type="checkbox" checked id="lyr-canopy">
+                <label class="layer-label active" for="lyr-canopy">Tree Canopy</label>
+                <span class="layer-badge">1,033</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shade & Shadows -->
+    <div class="group">
+        <div class="group-header active" onclick="this.classList.toggle('active')">
+            <span class="group-title">Shade &amp; Shadows</span>
+            <span class="group-arrow">&#9654;</span>
+        </div>
+        <div class="group-body">
+            <div class="layer-row">
+                <input type="checkbox" checked id="lyr-gpu">
+                <label class="layer-label active" for="lyr-gpu">GPU Sun Shadows</label>
+            </div>
+            <div class="layer-row">
+                <input type="checkbox" checked id="lyr-bshadow">
+                <label class="layer-label active" for="lyr-bshadow">Building Shadows (projected)</label>
+            </div>
+            <div class="layer-row">
+                <input type="checkbox" checked id="lyr-tshadow">
+                <label class="layer-label active" for="lyr-tshadow">Tree Shadows (projected)</label>
+            </div>
+            <div class="layer-row">
+                <input type="checkbox" id="lyr-shade">
+                <label class="layer-label" for="lyr-shade">Street Shade %</label>
+            </div>
+            <div class="sub-options">
+                <span class="radio-pill selected">Shade color</span>
+                <span class="radio-pill">Neutral</span>
+            </div>
+            <div style="padding:8px 0 0 0;">
+                <div style="display:flex; align-items:flex-end; gap:2px; height:36px;">
+                    <div style="flex:1;background:#4fc3f7;height:95%;border-radius:2px 2px 0 0;opacity:1"></div>
+                    <div style="flex:1;background:#4fc3f7;height:40%;border-radius:2px 2px 0 0;opacity:0.4"></div>
+                    <div style="flex:1;background:#4fc3f7;height:20%;border-radius:2px 2px 0 0;opacity:0.4"></div>
+                    <div style="flex:1;background:#4fc3f7;height:6%;border-radius:2px 2px 0 0;opacity:0.4"></div>
+                    <div style="flex:1;background:#4fc3f7;height:13%;border-radius:2px 2px 0 0;opacity:0.4"></div>
+                    <div style="flex:1;background:#4fc3f7;height:27%;border-radius:2px 2px 0 0;opacity:0.4"></div>
+                    <div style="flex:1;background:#4fc3f7;height:52%;border-radius:2px 2px 0 0;opacity:0.4"></div>
+                </div>
+                <div style="display:flex;gap:2px;font-size:9px;color:#666;margin-top:2px;">
+                    <span style="flex:1;text-align:center">6a</span>
+                    <span style="flex:1;text-align:center">8a</span>
+                    <span style="flex:1;text-align:center">10a</span>
+                    <span style="flex:1;text-align:center">12p</span>
+                    <span style="flex:1;text-align:center">2p</span>
+                    <span style="flex:1;text-align:center">4p</span>
+                    <span style="flex:1;text-align:center">6p</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Thermal & Vegetation -->
+    <div class="group">
+        <div class="group-header" onclick="this.classList.toggle('active')">
+            <span class="group-title">Thermal &amp; Vegetation</span>
+            <span class="group-arrow">&#9654;</span>
+        </div>
+        <div class="group-body">
+            <div class="layer-row">
+                <input type="checkbox" id="lyr-priority">
+                <label class="layer-label" for="lyr-priority">Heat Mitigation Priority</label>
+                <span class="layer-badge">2,892</span>
+            </div>
+            <div class="layer-row">
+                <input type="checkbox" id="lyr-combined">
+                <label class="layer-label" for="lyr-combined">Combined SVI + Satellite</label>
+            </div>
+            <div class="sub-options">
+                <span class="radio-pill selected">LST</span>
+                <span class="radio-pill">GVI</span>
+                <span class="radio-pill">SVF</span>
+            </div>
+            <div class="layer-row">
+                <input type="checkbox" id="lyr-clusters">
+                <label class="layer-label" for="lyr-clusters">Climate Clusters</label>
+            </div>
+            <div class="layer-row">
+                <input type="checkbox" id="lyr-greenaccess">
+                <label class="layer-label" for="lyr-greenaccess">Green Space Access</label>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobility & Network -->
+    <div class="group">
+        <div class="group-header" onclick="this.classList.toggle('active')">
+            <span class="group-title">Mobility &amp; Network</span>
+            <span class="group-arrow">&#9654;</span>
+        </div>
+        <div class="group-body">
+            <div class="layer-row">
+                <input type="checkbox" id="lyr-centrality">
+                <label class="layer-label" for="lyr-centrality">Street Centrality</label>
+                <span class="layer-badge">5,656</span>
+            </div>
+            <div class="sub-options">
+                <span class="radio-pill selected">Betweenness</span>
+                <span class="radio-pill">Closeness</span>
+            </div>
+            <div class="layer-row">
+                <input type="checkbox" id="lyr-comfort">
+                <label class="layer-label" for="lyr-comfort">Pedestrian Comfort</label>
+                <span class="layer-badge">420</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Points of Interest -->
+    <div class="group">
+        <div class="group-header" onclick="this.classList.toggle('active')">
+            <span class="group-title">Points of Interest</span>
+            <span class="group-arrow">&#9654;</span>
+        </div>
+        <div class="group-body">
+            <div class="layer-row">
+                <input type="checkbox" id="lyr-pois">
+                <label class="layer-label" for="lyr-pois">POIs</label>
+                <span class="layer-badge">1,290</span>
+            </div>
+            <div class="poi-pills">
+                <span class="meta-btn">All</span>
+                <span class="meta-btn">None</span>
+                <span class="poi-pill on">&#127828; Food</span>
+                <span class="poi-pill on">&#128717;&#65039; Shopping</span>
+                <span class="poi-pill on">&#127976; Hotel</span>
+                <span class="poi-pill on">&#9877;&#65039; Health</span>
+                <span class="poi-pill on">&#128332; Religious</span>
+                <span class="poi-pill on">&#127974; Services</span>
+                <span class="poi-pill on">&#9917; Leisure</span>
+                <span class="poi-pill on">&#127891; Education</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sun Info -->
+    <div class="sun-box">
+        <div class="sun-title">Sun Position</div>
+        <div class="sun-row">
+            <div class="sun-compass">&#9788;</div>
+            <div class="sun-stats">
+                <div>Altitude: <b>83.1&deg;</b></div>
+                <div>Azimuth: <b>122.6&deg;</b> (SE)</div>
+                <div>Shadow: <b>0.12&times;</b> height</div>
+                <div style="margin-top:4px;font-size:10px;color:#777;">Sunrise 5:38 AM &bull; Sunset 7:11 PM</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stats summary -->
+    <div style="padding:12px 16px; border-top:1px solid #222;">
+        <div style="font-size:10px;text-transform:uppercase;letter-spacing:1px;color:#666;margin-bottom:6px;">Daily Summary</div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#aaa;margin:3px 0;">
+            <span>Avg shade coverage</span><span style="color:#81c784;font-weight:700;">35.8%</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#aaa;margin:3px 0;">
+            <span>Well-shaded (&ge;50%)</span><span style="font-weight:700;">1,208</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#aaa;margin:3px 0;">
+            <span>Exposed (&lt;20%)</span><span style="font-weight:700;">1,639</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:#aaa;margin:3px 0;">
+            <span>Total streets</span><span style="font-weight:700;">5,656</span>
+        </div>
+    </div>
+
+</div>
+
+<!-- ── Bottom Bar ── -->
+<div class="bottom-bar">
+    <div class="time-row">
+        <button class="play-btn">&#9654;</button>
+        <span class="time-label">12:00 PM</span>
+        <div class="slider-wrap">
+            <input type="range" min="0" max="6" value="3" step="1">
+            <div class="time-marks">
+                <span>6 AM</span><span>8 AM</span><span>10 AM</span><span>12 PM</span><span>2 PM</span><span>4 PM</span><span>6 PM</span>
+            </div>
+        </div>
+    </div>
+    <div class="view-presets">
+        <button class="view-btn">Overview</button>
+        <button class="view-btn">Top-down</button>
+        <button class="view-btn">Street level</button>
+        <button class="view-btn">From south</button>
+        <span style="color:#555;font-size:10px;margin-left:20px;">Ctrl+drag = tilt &bull; Scroll = zoom &bull; Right-drag = rotate</span>
+    </div>
+</div>
+
+<script>
+// Make accordion toggles work
+document.querySelectorAll('.group-header').forEach(function(h) {
+    // already has onclick in HTML
+});
+
+// Make radio pills toggleable
+document.querySelectorAll('.sub-options').forEach(function(group) {
+    group.querySelectorAll('.radio-pill').forEach(function(pill) {
+        pill.addEventListener('click', function() {
+            group.querySelectorAll('.radio-pill').forEach(function(p) { p.classList.remove('selected'); });
+            pill.classList.add('selected');
+        });
+    });
+});
+
+// Make POI pills toggleable
+document.querySelectorAll('.poi-pill').forEach(function(pill) {
+    pill.addEventListener('click', function() {
+        pill.classList.toggle('on');
+    });
+});
+
+// Make checkboxes toggle label style
+document.querySelectorAll('.layer-row input[type=checkbox]').forEach(function(cb) {
+    cb.addEventListener('change', function() {
+        var label = this.parentElement.querySelector('.layer-label');
+        if (label) label.classList.toggle('active', this.checked);
+    });
+});
+</script>
+</body>
+</html>
