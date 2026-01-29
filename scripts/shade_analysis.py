@@ -804,6 +804,38 @@ def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, 
             position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%);
             z-index: 1; color: #555; font-size: 11px; text-align: center;
         }}
+
+        .play-btn {{
+            background: none; border: 2px solid #4fc3f7; color: #4fc3f7;
+            width: 32px; height: 32px; border-radius: 50%; cursor: pointer;
+            font-size: 14px; display: inline-flex; align-items: center; justify-content: center;
+            margin-right: 10px; vertical-align: middle; transition: all 0.2s;
+        }}
+        .play-btn:hover {{ background: rgba(79,195,247,0.15); }}
+        .play-btn.playing {{ background: #4fc3f7; color: #111; }}
+
+        .shade-chart {{
+            display: flex; align-items: flex-end; gap: 3px; height: 40px; margin: 8px 0 4px;
+        }}
+        .shade-bar {{
+            flex: 1; background: #4fc3f7; border-radius: 2px 2px 0 0;
+            transition: height 0.3s, opacity 0.3s; opacity: 0.4; min-width: 0;
+            position: relative;
+        }}
+        .shade-bar.active {{ opacity: 1.0; }}
+        .shade-bar-labels {{
+            display: flex; gap: 3px; font-size: 9px; color: #888;
+        }}
+        .shade-bar-labels span {{ flex: 1; text-align: center; }}
+
+        .view-presets {{
+            display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px;
+        }}
+        .view-btn {{
+            padding: 4px 8px; border: 1px solid #555; background: #222;
+            color: #ccc; cursor: pointer; font-size: 10px; border-radius: 4px;
+        }}
+        .view-btn:hover {{ background: #333; }}
     </style>
 </head>
 <body>
@@ -860,10 +892,17 @@ def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, 
         <div class="stat-row"><span class="stat-label">Well-shaded (&ge;50%):</span><span class="stat-value" id="statShaded">{well_shaded}</span></div>
         <div class="stat-row"><span class="stat-label">Exposed (&lt;20%):</span><span class="stat-value" id="statExposed">{exposed}</span></div>
         <div class="stat-row"><span class="stat-label">Total streets:</span><span class="stat-value">{total}</span></div>
+
+        <h4 style="margin:10px 0 2px; font-size:11px; color:#aaa;">Shade % by hour</h4>
+        <div class="shade-chart" id="shadeChart"></div>
+        <div class="shade-bar-labels" id="shadeChartLabels"></div>
     </div>
 
     <div class="toggle-row">
         <label><input type="checkbox" id="toggleBuildings" checked> Buildings (extruded)</label>
+    </div>
+    <div class="toggle-row" style="padding-left:18px;">
+        <label><input type="checkbox" id="toggleHeightColor"> Color by height</label>
     </div>
     <div class="toggle-row">
         <label><input type="checkbox" id="toggleCanopy" checked> Tree canopy (extruded)</label>
@@ -899,10 +938,28 @@ def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, 
         <div class="legend-item"><div class="legend-color" style="background:rgba(255,255,255,0.5)"></div> Street (light = sun-exposed)</div>
         <div class="legend-item"><div class="legend-color" style="background:rgba(60,60,60,0.7)"></div> Street (dark = in shadow)</div>
     </div>
+    <div class="legend" id="legendHeight" style="display:none;">
+        <div class="legend-title">Building Height</div>
+        <div class="legend-item"><div class="legend-color" style="background:rgb(130,200,255)"></div> &lt;10m (low)</div>
+        <div class="legend-item"><div class="legend-color" style="background:rgb(80,120,220)"></div> 10&ndash;25m</div>
+        <div class="legend-item"><div class="legend-color" style="background:rgb(100,60,180)"></div> 25&ndash;50m</div>
+        <div class="legend-item"><div class="legend-color" style="background:rgb(180,40,100)"></div> &gt;50m (tall)</div>
+    </div>
+
+    <h4 style="margin:12px 0 4px 0; color:#aaa; font-size:12px; text-transform:uppercase; letter-spacing:1px;">Camera</h4>
+    <div class="view-presets">
+        <button class="view-btn" onclick="setView('overview')">Overview</button>
+        <button class="view-btn" onclick="setView('topdown')">Top-down</button>
+        <button class="view-btn" onclick="setView('street')">Street level</button>
+        <button class="view-btn" onclick="setView('south')">From south</button>
+    </div>
 </div>
 
 <div class="time-slider">
-    <div class="time-label" id="timeLabel">12:00 PM</div>
+    <div style="display:flex; align-items:center; justify-content:center;">
+        <button class="play-btn" id="playBtn" onclick="togglePlay()" title="Play/Pause">&#9654;</button>
+        <div class="time-label" id="timeLabel">12:00 PM</div>
+    </div>
     <input type="range" id="timeSlider" min="0" max="6" value="3" step="1">
     <div class="time-marks">
         <span>6 AM</span><span>8 AM</span><span>10 AM</span><span>12 PM</span><span>2 PM</span><span>4 PM</span><span>6 PM</span>
@@ -949,10 +1006,13 @@ var UTC_TIMESTAMPS = {{
 var currentTimeIdx = 3; // start at noon
 var showBuildings = true;
 var showCanopy = true;
+var colorByHeight = false;
 var showProjectedShadows = true;
 var showTreeShadows = true;
 var streetMode = 'neutral'; // 'neutral' | 'shade' | 'off'
 var showShadows = true;
+var playing = false;
+var playInterval = null;
 
 // ── Color helpers ──
 function shadeColor(pct) {{
@@ -961,6 +1021,14 @@ function shadeColor(pct) {{
     if (pct >= 25) return [253, 216, 53];
     if (pct >= 10) return [255, 152, 0];
     return [211, 47, 47];
+}}
+
+function heightColor(h) {{
+    // low (blue) → mid (purple) → tall (magenta)
+    if (h >= 50) return [180, 40, 100];
+    if (h >= 25) return [100, 60, 180];
+    if (h >= 10) return [80, 120, 220];
+    return [130, 200, 255];
 }}
 
 // ── Street mode switcher ──
@@ -999,14 +1067,19 @@ function buildLayers() {{
             opacity: 0.85,
             getPolygon: function(d) {{ return d.geometry.coordinates; }},
             getElevation: function(d) {{ return d.properties.height || 9; }},
-            getFillColor: [160, 170, 180],
+            getFillColor: colorByHeight
+                ? function(d) {{ return heightColor(d.properties.height || 9); }}
+                : [160, 170, 180],
             material: {{
                 ambient: 0.6,
                 diffuse: 0.7,
                 shininess: 32,
                 specularColor: [120, 125, 130]
             }},
-            pickable: true
+            pickable: true,
+            updateTriggers: {{
+                getFillColor: [colorByHeight]
+            }}
         }}));
     }}
 
@@ -1180,6 +1253,69 @@ var deckgl = new deck.DeckGL({{
     }}
 }});
 
+// ── Play / Animate ──
+function togglePlay() {{
+    var btn = document.getElementById('playBtn');
+    if (playing) {{
+        clearInterval(playInterval);
+        playing = false;
+        btn.textContent = '\\u25b6';
+        btn.classList.remove('playing');
+    }} else {{
+        playing = true;
+        btn.textContent = '\\u275a\\u275a';
+        btn.classList.add('playing');
+        playInterval = setInterval(function() {{
+            var next = (currentTimeIdx + 1) % TIMES.length;
+            document.getElementById('timeSlider').value = next;
+            updateMap(next);
+        }}, 1500);
+    }}
+}}
+
+// ── Shade bar chart ──
+function buildShadeChart() {{
+    var chart = document.getElementById('shadeChart');
+    var labels = document.getElementById('shadeChartLabels');
+    chart.innerHTML = '';
+    labels.innerHTML = '';
+    TIMES.forEach(function(h, i) {{
+        var shadeKey = 'shade_' + (h < 10 ? '0' + h : '' + h);
+        var total = 0, count = 0;
+        STREETS.features.forEach(function(f) {{
+            total += f.properties[shadeKey] || 0;
+            count++;
+        }});
+        var avg = count > 0 ? total / count : 0;
+
+        var bar = document.createElement('div');
+        bar.className = 'shade-bar' + (i === currentTimeIdx ? ' active' : '');
+        bar.style.height = Math.max(avg * 0.4, 1) + 'px';
+        bar.title = TIME_LABELS[i] + ': ' + avg.toFixed(1) + '% shade';
+        chart.appendChild(bar);
+
+        var lbl = document.createElement('span');
+        lbl.textContent = h > 12 ? (h - 12) + 'p' : (h === 12 ? '12p' : h + 'a');
+        labels.appendChild(lbl);
+    }});
+}}
+
+// ── View presets ──
+function setView(preset) {{
+    var views = {{
+        overview:  {{ longitude: {LONGITUDE}, latitude: {LATITUDE}, zoom: 15, pitch: 55, bearing: -20 }},
+        topdown:   {{ longitude: {LONGITUDE}, latitude: {LATITUDE}, zoom: 15.5, pitch: 0, bearing: 0 }},
+        street:    {{ longitude: {LONGITUDE}, latitude: {LATITUDE}, zoom: 17, pitch: 70, bearing: 30 }},
+        south:     {{ longitude: {LONGITUDE}, latitude: {LATITUDE}, zoom: 15, pitch: 60, bearing: 180 }}
+    }};
+    var v = views[preset];
+    if (v) {{
+        deckgl.setProps({{
+            initialViewState: Object.assign({{}}, v, {{ transitionDuration: 1000, transitionInterpolator: new deck.FlyToInterpolator() }})
+        }});
+    }}
+}}
+
 // ── Update function ──
 function updateMap(timeIdx) {{
     currentTimeIdx = timeIdx;
@@ -1208,6 +1344,9 @@ function updateMap(timeIdx) {{
     document.getElementById('statShaded').textContent = shaded;
     document.getElementById('statExposed').textContent = exp;
 
+    // Update shade bar chart
+    buildShadeChart();
+
     // Update deck.gl layers and lighting
     deckgl.setProps({{
         layers: buildLayers(),
@@ -1222,6 +1361,11 @@ document.getElementById('timeSlider').addEventListener('input', function() {{
 }});
 document.getElementById('toggleBuildings').addEventListener('change', function() {{
     showBuildings = this.checked;
+    updateMap(currentTimeIdx);
+}});
+document.getElementById('toggleHeightColor').addEventListener('change', function() {{
+    colorByHeight = this.checked;
+    document.getElementById('legendHeight').style.display = this.checked ? '' : 'none';
     updateMap(currentTimeIdx);
 }});
 document.getElementById('toggleCanopy').addEventListener('change', function() {{
