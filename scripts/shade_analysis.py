@@ -12,6 +12,8 @@ import json
 import math
 import os
 import time
+import urllib.request
+import urllib.parse
 from datetime import datetime, timezone, timedelta
 
 import geopandas as gpd
@@ -601,10 +603,175 @@ updateMap(3);
     print(f"\n  HTML map saved: {out_path}")
 
 
+# ── 5a-bis. Overpass PoI Fetch ────────────────────────────────────────
+
+POI_CATEGORY_MAP = {
+    # Food & Drink
+    'restaurant': 'food', 'cafe': 'food', 'fast_food': 'food',
+    'food_court': 'food', 'bar': 'food', 'pub': 'food',
+    'ice_cream': 'food', 'bakery': 'food', 'confectionery': 'food',
+    'juice_bar': 'food', 'coffee': 'food',
+    # Shopping
+    'supermarket': 'shopping', 'convenience': 'shopping', 'clothes': 'shopping',
+    'shoes': 'shopping', 'electronics': 'shopping', 'mobile_phone': 'shopping',
+    'jewelry': 'shopping', 'optician': 'shopping', 'cosmetics': 'shopping',
+    'perfumery': 'shopping', 'gift': 'shopping', 'variety_store': 'shopping',
+    'marketplace': 'shopping', 'mall': 'shopping', 'department_store': 'shopping',
+    'furniture': 'shopping', 'hardware': 'shopping', 'books': 'shopping',
+    'stationery': 'shopping', 'fabric': 'shopping', 'carpet': 'shopping',
+    'florist': 'shopping', 'pet': 'shopping',
+    # Hotel / Accommodation
+    'hotel': 'hotel', 'guest_house': 'hotel', 'hostel': 'hotel',
+    'motel': 'hotel', 'apartment': 'hotel',
+    # Health
+    'pharmacy': 'health', 'hospital': 'health', 'clinic': 'health',
+    'doctors': 'health', 'dentist': 'health', 'veterinary': 'health',
+    # Religious
+    'place_of_worship': 'religious',
+    # Services
+    'bank': 'services', 'atm': 'services', 'bureau_de_change': 'services',
+    'money_transfer': 'services', 'post_office': 'services',
+    'travel_agency': 'services', 'laundry': 'services',
+    'dry_cleaning': 'services', 'hairdresser': 'services',
+    'beauty': 'services', 'car_repair': 'services', 'car_wash': 'services',
+    'tailor': 'services', 'internet_cafe': 'services',
+    'government': 'services', 'embassy': 'services', 'police': 'services',
+    'fire_station': 'services', 'office': 'services',
+    # Leisure
+    'park': 'leisure', 'garden': 'leisure', 'playground': 'leisure',
+    'sports_centre': 'leisure', 'fitness_centre': 'leisure',
+    'swimming_pool': 'leisure', 'cinema': 'leisure', 'theatre': 'leisure',
+    'museum': 'leisure', 'attraction': 'leisure',
+    # Education
+    'school': 'education', 'kindergarten': 'education', 'college': 'education',
+    'university': 'education', 'library': 'education', 'training': 'education',
+    'language_school': 'education', 'driving_school': 'education',
+}
+
+NOISE_TYPES = {
+    'bench', 'waste_basket', 'waste_disposal', 'recycling', 'parking',
+    'parking_space', 'parking_entrance', 'bicycle_parking',
+    'shelter', 'toilets', 'drinking_water', 'vending_machine',
+    'telephone', 'post_box', 'fire_hydrant', 'street_lamp',
+    'bollard', 'surveillance', 'clock',
+}
+
+POIS_CACHE_PATH = os.path.join(os.path.dirname(__file__),
+    '..', 'docs', 'shade_analysis', 'pois_cache.json')
+
+def fetch_overpass_pois():
+    """
+    Fetch Points of Interest from Overpass API for the Al Karama area.
+    Caches result to pois_cache.json. Returns list of dicts with
+    position, label, type, and category.
+    """
+    # Check cache
+    if os.path.exists(POIS_CACHE_PATH):
+        with open(POIS_CACHE_PATH, 'r') as f:
+            cached = json.load(f)
+        print(f"  Loaded {len(cached)} PoIs from cache")
+        return cached
+
+    # Al Karama bounding box (south, west, north, east)
+    bbox = '25.2380,55.2920,25.2590,55.3130'
+
+    query = f"""
+[out:json][timeout:60];
+(
+  node["amenity"]({bbox});
+  way["amenity"]({bbox});
+  node["shop"]({bbox});
+  way["shop"]({bbox});
+  node["tourism"]({bbox});
+  way["tourism"]({bbox});
+  node["office"]({bbox});
+  way["office"]({bbox});
+  node["leisure"]({bbox});
+  way["leisure"]({bbox});
+  node["healthcare"]({bbox});
+  way["healthcare"]({bbox});
+);
+out center;
+"""
+
+    url = 'https://overpass-api.de/api/interpreter'
+    data = urllib.parse.urlencode({'data': query}).encode('utf-8')
+
+    print("  Querying Overpass API for PoIs...")
+    req = urllib.request.Request(url, data=data)
+    req.add_header('User-Agent', 'shade-analysis-script/1.0')
+    with urllib.request.urlopen(req, timeout=90) as resp:
+        result = json.loads(resp.read().decode('utf-8'))
+
+    elements = result.get('elements', [])
+    print(f"  Overpass returned {len(elements)} elements")
+
+    pois = []
+    for el in elements:
+        # Get position
+        if el['type'] == 'node':
+            lat, lon = el.get('lat'), el.get('lon')
+        elif el['type'] == 'way' and 'center' in el:
+            lat, lon = el['center'].get('lat'), el['center'].get('lon')
+        else:
+            continue
+
+        if lat is None or lon is None:
+            continue
+
+        tags = el.get('tags', {})
+
+        # Determine the OSM type value
+        osm_type = None
+        for key in ('amenity', 'shop', 'tourism', 'office', 'leisure', 'healthcare'):
+            if key in tags:
+                osm_type = tags[key]
+                break
+
+        if osm_type is None:
+            continue
+
+        # Filter noise
+        if osm_type in NOISE_TYPES:
+            continue
+
+        # Categorize
+        category = POI_CATEGORY_MAP.get(osm_type)
+        if category is None:
+            # Try to infer from the key itself
+            for key in ('shop',):
+                if key in tags:
+                    category = 'shopping'
+                    break
+            if category is None:
+                category = 'services'
+
+        # Extract label
+        name = tags.get('name', '') or tags.get('name:en', '') or ''
+        label = name if name else osm_type.replace('_', ' ').title()
+
+        pois.append({
+            'position': [round(lon, 6), round(lat, 6)],
+            'label': label,
+            'type': osm_type,
+            'category': category,
+        })
+
+    print(f"  Filtered to {len(pois)} PoIs across {len(set(p['category'] for p in pois))} categories")
+
+    # Cache
+    with open(POIS_CACHE_PATH, 'w') as f:
+        json.dump(pois, f)
+    print(f"  Cached to {POIS_CACHE_PATH}")
+
+    return pois
+
+
 # ── 5b. 3D HTML Map Generation (deck.gl + SunLight) ──────────────────
 
 def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, out_path,
-                         canopy_wgs=None, shadow_geojsons=None, canopy_shadow_geojsons=None):
+                         canopy_wgs=None, shadow_geojsons=None, canopy_shadow_geojsons=None,
+                         poi_data=None):
     """Generate interactive 3D HTML map with deck.gl _SunLight shadow rendering."""
 
     # Prepare shadow GeoJSON strings for embedding
@@ -679,6 +846,10 @@ def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, 
         'type': 'FeatureCollection',
         'features': building_features
     })
+
+    # PoI data from Overpass API (passed in)
+    poi_json = json.dumps(poi_data or [])
+    print(f"  PoI features for 3D map: {len(poi_data or [])}")
 
     # Prepare street features with shade data
     street_features = []
@@ -837,6 +1008,28 @@ def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, 
             color: #ccc; cursor: pointer; font-size: 10px; border-radius: 4px;
         }}
         .view-btn:hover {{ background: #333; }}
+
+        .poi-section {{ margin: 6px 0; }}
+        .poi-filter-row {{
+            display: none; flex-wrap: wrap; gap: 4px; margin-top: 6px;
+            padding: 8px; background: rgba(255,255,255,0.04); border-radius: 6px;
+        }}
+        .poi-filter-row.visible {{ display: flex; }}
+        .poi-pill {{
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 9px; border-radius: 12px;
+            background: rgba(255,255,255,0.08); color: #ccc;
+            font-size: 11px; cursor: pointer; border: 1px solid transparent;
+            transition: background 0.15s, border-color 0.15s;
+            user-select: none;
+        }}
+        .poi-pill.active {{ background: rgba(255,255,255,0.18); border-color: rgba(255,255,255,0.25); color: #fff; }}
+        .poi-meta-btn {{
+            padding: 2px 8px; border-radius: 10px; font-size: 10px;
+            background: rgba(255,255,255,0.06); color: #999;
+            border: 1px solid rgba(255,255,255,0.12); cursor: pointer;
+        }}
+        .poi-meta-btn:hover {{ background: rgba(255,255,255,0.12); color: #ccc; }}
     </style>
 </head>
 <body>
@@ -907,6 +1100,23 @@ def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, 
     </div>
     <div class="toggle-row" style="padding-left:18px;">
         <label><input type="checkbox" id="toggleUsageColor"> Color by usage</label>
+    </div>
+    <div class="poi-section">
+        <div class="toggle-row" style="padding-left:18px;">
+            <label><input type="checkbox" id="togglePOIs"> Points of Interest</label>
+        </div>
+        <div class="poi-filter-row" id="poiFilters">
+            <button class="poi-meta-btn" onclick="setAllPOICats(true)">All</button>
+            <button class="poi-meta-btn" onclick="setAllPOICats(false)">None</button>
+            <span class="poi-pill active" data-cat="food" onclick="togglePOICat(this)">&#127828; Food</span>
+            <span class="poi-pill active" data-cat="shopping" onclick="togglePOICat(this)">&#128717;&#65039; Shopping</span>
+            <span class="poi-pill active" data-cat="hotel" onclick="togglePOICat(this)">&#127976; Hotel</span>
+            <span class="poi-pill active" data-cat="health" onclick="togglePOICat(this)">&#9877;&#65039; Health</span>
+            <span class="poi-pill active" data-cat="religious" onclick="togglePOICat(this)">&#128332; Religious</span>
+            <span class="poi-pill active" data-cat="services" onclick="togglePOICat(this)">&#127974; Services</span>
+            <span class="poi-pill active" data-cat="leisure" onclick="togglePOICat(this)">&#9917; Leisure</span>
+            <span class="poi-pill active" data-cat="education" onclick="togglePOICat(this)">&#127891; Education</span>
+        </div>
     </div>
     <div class="toggle-row">
         <label><input type="checkbox" id="toggleCanopy" checked> Tree canopy (extruded)</label>
@@ -983,6 +1193,7 @@ def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, 
 var BUILDINGS = {buildings_geojson};
 var STREETS = {streets_geojson};
 var CANOPY = {canopy_geojson};
+var POIS = {poi_json};
 
 // Pre-computed shadow polygons per time (building shadows)
 var SHADOW_DATA = {{
@@ -1014,16 +1225,68 @@ var UTC_TIMESTAMPS = {{
 
 // ── State ──
 var currentTimeIdx = 3; // start at noon
+var currentZoom = 15;
 var showBuildings = true;
 var showCanopy = true;
 var colorByHeight = false;
 var colorByUsage = false;
+var showPOIs = false;
 var showProjectedShadows = true;
 var showTreeShadows = true;
 var streetMode = 'neutral'; // 'neutral' | 'shade' | 'off'
 var showShadows = true;
 var playing = false;
 var playInterval = null;
+
+var poiCatFilters = {{
+    food: true, shopping: true, hotel: true, health: true,
+    religious: true, services: true, leisure: true, education: true
+}};
+var POI_CAT_EMOJI = {{
+    food: '\\ud83c\\udf54', shopping: '\\ud83d\\udecd\\ufe0f', hotel: '\\ud83c\\udfe8',
+    health: '\\u2695\\ufe0f', religious: '\\ud83d\\udd4c', services: '\\ud83c\\udfe6',
+    leisure: '\\u26bd', education: '\\ud83c\\udf93'
+}};
+
+// Pre-render emoji to canvas data-URLs for IconLayer
+function emojiToDataURL(emoji, size) {{
+    var c = document.createElement('canvas');
+    c.width = size; c.height = size;
+    var ctx = c.getContext('2d');
+    ctx.font = (size * 0.75) + 'px Apple Color Emoji, Segoe UI Emoji, Noto Color Emoji, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(emoji, size / 2, size / 2);
+    return c.toDataURL();
+}}
+var POI_ICON_SIZE = 64;
+var POI_ICON_MAPPING = {{}};
+for (var _cat in POI_CAT_EMOJI) {{
+    POI_ICON_MAPPING[_cat] = {{
+        url: emojiToDataURL(POI_CAT_EMOJI[_cat], POI_ICON_SIZE),
+        width: POI_ICON_SIZE, height: POI_ICON_SIZE,
+        anchorY: POI_ICON_SIZE / 2
+    }};
+}}
+
+function togglePOICat(el) {{
+    var cat = el.getAttribute('data-cat');
+    poiCatFilters[cat] = !poiCatFilters[cat];
+    el.className = poiCatFilters[cat] ? 'poi-pill active' : 'poi-pill';
+    updateMap(currentTimeIdx);
+}}
+function setAllPOICats(val) {{
+    for (var c in poiCatFilters) poiCatFilters[c] = val;
+    var pills = document.querySelectorAll('.poi-pill');
+    pills.forEach(function(p) {{ p.className = val ? 'poi-pill active' : 'poi-pill'; }});
+    updateMap(currentTimeIdx);
+}}
+function getFilteredPOIs() {{
+    return POIS.filter(function(p) {{ return poiCatFilters[p.category]; }});
+}}
+function poiFilterKey() {{
+    return Object.values(poiCatFilters).map(function(v){{ return v ? '1' : '0'; }}).join('');
+}}
 
 // ── Color helpers ──
 function shadeColor(pct) {{
@@ -1188,6 +1451,56 @@ function buildLayers() {{
         }}));
     }}
 
+    // PoI emoji icons — rendered last (on top of everything)
+    if (showPOIs && POIS.length > 0) {{
+        var filtered = getFilteredPOIs();
+        var _collide = new deck.CollisionFilterExtension();
+        layers.push(new deck.IconLayer({{
+            id: 'poi-icons',
+            data: filtered,
+            getPosition: function(d) {{ return d.position; }},
+            getIcon: function(d) {{ return POI_ICON_MAPPING[d.category] || POI_ICON_MAPPING.food; }},
+            getSize: 28,
+            sizeUnits: 'pixels',
+            billboard: true,
+            pickable: true,
+            parameters: {{ depthTest: false }},
+            extensions: [_collide],
+            collisionGroup: 'poi',
+            updateTriggers: {{
+                getIcon: [poiFilterKey()]
+            }}
+        }}));
+        // Name labels — only at high zoom
+        if (currentZoom > 18) {{
+            layers.push(new deck.TextLayer({{
+                id: 'poi-labels',
+                data: filtered,
+                getPosition: function(d) {{ return d.position; }},
+                getText: function(d) {{ return d.label; }},
+                getSize: 13,
+                getColor: [255, 255, 255, 230],
+                getAngle: 0,
+                getTextAnchor: 'middle',
+                getAlignmentBaseline: 'top',
+                getPixelOffset: [0, 16],
+                fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif',
+                fontWeight: 'bold',
+                outlineWidth: 3,
+                outlineColor: [0, 0, 0, 220],
+                billboard: true,
+                sizeScale: 1,
+                pickable: true,
+                parameters: {{ depthTest: false }},
+                extensions: [_collide],
+                collisionGroup: 'poi',
+                updateTriggers: {{
+                    data: [poiFilterKey()]
+                }}
+            }}));
+        }}
+    }}
+
     return layers;
 }}
 
@@ -1231,10 +1544,29 @@ var deckgl = new deck.DeckGL({{
     controller: true,
     layers: buildLayers(),
     effects: [buildLightingEffect(3)],
+    onViewStateChange: function(params) {{
+        var newZoom = params.viewState.zoom;
+        var crossed = (currentZoom <= 18 && newZoom > 18) || (currentZoom > 18 && newZoom <= 18);
+        currentZoom = newZoom;
+        if (crossed && showPOIs) {{
+            deckgl.setProps({{ layers: buildLayers() }});
+        }}
+    }},
     getTooltip: function(info) {{
         if (!info.object) return null;
         var d = info.object;
         var p = d.properties;
+        if (info.layer && (info.layer.id === 'poi-icons' || info.layer.id === 'poi-labels')) {{
+            var emoji = POI_CAT_EMOJI[d.category] || '';
+            return {{
+                html: '<div style="padding:6px;max-width:250px;">' +
+                    '<span style="font-size:16px;margin-right:4px;">' + emoji + '</span>' +
+                    '<b>' + d.label + '</b><br>' +
+                    '<span style="color:#aaa;">' + d.category + ' &middot; ' + d.type + '</span>' +
+                    '</div>',
+                style: {{ background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }}
+            }};
+        }}
         if (info.layer && info.layer.id === 'buildings') {{
             return {{
                 html: '<div style="padding:6px;max-width:250px;">' +
@@ -1402,6 +1734,11 @@ document.getElementById('toggleUsageColor').addEventListener('change', function(
         document.getElementById('legendHeight').style.display = 'none';
     }}
     document.getElementById('legendUsage').style.display = this.checked ? '' : 'none';
+    updateMap(currentTimeIdx);
+}});
+document.getElementById('togglePOIs').addEventListener('change', function() {{
+    showPOIs = this.checked;
+    document.getElementById('poiFilters').className = this.checked ? 'poi-filter-row visible' : 'poi-filter-row';
     updateMap(currentTimeIdx);
 }});
 document.getElementById('toggleCanopy').addEventListener('change', function() {{
@@ -1601,12 +1938,15 @@ def main():
 
     # ── Step 6: Generate 3D HTML map ──
     print("\n[6/6] Generating 3D interactive map (deck.gl + SunLight)...")
+    print("  Fetching Overpass PoIs...")
+    poi_data = fetch_overpass_pois()
     html_3d_path = os.path.join(OUT_DIR, 'shade_map_3d.html')
     buildings_with_height = buildings[buildings['height'].notna() & (buildings['height'] > 0)].copy()
     generate_3d_html_map(buildings_with_height, streets, shade_df, sun_positions, html_3d_path,
                          canopy_wgs=canopy,
                          shadow_geojsons=shadow_geojsons_wgs,
-                         canopy_shadow_geojsons=canopy_shadow_geojsons_wgs)
+                         canopy_shadow_geojsons=canopy_shadow_geojsons_wgs,
+                         poi_data=poi_data)
 
     elapsed = time.time() - t0
     print(f"\n{'=' * 60}")
