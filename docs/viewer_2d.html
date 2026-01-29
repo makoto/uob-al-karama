@@ -724,6 +724,7 @@ async function selectLayer(name) {
     }
 
     updateLegend();
+    updateHash();
 }
 
 // ============================================================
@@ -743,6 +744,34 @@ function setCombinedMetric(m) {
 function setSatelliteMetric(m) {
     satelliteMetric = m;
     if (currentLayer === 'satellite') selectLayer('satellite');
+}
+
+// ============================================================
+//  URL HASH
+// ============================================================
+
+function updateHash() {
+    var hash = currentLayer || '';
+    if (currentLayer === 'centrality' && centralityMetric !== 'betweenness') {
+        hash += '-' + centralityMetric;
+    } else if (currentLayer === 'combined' && combinedMetric !== 'lst') {
+        hash += '-' + combinedMetric;
+    } else if (currentLayer === 'satellite' && satelliteMetric !== 'lst') {
+        hash += '-' + satelliteMetric;
+    }
+    history.replaceState(null, '', '#' + hash);
+}
+
+function parseHash() {
+    var hash = location.hash.replace('#', '');
+    if (!hash) return { layer: 'centrality', sub: null };
+
+    var parts = hash.split('-');
+    // Handle 'green-access' which contains a hyphen
+    if (parts[0] === 'green') {
+        return { layer: 'green-access', sub: null };
+    }
+    return { layer: parts[0], sub: parts[1] || null };
 }
 
 // ============================================================
@@ -938,8 +967,21 @@ async function init() {
         subdomains: 'abcd'
     }).addTo(map);
 
-    // Show default layer
-    selectLayer('centrality');
+    // Parse URL hash for deep-linking (e.g. #combined-gvi, #satellite-ndbi)
+    var parsed = parseHash();
+    if (parsed.sub) {
+        if (parsed.layer === 'centrality') {
+            centralityMetric = parsed.sub;
+            document.querySelector('input[name="centrality-metric"][value="' + parsed.sub + '"]').checked = true;
+        } else if (parsed.layer === 'combined') {
+            combinedMetric = parsed.sub;
+            document.querySelector('input[name="combined-metric"][value="' + parsed.sub + '"]').checked = true;
+        } else if (parsed.layer === 'satellite') {
+            satelliteMetric = parsed.sub;
+            document.querySelector('input[name="satellite-metric"][value="' + parsed.sub + '"]').checked = true;
+        }
+    }
+    selectLayer(parsed.layer);
 }
 
 init();

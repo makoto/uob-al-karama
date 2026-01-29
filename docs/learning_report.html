@@ -200,6 +200,7 @@ mly.download_svi(
     <div class="finding">
         <strong>Al Karama Result:</strong> Mean GVI = 3.55%<br>
         This is very low - most streets have minimal visible vegetation.
+        <br><a href="viewer_2d.html#combined-gvi" style="color: #1565c0;">View GVI on 2D Viewer &rarr;</a>
     </div>
 
     <h3>3.2 Sky View Factor (SVF)</h3>
@@ -219,6 +220,7 @@ mly.download_svi(
     <div class="finding">
         <strong>Al Karama Result:</strong> Mean SVF = 31.4%<br>
         Moderate sky exposure - some shading from buildings but not dense urban canyon.
+        <br><a href="viewer_2d.html#combined-svf" style="color: #1565c0;">View SVF on 2D Viewer &rarr;</a>
     </div>
 
     <p><em>Note: Monocular depth estimation was explored but not adopted in the final analysis. See <a href="#unused-depth">Appendix A: Unused Methodology &mdash; Depth Estimation</a> for details.</em></p>
@@ -250,6 +252,7 @@ Where:
         Mean LST = 48.6°C (summer)<br>
         Range: 36°C to 54°C<br>
         The 18°C variation shows some areas are significantly cooler (likely parks/vegetation).
+        <br><a href="viewer_2d.html#satellite" style="color: #1565c0;">View LST on 2D Viewer &rarr;</a>
     </div>
 
     <h3>4.2 NDVI (Normalized Difference Vegetation Index)</h3>
@@ -276,6 +279,7 @@ Where:
     <div class="finding">
         <strong>Al Karama Result:</strong> Mean NDVI = 0.104<br>
         Very low - mostly built-up with sparse vegetation. Only 11% of area has NDVI > 0.3.
+        <br><a href="viewer_2d.html#satellite-ndvi" style="color: #1565c0;">View NDVI on 2D Viewer &rarr;</a>
     </div>
 
     <h3>4.3 NDBI (Normalized Difference Built-up Index)</h3>
@@ -290,6 +294,7 @@ Where:
     </div>
 
     <p>High NDBI = more buildings/concrete. Low NDBI = vegetation or water.</p>
+    <p><a href="viewer_2d.html#satellite-ndbi" style="color: #1565c0;">View NDBI on 2D Viewer &rarr;</a></p>
 
     <h3>4.4 Thermal Sharpening (30m → 10m)</h3>
     <p><strong>What it does:</strong> Downscales coarse Landsat thermal data (30m) to match Sentinel-2 resolution (10m) using the correlation between temperature and vegetation.</p>
@@ -451,6 +456,7 @@ Priority Score = 0.40 × LST_normalized
         High priority: 6,122 locations (53%)<br>
         <br>
         78% of Al Karama needs heat mitigation interventions.
+        <br><a href="viewer_2d.html#priority" style="color: #1565c0;">View Heat Priority on 2D Viewer &rarr;</a>
     </div>
 
     <h3>6.2 Pedestrian Comfort Index (PCI)</h3>
@@ -473,6 +479,7 @@ PCI = 0.40 × Temperature_comfort (inverse of LST)
 
     <div class="finding">
         <strong>Result:</strong> Only 29% of streets are comfortable for pedestrians.
+        <br><a href="viewer_2d.html#comfort" style="color: #1565c0;">View Pedestrian Comfort on 2D Viewer &rarr;</a>
     </div>
 </div>
 
@@ -494,6 +501,7 @@ Where:
     </div>
 
     <p><strong>Interpretation:</strong> High betweenness = many people pass through this street to get from A to B. These are main corridors.</p>
+    <p><a href="viewer_2d.html#centrality" style="color: #1565c0;">View Betweenness on 2D Viewer &rarr;</a></p>
 
     <h3>7.3 Closeness Centrality</h3>
     <p><strong>What it measures:</strong> How close (accessible) a location is to all other locations.</p>
@@ -507,6 +515,7 @@ Where:
     </div>
 
     <p><strong>Interpretation:</strong> High closeness = easy to reach from anywhere. Central, accessible locations.</p>
+    <p><a href="viewer_2d.html#centrality-closeness" style="color: #1565c0;">View Closeness on 2D Viewer &rarr;</a></p>
 
     <h3>7.4 Intervention Priority</h3>
     <p>We combined centrality with comfort to find streets where improvements help the most people:</p>
@@ -550,6 +559,7 @@ High priority = busy street that is uncomfortable
             <tr><td>Green & Shaded</td><td>1,083</td><td>15.3%</td><td>30%</td><td>50.1°C</td><td>Best areas - has vegetation</td></tr>
             <tr><td>Mixed/Cool</td><td>1,667</td><td>2.4%</td><td>32%</td><td>48.5°C</td><td>Cooler but reason unclear</td></tr>
         </table>
+        <a href="viewer_2d.html#clusters" style="color: #1565c0;">View Clusters on 2D Viewer &rarr;</a>
     </div>
 
     <h3>8.2 Green Space Accessibility</h3>
@@ -561,6 +571,7 @@ High priority = busy street that is uncomfortable
         95.7% of streets within 200m of green space<br>
         <br>
         <em>Note: "Green space" here means satellite-detected vegetation, not necessarily public parks.</em>
+        <br><a href="viewer_2d.html#green-access" style="color: #1565c0;">View Green Access on 2D Viewer &rarr;</a>
     </div>
 </div>
 
@@ -569,6 +580,7 @@ High priority = busy street that is uncomfortable
 <div class="section">
     <h3>9.1 Objective</h3>
     <p>Quantify how much shade buildings <strong>and tree canopies</strong> cast on streets during peak summer, and identify which streets are most exposed to direct sun. This extends the building height data (Section 5) and integrates tree canopy data from the Meta 1m Global Canopy Height Map.</p>
+    <p><a href="viewer.html" style="color: #1565c0;">View shade simulation in 3D Digital Twin &rarr;</a></p>
 
     <h3>9.2 Solar Position (NOAA Algorithm)</h3>
     <p><strong>Method:</strong> Implemented the NOAA solar position spreadsheet algorithm using pure numpy/math (no external solar libraries). The algorithm computes solar altitude and azimuth from Julian Day, solar declination, hour angle, and observer coordinates.</p>
