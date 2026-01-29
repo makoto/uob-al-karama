@@ -210,6 +210,35 @@
         .export-btn:hover { background: rgba(79,195,247,0.15); color: #4fc3f7; }
 
 
+        /* Layer Info Button & Popover */
+        .layer-info-btn {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 16px; height: 16px; border-radius: 50%;
+            background: rgba(255,255,255,0.08); color: #888;
+            font-size: 11px; font-style: italic; font-family: serif;
+            cursor: pointer; flex-shrink: 0;
+            border: 1px solid rgba(255,255,255,0.12);
+            transition: background 0.15s, color 0.15s;
+            text-decoration: none;
+        }
+        .layer-info-btn:hover { background: rgba(79,195,247,0.2); color: #4fc3f7; }
+        .info-popover {
+            display: none; position: fixed; z-index: 1000;
+            background: rgba(0,0,0,0.95); color: #ccc;
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 8px; padding: 10px 14px;
+            max-width: 240px; font-size: 12px; line-height: 1.5;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            pointer-events: auto;
+        }
+        .info-popover.visible { display: block; }
+        .info-popover .info-title { font-weight: 600; color: #eee; margin-bottom: 4px; }
+        .info-popover .info-link {
+            display: inline-block; margin-top: 6px;
+            color: #4fc3f7; text-decoration: none; font-size: 11px;
+        }
+        .info-popover .info-link:hover { text-decoration: underline; }
+
         /* Responsive */
         @media (max-width: 768px) {
             #map { right: 0; bottom: 50vh; }
@@ -220,6 +249,13 @@
     </style>
 </head>
 <body>
+
+<!-- Info popover (shared) -->
+<div class="info-popover" id="infoPopover">
+    <div class="info-title" id="infoTitle"></div>
+    <div class="info-desc" id="infoDesc"></div>
+    <a class="info-link" id="infoLink" target="_blank">Learn more &rarr;</a>
+</div>
 
 <div id="map"></div>
 
@@ -239,6 +275,7 @@
     <div class="layer-radio-row" style="cursor:default;">
         <input type="checkbox" id="tog-boundary" checked onchange="toggleBoundary()" style="accent-color:#4fc3f7;width:14px;height:14px;flex-shrink:0;cursor:pointer;">
         <label class="layer-radio-label" for="tog-boundary" style="cursor:pointer;">District Boundary</label>
+        <span class="layer-info-btn" onclick="event.stopPropagation();showInfoPopover(event,'boundary')">i</span>
     </div>
 
     <div class="layer-section-title">Analysis Layers</div>
@@ -247,6 +284,7 @@
     <div class="layer-radio-row" onclick="selectLayer('centrality')">
         <input type="radio" name="layer" value="centrality" id="radio-centrality">
         <span class="layer-radio-label">Street Centrality</span>
+        <span class="layer-info-btn" onclick="event.stopPropagation();showInfoPopover(event,'centrality')">i</span>
         <div class="layer-loading-spinner" id="load-centrality"></div>
     </div>
     <div class="sub-options" id="sub-centrality">
@@ -258,6 +296,7 @@
     <div class="layer-radio-row" onclick="selectLayer('comfort')">
         <input type="radio" name="layer" value="comfort" id="radio-comfort">
         <span class="layer-radio-label">Pedestrian Comfort</span>
+        <span class="layer-info-btn" onclick="event.stopPropagation();showInfoPopover(event,'comfort')">i</span>
         <div class="layer-loading-spinner" id="load-comfort"></div>
     </div>
 
@@ -265,6 +304,7 @@
     <div class="layer-radio-row" onclick="selectLayer('priority')">
         <input type="radio" name="layer" value="priority" id="radio-priority">
         <span class="layer-radio-label">Heat Mitigation Priority</span>
+        <span class="layer-info-btn" onclick="event.stopPropagation();showInfoPopover(event,'priority')">i</span>
         <div class="layer-loading-spinner" id="load-priority"></div>
     </div>
 
@@ -272,6 +312,7 @@
     <div class="layer-radio-row" onclick="selectLayer('combined')">
         <input type="radio" name="layer" value="combined" id="radio-combined">
         <span class="layer-radio-label">Combined SVI + Satellite</span>
+        <span class="layer-info-btn" onclick="event.stopPropagation();showInfoPopover(event,'combined')">i</span>
         <div class="layer-loading-spinner" id="load-combined"></div>
     </div>
     <div class="sub-options" id="sub-combined">
@@ -284,6 +325,7 @@
     <div class="layer-radio-row" onclick="selectLayer('clusters')">
         <input type="radio" name="layer" value="clusters" id="radio-clusters">
         <span class="layer-radio-label">Climate Clusters</span>
+        <span class="layer-info-btn" onclick="event.stopPropagation();showInfoPopover(event,'clusters')">i</span>
         <div class="layer-loading-spinner" id="load-clusters"></div>
     </div>
 
@@ -291,6 +333,7 @@
     <div class="layer-radio-row" onclick="selectLayer('satellite')">
         <input type="radio" name="layer" value="satellite" id="radio-satellite">
         <span class="layer-radio-label">Satellite Grid (30m)</span>
+        <span class="layer-info-btn" onclick="event.stopPropagation();showInfoPopover(event,'satellite')">i</span>
         <div class="layer-loading-spinner" id="load-satellite"></div>
     </div>
     <div class="sub-options" id="sub-satellite">
@@ -303,6 +346,7 @@
     <div class="layer-radio-row" onclick="selectLayer('green-access')">
         <input type="radio" name="layer" value="green-access" id="radio-green-access">
         <span class="layer-radio-label">Green Space Access</span>
+        <span class="layer-info-btn" onclick="event.stopPropagation();showInfoPopover(event,'green-access')">i</span>
         <div class="layer-loading-spinner" id="load-green-access"></div>
     </div>
 
@@ -1098,6 +1142,53 @@ async function init() {
     }
     selectLayer(parsed.layer);
 }
+
+// ============================================================
+//  LAYER INFO POPOVERS
+// ============================================================
+
+var LAYER_INFO = {
+    'boundary':      { label: 'District Boundary',          desc: 'Administrative boundary of the Al Karama district from OpenStreetMap.', anchor: '#overview' },
+    'centrality':    { label: 'Street Centrality',          desc: 'Network analysis metrics (betweenness, closeness) indicating pedestrian route importance.', anchor: '#network' },
+    'comfort':       { label: 'Pedestrian Comfort',         desc: 'Pedestrian Comfort Index combining shade, temperature, greenery and sky openness.', anchor: '#combined' },
+    'priority':      { label: 'Heat Mitigation Priority',   desc: 'Composite score ranking locations by heat exposure, vegetation deficit and pedestrian traffic.', anchor: '#combined' },
+    'combined':      { label: 'Combined SVI + Satellite',   desc: 'Point-level fusion of street-view indicators (GVI, SVF) with satellite thermal/vegetation data.', anchor: '#combined' },
+    'clusters':      { label: 'Climate Clusters',           desc: 'K-means clustering of micro-climate variables to identify urban thermal zones.', anchor: '#clusters' },
+    'satellite':     { label: 'Satellite Grid (30m)',       desc: 'Landsat-derived 30 m grid of LST, NDVI and NDBI across the district.', anchor: '#satellite' },
+    'green-access':  { label: 'Green Space Access',         desc: 'Walking distance from each sample point to the nearest green space.', anchor: '#clusters' }
+};
+
+function showInfoPopover(event, key) {
+    event.stopPropagation();
+    var info = LAYER_INFO[key];
+    if (!info) return;
+
+    var popover = document.getElementById('infoPopover');
+    document.getElementById('infoTitle').textContent = info.label;
+    document.getElementById('infoDesc').textContent = info.desc;
+    var link = document.getElementById('infoLink');
+    link.href = 'learning_report.html' + info.anchor;
+
+    // Position near the button
+    var rect = event.target.getBoundingClientRect();
+    var top = rect.bottom + 6;
+    var left = rect.left;
+
+    // Keep within viewport
+    if (left + 240 > window.innerWidth) left = window.innerWidth - 250;
+    if (left < 4) left = 4;
+    if (top + 200 > window.innerHeight) top = rect.top - 6;
+
+    popover.style.top = top + 'px';
+    popover.style.left = left + 'px';
+    popover.classList.add('visible');
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.layer-info-btn') && !e.target.closest('.info-popover')) {
+        document.getElementById('infoPopover').classList.remove('visible');
+    }
+});
 
 init();
 </script>

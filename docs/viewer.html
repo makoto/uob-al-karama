@@ -34,6 +34,7 @@
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-buildings" checked onchange="onLayerToggle('buildings')">
                         <label class="layer-label" for="tog-buildings">Buildings</label>
+                        <span class="layer-info-btn" onclick="showInfoPopover(event,'buildings')">i</span>
                         <span class="layer-loading" id="load-buildings" style="display:none"></span>
                     </div>
                     <div class="layer-options" id="opt-buildings">
@@ -44,11 +45,13 @@
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-canopy" checked onchange="onLayerToggle('canopy')">
                         <label class="layer-label" for="tog-canopy">Tree Canopy</label>
+                        <span class="layer-info-btn" onclick="showInfoPopover(event,'canopy')">i</span>
                         <span class="layer-loading" id="load-canopy" style="display:none"></span>
                     </div>
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-boundary" checked onchange="onLayerToggle('boundary')">
                         <label class="layer-label" for="tog-boundary">District Boundary</label>
+                        <span class="layer-info-btn" onclick="showInfoPopover(event,'boundary')">i</span>
                         <span class="layer-loading" id="load-boundary" style="display:none"></span>
                     </div>
                 </div>
@@ -64,20 +67,24 @@
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-gpu-shadows" checked onchange="onLayerToggle('gpu-shadows')">
                         <label class="layer-label" for="tog-gpu-shadows">GPU Sun Shadows</label>
+                        <span class="layer-info-btn" onclick="showInfoPopover(event,'gpu-shadows')">i</span>
                     </div>
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-building-shadows" checked onchange="onLayerToggle('building-shadows')">
                         <label class="layer-label" for="tog-building-shadows">Building Shadows (projected)</label>
+                        <span class="layer-info-btn" onclick="showInfoPopover(event,'building-shadows')">i</span>
                         <span class="layer-loading" id="load-building-shadows" style="display:none"></span>
                     </div>
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-tree-shadows" checked onchange="onLayerToggle('tree-shadows')">
                         <label class="layer-label" for="tog-tree-shadows">Tree Shadows (projected)</label>
+                        <span class="layer-info-btn" onclick="showInfoPopover(event,'tree-shadows')">i</span>
                         <span class="layer-loading" id="load-tree-shadows" style="display:none"></span>
                     </div>
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-street-shade" onchange="onLayerToggle('street-shade')">
                         <label class="layer-label" for="tog-street-shade">Street Shade %</label>
+                        <span class="layer-info-btn" onclick="showInfoPopover(event,'street-shade')">i</span>
                         <span class="layer-loading" id="load-street-shade" style="display:none"></span>
                     </div>
                     <div class="layer-options" id="opt-street-shade" style="display:none">
@@ -100,11 +107,13 @@
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-priority" onchange="onLayerToggle('priority')">
                         <label class="layer-label" for="tog-priority">Heat Mitigation Priority</label>
+                        <span class="layer-info-btn" onclick="showInfoPopover(event,'priority')">i</span>
                         <span class="layer-loading" id="load-priority" style="display:none"></span>
                     </div>
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-combined" onchange="onLayerToggle('combined')">
                         <label class="layer-label" for="tog-combined">Combined SVI+Satellite</label>
+                        <span class="layer-info-btn" onclick="showInfoPopover(event,'combined')">i</span>
                         <span class="layer-loading" id="load-combined" style="display:none"></span>
                     </div>
                     <div class="layer-options" id="opt-combined" style="display:none">
@@ -115,11 +124,13 @@
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-clusters" onchange="onLayerToggle('clusters')">
                         <label class="layer-label" for="tog-clusters">Climate Clusters</label>
+                        <span class="layer-info-btn" onclick="showInfoPopover(event,'clusters')">i</span>
                         <span class="layer-loading" id="load-clusters" style="display:none"></span>
                     </div>
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-green-access" onchange="onLayerToggle('green-access')">
                         <label class="layer-label" for="tog-green-access">Green Space Access</label>
+                        <span class="layer-info-btn" onclick="showInfoPopover(event,'green-access')">i</span>
                         <span class="layer-loading" id="load-green-access" style="display:none"></span>
                     </div>
                 </div>
@@ -135,6 +146,7 @@
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-centrality" onchange="onLayerToggle('centrality')">
                         <label class="layer-label" for="tog-centrality">Street Centrality</label>
+                        <span class="layer-info-btn" onclick="showInfoPopover(event,'centrality')">i</span>
                         <span class="layer-loading" id="load-centrality" style="display:none"></span>
                     </div>
                     <div class="layer-options" id="opt-centrality" style="display:none">
@@ -144,6 +156,7 @@
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-comfort" onchange="onLayerToggle('comfort')">
                         <label class="layer-label" for="tog-comfort">Pedestrian Comfort</label>
+                        <span class="layer-info-btn" onclick="showInfoPopover(event,'comfort')">i</span>
                         <span class="layer-loading" id="load-comfort" style="display:none"></span>
                     </div>
                 </div>
@@ -159,6 +172,7 @@
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-pois" onchange="onLayerToggle('pois')">
                         <label class="layer-label" for="tog-pois">POIs</label>
+                        <span class="layer-info-btn" onclick="showInfoPopover(event,'pois')">i</span>
                         <span class="layer-loading" id="load-pois" style="display:none"></span>
                     </div>
                     <div class="poi-pills" id="poiPills" style="display:none">
@@ -206,6 +220,13 @@
             </div>
         </div>
     </div>
+</div>
+
+<!-- Info popover (shared) -->
+<div class="info-popover" id="infoPopover">
+    <div class="info-title" id="infoTitle"></div>
+    <div class="info-desc" id="infoDesc"></div>
+    <a class="info-link" id="infoLink" target="_blank">Learn more &rarr;</a>
 </div>
 
 <!-- Navigation bar -->
@@ -1417,6 +1438,59 @@ async function init() {
     // Load default area
     await switchArea('al_karama');
 }
+
+// ═══════════════════════════════════════════════════════
+//  LAYER INFO POPOVERS
+// ═══════════════════════════════════════════════════════
+
+var LAYER_INFO = {
+    'boundary':          { label: 'District Boundary',          desc: 'Administrative boundary of the Al Karama district from OpenStreetMap.', anchor: '#overview' },
+    'buildings':         { label: 'Buildings',                  desc: '3D building footprints with OSM heights enhanced via Google Earth Engine shadow analysis.', anchor: '#building-heights' },
+    'canopy':            { label: 'Tree Canopy',                desc: 'Tree canopy polygons extracted from satellite imagery, used for shade projection.', anchor: '#shade' },
+    'gpu-shadows':       { label: 'GPU Sun Shadows',            desc: 'Real-time shadow casting from buildings and trees using deck.gl\u2019s sun-light engine.', anchor: '#shade' },
+    'building-shadows':  { label: 'Building Shadows (projected)', desc: 'Pre-computed shadow polygons cast by buildings at each hour of the analysis day.', anchor: '#shade' },
+    'tree-shadows':      { label: 'Tree Shadows (projected)',   desc: 'Pre-computed shadow polygons cast by tree canopies at each hour.', anchor: '#shade' },
+    'street-shade':      { label: 'Street Shade %',             desc: 'Percentage of each street segment in shade, derived from projected shadow overlaps.', anchor: '#shade' },
+    'priority':          { label: 'Heat Mitigation Priority',   desc: 'Composite score ranking locations by heat exposure, vegetation deficit and pedestrian traffic.', anchor: '#combined' },
+    'combined':          { label: 'Combined SVI + Satellite',   desc: 'Point-level fusion of street-view indicators (GVI, SVF) with satellite thermal/vegetation data.', anchor: '#combined' },
+    'clusters':          { label: 'Climate Clusters',           desc: 'K-means clustering of micro-climate variables to identify urban thermal zones.', anchor: '#clusters' },
+    'green-access':      { label: 'Green Space Access',         desc: 'Walking distance from each sample point to the nearest green space.', anchor: '#clusters' },
+    'centrality':        { label: 'Street Centrality',          desc: 'Network analysis metrics (betweenness, closeness) indicating pedestrian route importance.', anchor: '#network' },
+    'comfort':           { label: 'Pedestrian Comfort',         desc: 'Pedestrian Comfort Index combining shade, temperature, greenery and sky openness.', anchor: '#combined' },
+    'pois':              { label: 'POIs',                       desc: 'Points of interest from OpenStreetMap (food, shopping, health, etc.) via Overpass API.', anchor: '#shade-poi' }
+};
+
+function showInfoPopover(event, key) {
+    event.stopPropagation();
+    var info = LAYER_INFO[key];
+    if (!info) return;
+
+    var popover = document.getElementById('infoPopover');
+    document.getElementById('infoTitle').textContent = info.label;
+    document.getElementById('infoDesc').textContent = info.desc;
+    var link = document.getElementById('infoLink');
+    link.href = 'learning_report.html' + info.anchor;
+
+    // Position near the button
+    var rect = event.target.getBoundingClientRect();
+    var top = rect.bottom + 6;
+    var left = rect.left;
+
+    // Keep within viewport
+    if (left + 240 > window.innerWidth) left = window.innerWidth - 250;
+    if (left < 4) left = 4;
+    if (top + 200 > window.innerHeight) top = rect.top - 6;
+
+    popover.style.top = top + 'px';
+    popover.style.left = left + 'px';
+    popover.classList.add('visible');
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.layer-info-btn') && !e.target.closest('.info-popover')) {
+        document.getElementById('infoPopover').classList.remove('visible');
+    }
+});
 
 init();
 </script>
