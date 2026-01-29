@@ -399,6 +399,7 @@ def generate_html_map(streets_wgs, shade_data, shadow_geojsons, sun_positions, o
 <body>
 <div id="map"></div>
 <a href="../index.html" class="back-link">&#8592; Dashboard</a>
+<a href="shade_map_3d.html" class="back-link" style="left:120px;">View in 3D &#8594;</a>
 
 <div class="control-panel">
     <h3>Building Shade Analysis</h3>
@@ -565,6 +566,515 @@ updateMap(2);
     print(f"\n  HTML map saved: {out_path}")
 
 
+# ── 5b. 3D HTML Map Generation (deck.gl + SunLight) ──────────────────
+
+def generate_3d_html_map(buildings_wgs, streets_wgs, shade_data, sun_positions, out_path):
+    """Generate interactive 3D HTML map with deck.gl _SunLight shadow rendering."""
+
+    # Prepare buildings GeoJSON
+    building_features = []
+    for _, row in buildings_wgs.iterrows():
+        geom = row.geometry
+        if geom is None or geom.is_empty:
+            continue
+        height = row.get('height', 0)
+        if height is None or height <= 0:
+            continue
+        coords = list(geom.exterior.coords)
+        feature = {
+            'type': 'Feature',
+            'properties': {
+                'name': row.get('name', '') or '',
+                'height': round(float(height), 1),
+                'levels': row.get('levels', '') or '',
+                'building_type': row.get('building_type', '') or '',
+            },
+            'geometry': {
+                'type': 'Polygon',
+                'coordinates': [[[c[0], c[1]] for c in coords]]
+            }
+        }
+        building_features.append(feature)
+
+    buildings_geojson = json.dumps({
+        'type': 'FeatureCollection',
+        'features': building_features
+    })
+
+    # Prepare street features with shade data
+    street_features = []
+    for idx, row in streets_wgs.iterrows():
+        props = {
+            'length': round(row.get('length', 0), 1),
+            'shade_avg': round(shade_data.loc[idx, 'shade_avg'] * 100, 1) if idx in shade_data.index else 0,
+        }
+        for h in TIMES_LOCAL:
+            col = f'shade_{h:02d}'
+            props[col] = round(shade_data.loc[idx, col] * 100, 1) if idx in shade_data.index else 0
+
+        geom = row.geometry
+        if geom is None or geom.is_empty:
+            continue
+        coords = list(geom.coords)
+        feature = {
+            'type': 'Feature',
+            'properties': props,
+            'geometry': {
+                'type': 'LineString',
+                'coordinates': [[c[0], c[1]] for c in coords]
+            }
+        }
+        street_features.append(feature)
+
+    streets_geojson = json.dumps({
+        'type': 'FeatureCollection',
+        'features': street_features
+    })
+
+    # Compute stats
+    avg_shade = shade_data['shade_avg'].mean() * 100
+    well_shaded = int((shade_data['shade_avg'] >= 0.5).sum())
+    exposed = int((shade_data['shade_avg'] < 0.2).sum())
+    total = len(shade_data)
+
+    # Sun position info
+    sun_info = {}
+    for h, sp in sun_positions.items():
+        sun_info[h] = {
+            'altitude': round(sp['altitude'], 1),
+            'azimuth': round(sp['azimuth'], 1),
+            'shadow_factor': round(sp['shadow_factor'], 2)
+        }
+
+    # Build UTC timestamps for _SunLight (July 15, 2024)
+    utc_timestamps = {}
+    for h in TIMES_LOCAL:
+        hour_utc = h - TIMEZONE_OFFSET
+        # JavaScript Date.UTC(year, monthIndex, day, hour)
+        utc_timestamps[h] = f"Date.UTC(2024, 6, 15, {hour_utc}, 0, 0)"
+
+    html = f"""<!DOCTYPE html>
+<html>
+<head>
+    <title>3D Shade Analysis - Al Karama, Dubai</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://unpkg.com/deck.gl@8.9.0/dist.min.js"></script>
+    <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet">
+    <style>
+        body {{ margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; overflow: hidden; }}
+        #container {{ width: 100vw; height: 100vh; position: relative; }}
+
+        .panel {{
+            position: absolute; top: 10px; right: 10px; z-index: 1;
+            background: rgba(0,0,0,0.88); color: #eee; padding: 16px;
+            border-radius: 10px; max-width: 320px; font-size: 13px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }}
+        .panel h3 {{ margin: 0 0 8px 0; color: #4fc3f7; font-size: 16px; }}
+        .panel h4 {{ margin: 12px 0 6px 0; color: #aaa; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }}
+
+        .sun-info {{
+            background: rgba(255,160,0,0.12); padding: 8px 10px; border-radius: 6px;
+            margin: 8px 0; border-left: 3px solid #ffa000;
+        }}
+        .sun-info .sun-title {{ font-weight: bold; color: #ffb300; margin-bottom: 4px; }}
+
+        .stats-box {{ background: rgba(255,255,255,0.06); padding: 10px; border-radius: 6px; margin: 8px 0; }}
+        .stat-row {{ display: flex; justify-content: space-between; margin: 3px 0; }}
+        .stat-label {{ color: #999; }}
+        .stat-value {{ font-weight: bold; color: #81c784; }}
+
+        .toggle-row {{ margin: 5px 0; }}
+        .toggle-row label {{ cursor: pointer; color: #ccc; }}
+
+        .legend {{ margin-top: 10px; }}
+        .legend-title {{ color: #aaa; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }}
+        .legend-item {{ display: flex; align-items: center; margin: 3px 0; font-size: 12px; color: #bbb; }}
+        .legend-color {{ width: 24px; height: 4px; margin-right: 8px; border-radius: 2px; flex-shrink: 0; }}
+
+        .time-slider {{
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
+            z-index: 1; background: rgba(0,0,0,0.88); padding: 12px 24px;
+            border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            text-align: center; min-width: 420px; color: #eee;
+        }}
+        .time-slider input[type=range] {{ width: 100%; margin: 8px 0; accent-color: #4fc3f7; }}
+        .time-label {{ font-weight: bold; font-size: 16px; color: #4fc3f7; }}
+        .time-marks {{ display: flex; justify-content: space-between; font-size: 11px; color: #888; }}
+
+        .nav-links {{
+            position: absolute; top: 10px; left: 10px; z-index: 1;
+            display: flex; gap: 8px;
+        }}
+        .nav-link {{
+            background: rgba(0,0,0,0.88); padding: 8px 14px; border-radius: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3); text-decoration: none;
+            color: #4fc3f7; font-size: 13px; font-weight: 500;
+        }}
+        .nav-link:hover {{ background: rgba(79,195,247,0.15); }}
+
+        .mode-btn {{
+            padding: 5px 10px; border: 1px solid #555; background: #222;
+            color: #ccc; cursor: pointer; font-size: 11px; border-radius: 4px;
+        }}
+        .mode-btn:hover {{ background: #333; }}
+        .mode-btn.active {{ background: #1976d2; color: #fff; border-color: #1976d2; }}
+
+        .controls-hint {{
+            position: absolute; bottom: 120px; left: 50%; transform: translateX(-50%);
+            z-index: 1; color: #aaa; font-size: 11px; text-align: center;
+        }}
+    </style>
+</head>
+<body>
+<div id="container"></div>
+
+<div class="nav-links">
+    <a href="../index.html" class="nav-link">&#8592; Dashboard</a>
+    <a href="shade_map.html" class="nav-link">2D View</a>
+</div>
+
+<div class="panel">
+    <h3>3D Shade Analysis</h3>
+    <p style="color:#888; font-size:12px; margin:0 0 8px;">July 15 (peak summer) &mdash; Al Karama, Dubai</p>
+    <p style="color:#666; font-size:11px; margin:0 0 8px;">GPU-rendered sun shadows from building geometry</p>
+
+    <div class="sun-info">
+        <div class="sun-title">Sun Position</div>
+        <div style="display:flex; align-items:center; gap:10px;">
+            <svg id="sunCompass" width="80" height="80" viewBox="0 0 80 80" style="flex-shrink:0;">
+                <!-- compass ring -->
+                <circle cx="40" cy="40" r="36" fill="none" stroke="#555" stroke-width="1"/>
+                <circle cx="40" cy="40" r="2" fill="#888"/>
+                <!-- cardinal labels -->
+                <text x="40" y="9" text-anchor="middle" font-size="8" fill="#888">N</text>
+                <text x="73" y="43" text-anchor="middle" font-size="8" fill="#888">E</text>
+                <text x="40" y="78" text-anchor="middle" font-size="8" fill="#888">S</text>
+                <text x="7" y="43" text-anchor="middle" font-size="8" fill="#888">W</text>
+                <!-- tick marks -->
+                <line x1="40" y1="5" x2="40" y2="10" stroke="#666" stroke-width="1"/>
+                <line x1="75" y1="40" x2="70" y2="40" stroke="#666" stroke-width="1"/>
+                <line x1="40" y1="75" x2="40" y2="70" stroke="#666" stroke-width="1"/>
+                <line x1="5" y1="40" x2="10" y2="40" stroke="#666" stroke-width="1"/>
+                <!-- sun dot + line (rotated by JS) -->
+                <g id="compassNeedle">
+                    <line x1="40" y1="40" x2="40" y2="12" stroke="#ffb300" stroke-width="2" stroke-opacity="0.6"/>
+                    <circle cx="40" cy="10" r="6" fill="#ffb300" opacity="0.9"/>
+                    <text x="40" y="13" text-anchor="middle" font-size="7" font-weight="bold" fill="#333">&#9788;</text>
+                </g>
+            </svg>
+            <div style="flex:1;">
+                <div id="sunAlt">Altitude: --</div>
+                <div id="sunAz">Azimuth: --</div>
+                <div id="sunShadow">Shadow factor: --</div>
+            </div>
+        </div>
+        <div style="margin-top:6px; font-size:11px; color:#a1887f;">
+            Sunrise: ~5:38 AM &nbsp;|&nbsp; Sunset: ~7:11 PM<br>Day length: ~13.6 hours
+        </div>
+    </div>
+
+    <div class="stats-box">
+        <h4 style="margin-top:0">Daily Summary</h4>
+        <div class="stat-row"><span class="stat-label">Avg shade coverage:</span><span class="stat-value">{avg_shade:.1f}%</span></div>
+        <div class="stat-row"><span class="stat-label">Well-shaded (&ge;50%):</span><span class="stat-value" id="statShaded">{well_shaded}</span></div>
+        <div class="stat-row"><span class="stat-label">Exposed (&lt;20%):</span><span class="stat-value" id="statExposed">{exposed}</span></div>
+        <div class="stat-row"><span class="stat-label">Total streets:</span><span class="stat-value">{total}</span></div>
+    </div>
+
+    <div class="toggle-row">
+        <label><input type="checkbox" id="toggleBuildings" checked> Buildings (extruded)</label>
+    </div>
+    <div class="toggle-row">
+        <label><input type="checkbox" id="toggleShadows" checked> Sun shadows (GPU)</label>
+    </div>
+
+    <h4 style="margin:12px 0 6px 0; color:#aaa; font-size:12px; text-transform:uppercase; letter-spacing:1px;">Street Display</h4>
+    <div style="display:flex; gap:4px; flex-wrap:wrap;">
+        <button class="mode-btn active" id="modeNeutral" onclick="setStreetMode('neutral')">Shadow view</button>
+        <button class="mode-btn" id="modeShade" onclick="setStreetMode('shade')">Shade %</button>
+        <button class="mode-btn" id="modeOff" onclick="setStreetMode('off')">Off</button>
+    </div>
+    <div style="color:#777; font-size:11px; margin-top:4px;" id="modeHint">Semi-transparent streets &mdash; GPU shadows visible on roads</div>
+
+    <div class="legend" id="legendShade" style="display:none;">
+        <div class="legend-title">Street Shade Coverage</div>
+        <div class="legend-item"><div class="legend-color" style="background:#d32f2f"></div> 0% (fully exposed)</div>
+        <div class="legend-item"><div class="legend-color" style="background:#ff9800"></div> 25%</div>
+        <div class="legend-item"><div class="legend-color" style="background:#fdd835"></div> 50%</div>
+        <div class="legend-item"><div class="legend-color" style="background:#8bc34a"></div> 75%</div>
+        <div class="legend-item"><div class="legend-color" style="background:#2e7d32"></div> 100% (fully shaded)</div>
+    </div>
+    <div class="legend" id="legendNeutral">
+        <div class="legend-title">Shadow View</div>
+        <div class="legend-item"><div class="legend-color" style="background:rgba(255,255,255,0.5)"></div> Street (light = sun-exposed)</div>
+        <div class="legend-item"><div class="legend-color" style="background:rgba(60,60,60,0.7)"></div> Street (dark = in shadow)</div>
+    </div>
+</div>
+
+<div class="time-slider">
+    <div class="time-label" id="timeLabel">12:00 PM</div>
+    <input type="range" id="timeSlider" min="0" max="4" value="2" step="1">
+    <div class="time-marks">
+        <span>8 AM</span><span>10 AM</span><span>12 PM</span><span>2 PM</span><span>4 PM</span>
+    </div>
+</div>
+
+<div class="controls-hint">Ctrl+drag to tilt &bull; Scroll to zoom &bull; Right-drag to rotate</div>
+
+<script>
+// ── Data ──
+var BUILDINGS = {buildings_geojson};
+var STREETS = {streets_geojson};
+
+var TIMES = [8, 10, 12, 14, 16];
+var TIME_LABELS = ['8:00 AM', '10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM'];
+var SUN_INFO = {json.dumps(sun_info)};
+
+// UTC timestamps for _SunLight (July 15, 2024 — month index 6 = July)
+var UTC_TIMESTAMPS = {{
+"""
+
+    for h in TIMES_LOCAL:
+        hour_utc = h - TIMEZONE_OFFSET
+        html += f"    {h}: new Date(Date.UTC(2024, 6, 15, {hour_utc}, 0, 0)),\n"
+
+    html += f"""}};
+
+// ── State ──
+var currentTimeIdx = 2; // start at noon
+var showBuildings = true;
+var streetMode = 'neutral'; // 'neutral' | 'shade' | 'off'
+var showShadows = true;
+
+// ── Color helpers ──
+function shadeColor(pct) {{
+    if (pct >= 75) return [46, 125, 50];
+    if (pct >= 50) return [139, 195, 74];
+    if (pct >= 25) return [253, 216, 53];
+    if (pct >= 10) return [255, 152, 0];
+    return [211, 47, 47];
+}}
+
+// ── Street mode switcher ──
+function setStreetMode(mode) {{
+    streetMode = mode;
+    // Update button states
+    document.getElementById('modeNeutral').className = mode === 'neutral' ? 'mode-btn active' : 'mode-btn';
+    document.getElementById('modeShade').className = mode === 'shade' ? 'mode-btn active' : 'mode-btn';
+    document.getElementById('modeOff').className = mode === 'off' ? 'mode-btn active' : 'mode-btn';
+    // Update hint text
+    var hints = {{
+        neutral: 'Semi-transparent streets \\u2014 GPU shadows visible on roads',
+        shade: 'Streets colored by pre-computed shade percentage',
+        off: 'Streets hidden'
+    }};
+    document.getElementById('modeHint').textContent = hints[mode];
+    // Toggle legends
+    document.getElementById('legendNeutral').style.display = mode === 'neutral' ? '' : 'none';
+    document.getElementById('legendShade').style.display = mode === 'shade' ? '' : 'none';
+    updateMap(currentTimeIdx);
+}}
+
+// ── Build layers ──
+function buildLayers() {{
+    var h = TIMES[currentTimeIdx];
+    var shadeKey = 'shade_' + (h < 10 ? '0' + h : '' + h);
+    var layers = [];
+
+    // Buildings layer
+    if (showBuildings) {{
+        layers.push(new deck.PolygonLayer({{
+            id: 'buildings',
+            data: BUILDINGS.features,
+            extruded: true,
+            wireframe: false,
+            opacity: 0.85,
+            getPolygon: function(d) {{ return d.geometry.coordinates; }},
+            getElevation: function(d) {{ return d.properties.height || 9; }},
+            getFillColor: [74, 80, 87],
+            material: {{
+                ambient: 0.35,
+                diffuse: 0.6,
+                shininess: 32,
+                specularColor: [60, 64, 70]
+            }},
+            pickable: true
+        }}));
+    }}
+
+    // Streets layer — neutral mode: semi-transparent white so GPU shadows show through
+    if (streetMode === 'neutral') {{
+        layers.push(new deck.PathLayer({{
+            id: 'streets-neutral',
+            data: STREETS.features,
+            getPath: function(d) {{ return d.geometry.coordinates; }},
+            getColor: [220, 220, 220, 90],
+            getWidth: 4,
+            widthUnits: 'pixels',
+            pickable: true,
+            opacity: 1.0
+        }}));
+    }}
+
+    // Streets layer — shade % mode: colored by pre-computed shade fraction
+    if (streetMode === 'shade') {{
+        layers.push(new deck.PathLayer({{
+            id: 'streets-shade',
+            data: STREETS.features,
+            getPath: function(d) {{ return d.geometry.coordinates; }},
+            getColor: function(d) {{
+                var shade = d.properties[shadeKey] || 0;
+                return shadeColor(shade);
+            }},
+            getWidth: 3,
+            widthUnits: 'pixels',
+            pickable: true,
+            opacity: 0.9,
+            updateTriggers: {{
+                getColor: [shadeKey]
+            }}
+        }}));
+    }}
+
+    return layers;
+}}
+
+// ── Lighting with _SunLight ──
+function buildLightingEffect(timeIdx) {{
+    var h = TIMES[timeIdx];
+    var timestamp = UTC_TIMESTAMPS[h];
+
+    var sunLight = new deck._SunLight({{
+        timestamp: timestamp.getTime(),
+        color: [255, 255, 255],
+        intensity: 1.0
+    }});
+
+    var ambientLight = new deck.AmbientLight({{
+        color: [255, 255, 255],
+        intensity: 0.4
+    }});
+
+    var lightingEffect = new deck.LightingEffect({{
+        ambientLight: ambientLight,
+        sunLight: sunLight
+    }});
+    lightingEffect.shadowColor = [0, 0, 0, showShadows ? 0.5 : 0.0];
+
+    return lightingEffect;
+}}
+
+// ── Initialize deck.gl ──
+var deckgl = new deck.DeckGL({{
+    container: 'container',
+    mapStyle: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json',
+    initialViewState: {{
+        longitude: {LONGITUDE},
+        latitude: {LATITUDE},
+        zoom: 15,
+        pitch: 55,
+        bearing: -20,
+        maxPitch: 85
+    }},
+    controller: true,
+    layers: buildLayers(),
+    effects: [buildLightingEffect(2)],
+    getTooltip: function(info) {{
+        if (!info.object) return null;
+        var d = info.object;
+        var p = d.properties;
+        if (info.layer && info.layer.id === 'buildings') {{
+            return {{
+                html: '<div style="padding:6px;max-width:250px;">' +
+                    '<b>' + (p.name || 'Building') + '</b><br>' +
+                    'Height: ' + p.height + 'm' +
+                    (p.levels ? '<br>Levels: ' + p.levels : '') +
+                    (p.building_type && p.building_type !== 'yes' ? '<br>Type: ' + p.building_type : '') +
+                    '</div>',
+                style: {{ background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }}
+            }};
+        }}
+        if (info.layer && (info.layer.id === 'streets-neutral' || info.layer.id === 'streets-shade')) {{
+            var h = TIMES[currentTimeIdx];
+            var shadeKey = 'shade_' + (h < 10 ? '0' + h : '' + h);
+            var shade = p[shadeKey] || 0;
+            return {{
+                html: '<div style="padding:6px;max-width:250px;">' +
+                    '<b>Street Segment</b><br>' +
+                    'Length: ' + (p.length || 0) + 'm<br>' +
+                    'Shade at ' + TIME_LABELS[currentTimeIdx] + ': <b>' + shade.toFixed(1) + '%</b><br>' +
+                    'Daily avg: ' + (p.shade_avg || 0).toFixed(1) + '%' +
+                    '</div>',
+                style: {{ background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }}
+            }};
+        }}
+        return null;
+    }}
+}});
+
+// ── Update function ──
+function updateMap(timeIdx) {{
+    currentTimeIdx = timeIdx;
+    var h = TIMES[timeIdx];
+
+    // Update time label
+    document.getElementById('timeLabel').textContent = TIME_LABELS[timeIdx];
+
+    // Update sun info
+    var si = SUN_INFO[h];
+    document.getElementById('sunAlt').textContent = 'Altitude: ' + si.altitude + '\\u00b0';
+    document.getElementById('sunAz').textContent = 'Azimuth: ' + si.azimuth + '\\u00b0';
+    document.getElementById('sunShadow').textContent = 'Shadow factor: ' + si.shadow_factor + 'x height';
+
+    // Update compass needle — azimuth is clockwise from north, same as SVG rotate
+    document.getElementById('compassNeedle').setAttribute('transform', 'rotate(' + si.azimuth + ', 40, 40)');
+
+    // Update time-specific stats
+    var shadeKey = 'shade_' + (h < 10 ? '0' + h : '' + h);
+    var shaded = 0, exp = 0;
+    STREETS.features.forEach(function(f) {{
+        var v = f.properties[shadeKey] || 0;
+        if (v >= 50) shaded++;
+        else if (v < 20) exp++;
+    }});
+    document.getElementById('statShaded').textContent = shaded;
+    document.getElementById('statExposed').textContent = exp;
+
+    // Update deck.gl layers and lighting
+    deckgl.setProps({{
+        layers: buildLayers(),
+        effects: [buildLightingEffect(timeIdx)]
+    }});
+
+}}
+
+// ── Event listeners ──
+document.getElementById('timeSlider').addEventListener('input', function() {{
+    updateMap(parseInt(this.value));
+}});
+document.getElementById('toggleBuildings').addEventListener('change', function() {{
+    showBuildings = this.checked;
+    updateMap(currentTimeIdx);
+}});
+document.getElementById('toggleShadows').addEventListener('change', function() {{
+    showShadows = this.checked;
+    updateMap(currentTimeIdx);
+}});
+
+// Initial render
+updateMap(2);
+</script>
+</body>
+</html>"""
+
+    with open(out_path, 'w') as f:
+        f.write(html)
+    print(f"\n  3D HTML map saved: {out_path}")
+
+
 # ── 6. Main Pipeline ─────────────────────────────────────────────────
 
 def main():
@@ -577,11 +1087,11 @@ def main():
     print("=" * 60)
 
     # ── Step 1: Sun positions ──
-    print("\n[1/5] Calculating sun positions...")
+    print("\n[1/6] Calculating sun positions...")
     sun_positions = get_sun_positions()
 
     # ── Step 2: Load data ──
-    print("\n[2/5] Loading building and street data...")
+    print("\n[2/6] Loading building and street data...")
     buildings = gpd.read_file(BUILDINGS_PATH)
     streets = gpd.read_file(STREETS_PATH)
     print(f"  Buildings: {len(buildings)}")
@@ -596,7 +1106,7 @@ def main():
     print(f"  Buildings with height: {len(buildings_utm)}")
 
     # ── Step 3: Compute shadows for each time ──
-    print("\n[3/5] Computing shadow projections...")
+    print("\n[3/6] Computing shadow projections...")
     shadow_unions = {}
     shadow_geojsons_wgs = {}  # For HTML embedding (WGS84)
     shade_results = {}
@@ -656,7 +1166,7 @@ def main():
         shadow_geojsons_wgs[hour] = shadow_wgs_embed.to_json()
 
     # ── Step 4: Compile shade CSV ──
-    print("\n[4/5] Compiling shade results...")
+    print("\n[4/6] Compiling shade results...")
     shade_df = pd.DataFrame(index=streets.index)
     for hour in TIMES_LOCAL:
         shade_df[f'shade_{hour:02d}'] = shade_results[hour]
@@ -685,9 +1195,15 @@ def main():
               f"min={shade_df[col].min()*100:.1f}%")
 
     # ── Step 5: Generate HTML map ──
-    print("\n[5/5] Generating interactive map...")
+    print("\n[5/6] Generating interactive 2D map...")
     html_path = os.path.join(OUT_DIR, 'shade_map.html')
     generate_html_map(streets, shade_df, shadow_geojsons_wgs, sun_positions, html_path)
+
+    # ── Step 6: Generate 3D HTML map ──
+    print("\n[6/6] Generating 3D interactive map (deck.gl + SunLight)...")
+    html_3d_path = os.path.join(OUT_DIR, 'shade_map_3d.html')
+    buildings_with_height = buildings[buildings['height'].notna() & (buildings['height'] > 0)].copy()
+    generate_3d_html_map(buildings_with_height, streets, shade_df, sun_positions, html_3d_path)
 
     elapsed = time.time() - t0
     print(f"\n{'=' * 60}")
