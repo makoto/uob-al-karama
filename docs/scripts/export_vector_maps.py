@@ -53,7 +53,7 @@ def load_json(name):
 def save(fig, name):
     svg_path = os.path.join(OUT_DIR, name + '.svg')
     pdf_path = os.path.join(OUT_DIR, name + '.pdf')
-    fig.savefig(svg_path, format='svg', bbox_inches='tight', pad_inches=0.1, transparent=True)
+    fig.savefig(svg_path, format='svg', bbox_inches='tight', pad_inches=0.1)
     fig.savefig(pdf_path, format='pdf', bbox_inches='tight', pad_inches=0.1)
     plt.close(fig)
     svg_kb = os.path.getsize(svg_path) / 1024
@@ -70,285 +70,9 @@ def make_fig(title, aspect='equal'):
     ax.tick_params(labelsize=8)
     return fig, ax
 
-# ---------------------------------------------------------------------------
-# 1. Street Centrality (betweenness + closeness)
-# ---------------------------------------------------------------------------
-
-def export_centrality():
-    print('Street Centrality...')
-    streets = load_json('streets.geojson')
-
-    for metric in ['betweenness', 'closeness']:
-        fig, ax = make_fig(f'Street Centrality ({metric.title()})')
-
-        segments = []
-        values = []
-        for feat in streets['features']:
-            coords = feat['geometry']['coordinates']
-            if feat['geometry']['type'] == 'LineString':
-                lons = [c[0] for c in coords]
-                lats = [c[1] for c in coords]
-                segments.append(list(zip(lons, lats)))
-                values.append(feat['properties'].get(metric, 0) or 0)
-            elif feat['geometry']['type'] == 'MultiLineString':
-                for line in coords:
-                    lons = [c[0] for c in line]
-                    lats = [c[1] for c in line]
-                    segments.append(list(zip(lons, lats)))
-                    values.append(feat['properties'].get(metric, 0) or 0)
-
-        values = np.array(values)
-
-        if metric == 'betweenness':
-            colors = ['#e1bee7', '#ce93d8', '#ab47bc', '#8e24aa', '#4a148c']
-            vmax = 0.196
-            label = 'Betweenness Centrality'
-        else:
-            colors = ['#bbdefb', '#90caf9', '#42a5f5', '#1e88e5', '#0d47a1']
-            vmax = 0.00058
-            label = 'Closeness Centrality'
-
-        cmap = LinearSegmentedColormap.from_list('cent', colors, N=256)
-        norm = Normalize(vmin=0, vmax=vmax)
-
-        # Line widths proportional to value
-        widths = 0.5 + (np.clip(values / vmax, 0, 1)) * 3
-
-        lc = LineCollection(segments, linewidths=widths, cmap=cmap, norm=norm)
-        lc.set_array(values)
-        ax.add_collection(lc)
-        ax.autoscale()
-
-        sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
-        sm.set_array([])
-        cbar = fig.colorbar(sm, ax=ax, shrink=0.6, pad=0.02)
-        cbar.set_label(label, fontsize=10)
-
-        save(fig, f'centrality_{metric}')
-
 
 # ---------------------------------------------------------------------------
-# 2. Pedestrian Comfort
-# ---------------------------------------------------------------------------
-
-def export_comfort():
-    print('Pedestrian Comfort...')
-    data = load_json('segment_comfort.json')
-    fig, ax = make_fig('Pedestrian Comfort Index (PCI)')
-
-    lons = [d['lon'] for d in data]
-    lats = [d['lat'] for d in data]
-    vals = [d['pci_mean'] for d in data]
-
-    colors = ['#e53935', '#ff9800', '#ffeb3b', '#4caf50', '#1b5e20']
-    bounds = [0, 0.3, 0.4, 0.5, 0.6, 1.0]
-    cmap = ListedColormap(colors)
-    norm = BoundaryNorm(bounds, cmap.N)
-
-    sc = ax.scatter(lons, lats, c=vals, cmap=cmap, norm=norm,
-                    s=30, edgecolors='#333', linewidths=0.3, zorder=2)
-
-    cbar = fig.colorbar(sc, ax=ax, shrink=0.6, pad=0.02, ticks=[0.15, 0.35, 0.45, 0.55, 0.8])
-    cbar.ax.set_yticklabels(['Bad (<0.3)', 'Poor', 'Fair', 'Good', 'High (>0.6)'], fontsize=8)
-    cbar.set_label('Pedestrian Comfort Index', fontsize=10)
-
-    save(fig, 'comfort')
-
-
-# ---------------------------------------------------------------------------
-# 3. Heat Mitigation Priority
-# ---------------------------------------------------------------------------
-
-def export_priority():
-    print('Heat Mitigation Priority...')
-    data = load_json('priority_points.json')
-    fig, ax = make_fig('Heat Mitigation Priority')
-
-    level_colors = {'Critical': '#d32f2f', 'High': '#f57c00', 'Medium': '#ffeb3b', 'Low': '#388e3c', '': '#999999'}
-    level_order = ['Low', 'Medium', 'High', 'Critical']
-
-    for level in level_order:
-        pts = [d for d in data if d.get('priority_level') == level]
-        if not pts:
-            continue
-        lons = [d['lon'] for d in pts]
-        lats = [d['lat'] for d in pts]
-        ax.scatter(lons, lats, c=level_colors[level], s=3, alpha=0.7,
-                   label=level, edgecolors='none', zorder=2)
-
-    ax.legend(loc='upper left', fontsize=9, title='Priority Level', framealpha=0.8)
-    save(fig, 'priority')
-
-
-# ---------------------------------------------------------------------------
-# 4. Combined SVI (LST / GVI / SVF)
-# ---------------------------------------------------------------------------
-
-def export_combined():
-    print('Combined SVI + Satellite...')
-    data = load_json('combined_svi.json')
-    lons = [d['lon'] for d in data]
-    lats = [d['lat'] for d in data]
-
-    metrics = {
-        'lst': {
-            'values': [d.get('lst', 0) for d in data],
-            'title': 'Combined SVI - Land Surface Temperature',
-            'cmap': LinearSegmentedColormap.from_list('lst',
-                ['#3c50c8', '#3cc8c8', '#f0b428', '#dc3220'], N=256),
-            'vmin': 46, 'vmax': 53,
-            'label': 'Temperature (\u00b0C)'
-        },
-        'gvi': {
-            'values': [d.get('gvi', 0) for d in data],
-            'title': 'Combined SVI - Green View Index',
-            'cmap': LinearSegmentedColormap.from_list('gvi',
-                ['#f7f7f7', '#c7e9c0', '#74c476', '#238b45', '#006d2c'], N=256),
-            'vmin': 0, 'vmax': 0.2,
-            'label': 'GVI'
-        },
-        'svf': {
-            'values': [d.get('svf', 0) for d in data],
-            'title': 'Combined SVI - Sky View Factor',
-            'cmap': LinearSegmentedColormap.from_list('svf',
-                ['rgb(50,50,100)', 'rgb(140,140,178)', 'rgb(230,230,255)'], N=256) if False else
-                LinearSegmentedColormap.from_list('svf',
-                    [(50/255,50/255,100/255), (140/255,140/255,178/255), (230/255,230/255,1.0)], N=256),
-            'vmin': 0, 'vmax': 1.0,
-            'label': 'SVF'
-        }
-    }
-
-    for key, m in metrics.items():
-        fig, ax = make_fig(m['title'])
-        norm = Normalize(vmin=m['vmin'], vmax=m['vmax'])
-        sc = ax.scatter(lons, lats, c=m['values'], cmap=m['cmap'], norm=norm,
-                        s=3, edgecolors='none', alpha=0.75, zorder=2)
-        cbar = fig.colorbar(sc, ax=ax, shrink=0.6, pad=0.02)
-        cbar.set_label(m['label'], fontsize=10)
-        save(fig, f'combined_{key}')
-
-
-# ---------------------------------------------------------------------------
-# 5. Satellite Grid (LST / NDVI / NDBI)
-# ---------------------------------------------------------------------------
-
-def export_satellite():
-    print('Satellite Grid (30m)...')
-    data = load_json('satellite_grid.json')
-    lons = [d['lon'] for d in data]
-    lats = [d['lat'] for d in data]
-
-    # LST color ramp: RdYlBu reversed
-    lst_colors = [
-        (49/255,54/255,149/255),
-        (69/255,117/255,180/255),
-        (171/255,217/255,233/255),
-        (254/255,224/255,144/255),
-        (244/255,109/255,67/255),
-        (165/255,0,38/255)
-    ]
-
-    metrics = {
-        'lst': {
-            'values': [d.get('lst', 0) for d in data],
-            'title': 'Satellite Grid - Land Surface Temperature (30m)',
-            'cmap': LinearSegmentedColormap.from_list('sat_lst', lst_colors, N=256),
-            'vmin': 36, 'vmax': 54,
-            'label': 'LST (\u00b0C)'
-        },
-        'ndvi': {
-            'values': [d.get('ndvi', 0) for d in data],
-            'title': 'Satellite Grid - Vegetation Index (NDVI)',
-            'colors': ['#8B4513', '#D2691E', '#F5DEB3', '#90EE90', '#228B22', '#006400'],
-            'bounds': [-0.2, 0, 0.1, 0.2, 0.3, 0.4, 0.6],
-            'label': 'NDVI'
-        },
-        'ndbi': {
-            'values': [d.get('ndbi', 0) for d in data],
-            'title': 'Satellite Grid - Built-up Index (NDBI)',
-            'colors': ['#1a9850', '#91cf60', '#fee08b', '#fc8d59', '#d73027'],
-            'bounds': [-0.3, -0.1, 0, 0.1, 0.2, 0.4],
-            'label': 'NDBI'
-        }
-    }
-
-    for key, m in metrics.items():
-        fig, ax = make_fig(m['title'])
-
-        if 'cmap' in m:
-            norm = Normalize(vmin=m['vmin'], vmax=m['vmax'])
-            sc = ax.scatter(lons, lats, c=m['values'], cmap=m['cmap'], norm=norm,
-                            s=2, edgecolors='none', alpha=0.8, zorder=2)
-            cbar = fig.colorbar(sc, ax=ax, shrink=0.6, pad=0.02)
-        else:
-            cmap = ListedColormap(m['colors'])
-            norm = BoundaryNorm(m['bounds'], cmap.N)
-            sc = ax.scatter(lons, lats, c=m['values'], cmap=cmap, norm=norm,
-                            s=2, edgecolors='none', alpha=0.8, zorder=2)
-            cbar = fig.colorbar(sc, ax=ax, shrink=0.6, pad=0.02,
-                                ticks=[(m['bounds'][i]+m['bounds'][i+1])/2 for i in range(len(m['bounds'])-1)])
-
-        cbar.set_label(m['label'], fontsize=10)
-        save(fig, f'satellite_{key}')
-
-
-# ---------------------------------------------------------------------------
-# 6. Climate Clusters
-# ---------------------------------------------------------------------------
-
-def export_clusters():
-    print('Climate Clusters...')
-    data = load_json('clusters.json')
-    fig, ax = make_fig('Climate Clusters')
-
-    cluster_colors = {0: '#e53935', 1: '#ff9800', 2: '#4caf50', 3: '#2196f3'}
-    cluster_names = {0: 'Hot & Barren', 1: 'Warm Urban', 2: 'Shaded Urban', 3: 'Cool & Green'}
-
-    for cid in sorted(cluster_colors.keys()):
-        pts = [d for d in data if d.get('cluster') == cid]
-        if not pts:
-            continue
-        lons = [d['lon'] for d in pts]
-        lats = [d['lat'] for d in pts]
-        label = cluster_names.get(cid, f'Cluster {cid}')
-        ax.scatter(lons, lats, c=cluster_colors[cid], s=3, alpha=0.75,
-                   label=label, edgecolors='none', zorder=2)
-
-    ax.legend(loc='upper left', fontsize=9, title='Cluster', framealpha=0.8)
-    save(fig, 'clusters')
-
-
-# ---------------------------------------------------------------------------
-# 7. Green Space Access
-# ---------------------------------------------------------------------------
-
-def export_green_access():
-    print('Green Space Access...')
-    data = load_json('distance_to_green.json')
-    fig, ax = make_fig('Distance to Green Space')
-
-    lons = [d['lon'] for d in data]
-    lats = [d['lat'] for d in data]
-    vals = [d['dist_to_green_m'] for d in data]
-
-    colors = ['#1b5e20', '#66bb6a', '#ffb74d', '#d32f2f']
-    bounds = [0, 100, 200, 400, max(max(vals) + 1, 401)]
-    cmap = ListedColormap(colors)
-    norm = BoundaryNorm(bounds, cmap.N)
-
-    sc = ax.scatter(lons, lats, c=vals, cmap=cmap, norm=norm,
-                    s=3, edgecolors='none', alpha=0.75, zorder=2)
-
-    cbar = fig.colorbar(sc, ax=ax, shrink=0.6, pad=0.02, ticks=[50, 150, 300, 450])
-    cbar.ax.set_yticklabels(['<100m', '100-200m', '200-400m', '>400m'], fontsize=8)
-    cbar.set_label('Distance to Green Space (m)', fontsize=10)
-
-    save(fig, 'green_access')
-
-
-# ---------------------------------------------------------------------------
-# 8. Bundled All-Layers SVG with raster basemap
+# Tile constants and utilities (used by both individual exports and bundled SVG)
 # ---------------------------------------------------------------------------
 
 ZOOM = 16
@@ -405,6 +129,362 @@ def _download_tiles(tx_min, tx_max, ty_min, ty_max, z):
 
     print(f'    Downloaded {total} tiles ({stitched.size[0]}x{stitched.size[1]} px)')
     return stitched
+
+
+# ---------------------------------------------------------------------------
+# Basemap helper for individual exports
+# ---------------------------------------------------------------------------
+
+_basemap_cache = {}
+
+
+def get_basemap_image(all_lats, all_lons):
+    """Download and cache basemap tiles for the given coordinate extent."""
+    cache_key = 'default'
+    if cache_key in _basemap_cache:
+        return _basemap_cache[cache_key]
+
+    lat_min, lat_max = min(all_lats) - PAD, max(all_lats) + PAD
+    lon_min, lon_max = min(all_lons) - PAD, max(all_lons) + PAD
+
+    tx_min, ty_min = _deg2tile(lat_max, lon_min, ZOOM)
+    tx_max, ty_max = _deg2tile(lat_min, lon_max, ZOOM)
+    img = _download_tiles(tx_min, tx_max, ty_min, ty_max, ZOOM)
+
+    tl_lat, tl_lon = _tile2deg(tx_min, ty_min, ZOOM)
+    br_lat, br_lon = _tile2deg(tx_max + 1, ty_max + 1, ZOOM)
+
+    result = (img, [tl_lon, br_lon, br_lat, tl_lat])
+    _basemap_cache[cache_key] = result
+    return result
+
+
+def add_basemap(ax):
+    """Add cached basemap tiles behind plot data on a Matplotlib axes."""
+    all_lats, all_lons = [], []
+    for fname in ['priority_points.json', 'combined_svi.json',
+                  'distance_to_green.json', 'clusters.json',
+                  'segment_comfort.json', 'satellite_grid.json']:
+        d = load_json(fname)
+        all_lats.extend(p['lat'] for p in d)
+        all_lons.extend(p['lon'] for p in d)
+
+    img, extent = get_basemap_image(all_lats, all_lons)
+    ax.imshow(img, extent=extent, aspect='auto', zorder=0)
+
+
+# ---------------------------------------------------------------------------
+# 1. Street Centrality (betweenness + closeness)
+# ---------------------------------------------------------------------------
+
+def export_centrality():
+    print('Street Centrality...')
+    streets = load_json('streets.geojson')
+
+    for metric in ['betweenness', 'closeness']:
+        for with_basemap in [False, True]:
+            suffix = '_basemap' if with_basemap else ''
+            fig, ax = make_fig(f'Street Centrality ({metric.title()})')
+            if with_basemap:
+                add_basemap(ax)
+
+            segments = []
+            values = []
+            for feat in streets['features']:
+                coords = feat['geometry']['coordinates']
+                if feat['geometry']['type'] == 'LineString':
+                    lons = [c[0] for c in coords]
+                    lats = [c[1] for c in coords]
+                    segments.append(list(zip(lons, lats)))
+                    values.append(feat['properties'].get(metric, 0) or 0)
+                elif feat['geometry']['type'] == 'MultiLineString':
+                    for line in coords:
+                        lons = [c[0] for c in line]
+                        lats = [c[1] for c in line]
+                        segments.append(list(zip(lons, lats)))
+                        values.append(feat['properties'].get(metric, 0) or 0)
+
+            values = np.array(values)
+
+            if metric == 'betweenness':
+                colors = ['#e1bee7', '#ce93d8', '#ab47bc', '#8e24aa', '#4a148c']
+                vmax = 0.196
+                label = 'Betweenness Centrality'
+            else:
+                colors = ['#bbdefb', '#90caf9', '#42a5f5', '#1e88e5', '#0d47a1']
+                vmax = 0.00058
+                label = 'Closeness Centrality'
+
+            cmap = LinearSegmentedColormap.from_list('cent', colors, N=256)
+            norm = Normalize(vmin=0, vmax=vmax)
+
+            # Line widths proportional to value
+            widths = 0.5 + (np.clip(values / vmax, 0, 1)) * 3
+
+            lc = LineCollection(segments, linewidths=widths, cmap=cmap, norm=norm, zorder=2)
+            lc.set_array(values)
+            ax.add_collection(lc)
+            ax.autoscale()
+
+            sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+            sm.set_array([])
+            cbar = fig.colorbar(sm, ax=ax, shrink=0.6, pad=0.02)
+            cbar.set_label(label, fontsize=10)
+
+            save(fig, f'centrality_{metric}{suffix}')
+
+
+# ---------------------------------------------------------------------------
+# 2. Pedestrian Comfort
+# ---------------------------------------------------------------------------
+
+def export_comfort():
+    print('Pedestrian Comfort...')
+    data = load_json('segment_comfort.json')
+
+    for with_basemap in [False, True]:
+        suffix = '_basemap' if with_basemap else ''
+        fig, ax = make_fig('Pedestrian Comfort Index (PCI)')
+        if with_basemap:
+            add_basemap(ax)
+
+        lons = [d['lon'] for d in data]
+        lats = [d['lat'] for d in data]
+        vals = [d['pci_mean'] for d in data]
+
+        colors = ['#e53935', '#ff9800', '#ffeb3b', '#4caf50', '#1b5e20']
+        bounds = [0, 0.3, 0.4, 0.5, 0.6, 1.0]
+        cmap = ListedColormap(colors)
+        norm = BoundaryNorm(bounds, cmap.N)
+
+        sc = ax.scatter(lons, lats, c=vals, cmap=cmap, norm=norm,
+                        s=30, edgecolors='#333', linewidths=0.3, zorder=2)
+
+        cbar = fig.colorbar(sc, ax=ax, shrink=0.6, pad=0.02, ticks=[0.15, 0.35, 0.45, 0.55, 0.8])
+        cbar.ax.set_yticklabels(['Bad (<0.3)', 'Poor', 'Fair', 'Good', 'High (>0.6)'], fontsize=8)
+        cbar.set_label('Pedestrian Comfort Index', fontsize=10)
+
+        save(fig, f'comfort{suffix}')
+
+
+# ---------------------------------------------------------------------------
+# 3. Heat Mitigation Priority
+# ---------------------------------------------------------------------------
+
+def export_priority():
+    print('Heat Mitigation Priority...')
+    data = load_json('priority_points.json')
+
+    for with_basemap in [False, True]:
+        suffix = '_basemap' if with_basemap else ''
+        fig, ax = make_fig('Heat Mitigation Priority')
+        if with_basemap:
+            add_basemap(ax)
+
+        level_colors = {'Critical': '#d32f2f', 'High': '#f57c00', 'Medium': '#ffeb3b', 'Low': '#388e3c', '': '#999999'}
+        level_order = ['Low', 'Medium', 'High', 'Critical']
+
+        for level in level_order:
+            pts = [d for d in data if d.get('priority_level') == level]
+            if not pts:
+                continue
+            lons = [d['lon'] for d in pts]
+            lats = [d['lat'] for d in pts]
+            ax.scatter(lons, lats, c=level_colors[level], s=3, alpha=0.7,
+                       label=level, edgecolors='none', zorder=2)
+
+        ax.legend(loc='upper left', fontsize=9, title='Priority Level', framealpha=0.8)
+        save(fig, f'priority{suffix}')
+
+
+# ---------------------------------------------------------------------------
+# 4. Combined SVI (LST / GVI / SVF)
+# ---------------------------------------------------------------------------
+
+def export_combined():
+    print('Combined SVI + Satellite...')
+    data = load_json('combined_svi.json')
+    lons = [d['lon'] for d in data]
+    lats = [d['lat'] for d in data]
+
+    metrics = {
+        'lst': {
+            'values': [d.get('lst', 0) for d in data],
+            'title': 'Combined SVI - Land Surface Temperature',
+            'cmap': LinearSegmentedColormap.from_list('lst',
+                ['#3c50c8', '#3cc8c8', '#f0b428', '#dc3220'], N=256),
+            'vmin': 46, 'vmax': 53,
+            'label': 'Temperature (\u00b0C)'
+        },
+        'gvi': {
+            'values': [d.get('gvi', 0) for d in data],
+            'title': 'Combined SVI - Green View Index',
+            'cmap': LinearSegmentedColormap.from_list('gvi',
+                ['#f7f7f7', '#c7e9c0', '#74c476', '#238b45', '#006d2c'], N=256),
+            'vmin': 0, 'vmax': 0.2,
+            'label': 'GVI'
+        },
+        'svf': {
+            'values': [d.get('svf', 0) for d in data],
+            'title': 'Combined SVI - Sky View Factor',
+            'cmap': LinearSegmentedColormap.from_list('svf',
+                ['rgb(50,50,100)', 'rgb(140,140,178)', 'rgb(230,230,255)'], N=256) if False else
+                LinearSegmentedColormap.from_list('svf',
+                    [(50/255,50/255,100/255), (140/255,140/255,178/255), (230/255,230/255,1.0)], N=256),
+            'vmin': 0, 'vmax': 1.0,
+            'label': 'SVF'
+        }
+    }
+
+    for key, m in metrics.items():
+        for with_basemap in [False, True]:
+            suffix = '_basemap' if with_basemap else ''
+            fig, ax = make_fig(m['title'])
+            if with_basemap:
+                add_basemap(ax)
+            norm = Normalize(vmin=m['vmin'], vmax=m['vmax'])
+            sc = ax.scatter(lons, lats, c=m['values'], cmap=m['cmap'], norm=norm,
+                            s=3, edgecolors='none', alpha=0.75, zorder=2)
+            cbar = fig.colorbar(sc, ax=ax, shrink=0.6, pad=0.02)
+            cbar.set_label(m['label'], fontsize=10)
+            save(fig, f'combined_{key}{suffix}')
+
+
+# ---------------------------------------------------------------------------
+# 5. Satellite Grid (LST / NDVI / NDBI)
+# ---------------------------------------------------------------------------
+
+def export_satellite():
+    print('Satellite Grid (30m)...')
+    data = load_json('satellite_grid.json')
+    lons = [d['lon'] for d in data]
+    lats = [d['lat'] for d in data]
+
+    # LST color ramp: RdYlBu reversed
+    lst_colors = [
+        (49/255,54/255,149/255),
+        (69/255,117/255,180/255),
+        (171/255,217/255,233/255),
+        (254/255,224/255,144/255),
+        (244/255,109/255,67/255),
+        (165/255,0,38/255)
+    ]
+
+    metrics = {
+        'lst': {
+            'values': [d.get('lst', 0) for d in data],
+            'title': 'Satellite Grid - Land Surface Temperature (30m)',
+            'cmap': LinearSegmentedColormap.from_list('sat_lst', lst_colors, N=256),
+            'vmin': 36, 'vmax': 54,
+            'label': 'LST (\u00b0C)'
+        },
+        'ndvi': {
+            'values': [d.get('ndvi', 0) for d in data],
+            'title': 'Satellite Grid - Vegetation Index (NDVI)',
+            'colors': ['#8B4513', '#D2691E', '#F5DEB3', '#90EE90', '#228B22', '#006400'],
+            'bounds': [-0.2, 0, 0.1, 0.2, 0.3, 0.4, 0.6],
+            'label': 'NDVI'
+        },
+        'ndbi': {
+            'values': [d.get('ndbi', 0) for d in data],
+            'title': 'Satellite Grid - Built-up Index (NDBI)',
+            'colors': ['#1a9850', '#91cf60', '#fee08b', '#fc8d59', '#d73027'],
+            'bounds': [-0.3, -0.1, 0, 0.1, 0.2, 0.4],
+            'label': 'NDBI'
+        }
+    }
+
+    for key, m in metrics.items():
+        for with_basemap in [False, True]:
+            suffix = '_basemap' if with_basemap else ''
+            fig, ax = make_fig(m['title'])
+            if with_basemap:
+                add_basemap(ax)
+
+            if 'cmap' in m:
+                norm = Normalize(vmin=m['vmin'], vmax=m['vmax'])
+                sc = ax.scatter(lons, lats, c=m['values'], cmap=m['cmap'], norm=norm,
+                                s=2, edgecolors='none', alpha=0.8, zorder=2)
+                cbar = fig.colorbar(sc, ax=ax, shrink=0.6, pad=0.02)
+            else:
+                cmap = ListedColormap(m['colors'])
+                norm = BoundaryNorm(m['bounds'], cmap.N)
+                sc = ax.scatter(lons, lats, c=m['values'], cmap=cmap, norm=norm,
+                                s=2, edgecolors='none', alpha=0.8, zorder=2)
+                cbar = fig.colorbar(sc, ax=ax, shrink=0.6, pad=0.02,
+                                    ticks=[(m['bounds'][i]+m['bounds'][i+1])/2 for i in range(len(m['bounds'])-1)])
+
+            cbar.set_label(m['label'], fontsize=10)
+            save(fig, f'satellite_{key}{suffix}')
+
+
+# ---------------------------------------------------------------------------
+# 6. Climate Clusters
+# ---------------------------------------------------------------------------
+
+def export_clusters():
+    print('Climate Clusters...')
+    data = load_json('clusters.json')
+
+    for with_basemap in [False, True]:
+        suffix = '_basemap' if with_basemap else ''
+        fig, ax = make_fig('Climate Clusters')
+        if with_basemap:
+            add_basemap(ax)
+
+        cluster_colors = {0: '#e53935', 1: '#ff9800', 2: '#4caf50', 3: '#2196f3'}
+        cluster_names = {0: 'Hot & Barren', 1: 'Warm Urban', 2: 'Shaded Urban', 3: 'Cool & Green'}
+
+        for cid in sorted(cluster_colors.keys()):
+            pts = [d for d in data if d.get('cluster') == cid]
+            if not pts:
+                continue
+            lons = [d['lon'] for d in pts]
+            lats = [d['lat'] for d in pts]
+            label = cluster_names.get(cid, f'Cluster {cid}')
+            ax.scatter(lons, lats, c=cluster_colors[cid], s=3, alpha=0.75,
+                       label=label, edgecolors='none', zorder=2)
+
+        ax.legend(loc='upper left', fontsize=9, title='Cluster', framealpha=0.8)
+        save(fig, f'clusters{suffix}')
+
+
+# ---------------------------------------------------------------------------
+# 7. Green Space Access
+# ---------------------------------------------------------------------------
+
+def export_green_access():
+    print('Green Space Access...')
+    data = load_json('distance_to_green.json')
+
+    for with_basemap in [False, True]:
+        suffix = '_basemap' if with_basemap else ''
+        fig, ax = make_fig('Distance to Green Space')
+        if with_basemap:
+            add_basemap(ax)
+
+        lons = [d['lon'] for d in data]
+        lats = [d['lat'] for d in data]
+        vals = [d['dist_to_green_m'] for d in data]
+
+        colors = ['#1b5e20', '#66bb6a', '#ffb74d', '#d32f2f']
+        bounds = [0, 100, 200, 400, max(max(vals) + 1, 401)]
+        cmap = ListedColormap(colors)
+        norm = BoundaryNorm(bounds, cmap.N)
+
+        sc = ax.scatter(lons, lats, c=vals, cmap=cmap, norm=norm,
+                        s=3, edgecolors='none', alpha=0.75, zorder=2)
+
+        cbar = fig.colorbar(sc, ax=ax, shrink=0.6, pad=0.02, ticks=[50, 150, 300, 450])
+        cbar.ax.set_yticklabels(['<100m', '100-200m', '200-400m', '>400m'], fontsize=8)
+        cbar.set_label('Distance to Green Space (m)', fontsize=10)
+
+        save(fig, f'green_access{suffix}')
+
+
+# ---------------------------------------------------------------------------
+# 8. Bundled All-Layers SVG with raster basemap
+# ---------------------------------------------------------------------------
 
 
 class SvgBuilder:

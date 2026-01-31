@@ -381,6 +381,7 @@
     <button class="basemap-btn active" data-basemap="positron" onclick="setBasemap('positron')">Map</button>
     <button class="basemap-btn" data-basemap="satellite" onclick="setBasemap('satellite')">Satellite</button>
     <button class="basemap-btn" data-basemap="dark" onclick="setBasemap('dark')">Dark</button>
+    <button class="basemap-btn" data-basemap="none" onclick="setBasemap('none')">None</button>
 </div>
 
 <script>
@@ -993,22 +994,25 @@ function legendItem(color, label) {
 // ============================================================
 
 function setBasemap(name) {
-    if (!BASEMAPS[name]) return;
     currentBasemap = name;
 
     if (basemapTileLayer) {
         map.removeLayer(basemapTileLayer);
+        basemapTileLayer = null;
     }
-    basemapTileLayer = L.tileLayer(BASEMAPS[name], {
-        attribution: BASEMAP_ATTR[name],
-        maxZoom: 19,
-        subdomains: name === 'satellite' ? [] : 'abcd'
-    }).addTo(map);
+    if (name !== 'none') {
+        basemapTileLayer = L.tileLayer(BASEMAPS[name], {
+            attribution: BASEMAP_ATTR[name],
+            maxZoom: 19,
+            subdomains: name === 'satellite' ? [] : 'abcd'
+        }).addTo(map);
+    }
 
     // Update button state
     document.querySelectorAll('.basemap-btn').forEach(function(btn) {
         btn.classList.toggle('active', btn.getAttribute('data-basemap') === name);
     });
+    updateExportLinks();
 }
 
 // ============================================================
@@ -1037,13 +1041,14 @@ function updateExportLinks() {
     }
     if (!basename) basename = 'centrality_betweenness';
 
+    var suffix = (currentBasemap !== 'none') ? '_basemap' : '';
     var base = DATA_BASE + 'exports/';
     var svgLink = document.getElementById('export-svg-link');
     var pdfLink = document.getElementById('export-pdf-link');
-    svgLink.href = base + basename + '.svg';
-    svgLink.download = basename + '.svg';
-    pdfLink.href = base + basename + '.pdf';
-    pdfLink.download = basename + '.pdf';
+    svgLink.href = base + basename + suffix + '.svg';
+    svgLink.download = basename + suffix + '.svg';
+    pdfLink.href = base + basename + suffix + '.pdf';
+    pdfLink.download = basename + suffix + '.pdf';
 }
 
 // ============================================================
