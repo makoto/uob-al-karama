@@ -60,7 +60,9 @@
         <li><a href="#shade">9. Building Shade Analysis</a>
             <ul><li><a href="#shade-poi">9.8 Points of Interest (Overpass API)</a></li></ul>
         </li>
-        <li><a href="#seasonal">10. Seasonal Comparison (Summer vs Winter)</a></li>
+        <li><a href="#seasonal">10. Seasonal &amp; Temporal Comparison</a>
+            <ul><li><a href="#temporal">10.7 Temporal Comparison: 2020 vs 2025</a></li></ul>
+        </li>
         <li><a href="#findings">11. Key Findings</a></li>
         <li><a href="#limitations">12. Limitations</a></li>
         <li><a href="#files">13. Output Files Reference</a></li>
@@ -797,10 +799,11 @@ out center;
 </div>
 
 <!-- ============================================================ -->
-<h2 id="seasonal">10. Seasonal Comparison (Summer vs Winter)</h2>
+<h2 id="seasonal">10. Seasonal &amp; Temporal Comparison</h2>
 <div class="section">
     <h3>10.1 Why Compare Seasons?</h3>
     <p>Dubai experiences extreme heat in summer but mild, pleasant winters. Comparing the two seasons reveals how solar geometry, temperature, and vegetation change &mdash; and whether shade infrastructure designed for summer also benefits winter pedestrians. The analysis pipeline now supports a <code>--season</code> flag, and both the 3D and 2D viewers include a season dropdown to switch between datasets.</p>
+    <p>In addition to comparing seasons within a single year, we now include <strong>Summer 2020</strong> and <strong>Winter 2020/21</strong> data, enabling a 5-year temporal comparison to observe how urban heat, vegetation, and built-up indices have changed over time. The viewer dropdown presents all four seasons: Summer 2020, Winter 2020/21, Summer 2025, and Winter 2025/26.</p>
 
     <h3>10.2 Solar Geometry</h3>
     <p>The most striking difference between seasons is the sun's path across the sky:</p>
@@ -887,6 +890,48 @@ out center;
 
     <div class="highlight">
         <strong>How to explore:</strong> Open the <a href="viewer.html" style="color:#1565c0;">3D Digital Twin</a> and use the season dropdown in the top navigation bar. The time slider at the bottom animates the sun through the day &mdash; try comparing 8&nbsp;AM shadows between seasons to see how winter's low sun creates long east-facing shadows.
+    </div>
+
+    <h3 id="temporal">10.7 Temporal Comparison: 2020 vs 2025</h3>
+    <p>By adding Summer 2020 and Winter 2020/21 to the analysis, we can observe how Al Karama's urban microclimate has evolved over five years. The 2020 seasons use Landsat 8 and Sentinel-2 imagery (Landsat 9 was not available until late 2021); the pipeline merges available collections gracefully.</p>
+
+    <h4>Summer: 2020 vs 2025</h4>
+    <table>
+        <tr><th>Metric</th><th>Summer 2020</th><th>Summer 2025</th><th>Change</th></tr>
+        <tr><td>LST mean</td><td>49.1&deg;C</td><td>48.3&deg;C</td><td><strong>&minus;0.8&deg;C</strong></td></tr>
+        <tr><td>LST max</td><td>55.4&deg;C</td><td>54.8&deg;C</td><td>&minus;0.6&deg;C</td></tr>
+        <tr><td>NDVI mean</td><td>0.082</td><td>0.096</td><td><strong>+0.014</strong></td></tr>
+        <tr><td>NDBI mean</td><td>0.028</td><td>0.033</td><td>+0.005</td></tr>
+    </table>
+
+    <h4>Winter: 2020/21 vs 2025/26</h4>
+    <table>
+        <tr><th>Metric</th><th>Winter 2020/21</th><th>Winter 2025/26</th><th>Change</th></tr>
+        <tr><td>LST mean</td><td>27.0&deg;C</td><td>27.0&deg;C</td><td><strong>~0&deg;C</strong> (unchanged)</td></tr>
+        <tr><td>LST max</td><td>31.9&deg;C</td><td>33.0&deg;C</td><td>+1.1&deg;C</td></tr>
+        <tr><td>NDVI mean</td><td>0.103</td><td>0.114</td><td><strong>+0.012</strong></td></tr>
+        <tr><td>NDBI mean</td><td>0.017</td><td>0.010</td><td>&minus;0.007</td></tr>
+    </table>
+
+    <div class="finding">
+        <strong>Key findings over 5 years:</strong>
+        <ul>
+            <li><strong>Vegetation is the clearest signal.</strong> NDVI increased by +0.012 to +0.014 across both seasons, suggesting Al Karama has become slightly greener &mdash; consistent with Dubai's ongoing urban greening and landscaping programmes.</li>
+            <li><strong>Summer LST dropped modestly</strong> (&minus;0.8&deg;C). This could reflect increased vegetation or shade, though year-to-year weather variability (a hotter satellite overpass day in 2020) cannot be ruled out from a single composite.</li>
+            <li><strong>Winter LST is essentially unchanged</strong> at the mean level, though the peak hotspot temperature rose by ~1&deg;C &mdash; possibly indicating localised new dense construction absorbing more heat.</li>
+            <li><strong>NDBI trends are mixed</strong> &mdash; slightly higher in summer 2025 (+0.005) but lower in winter 2025 (&minus;0.007). The differences are small and likely reflect spectral variability more than meaningful changes in built-up area.</li>
+        </ul>
+        <p>Overall the changes are modest and within the range of year-to-year variability. The NDVI increase is the most consistent finding across both seasons.</p>
+    </div>
+
+    <h4>Methodology notes</h4>
+    <ul>
+        <li><strong>Building footprints:</strong> The same present-day OSM building data is used for shade analysis in both 2020 and 2025, so shade coverage differences reflect solar geometry only (negligible over 5 years), not changes in building stock. A future refinement could use historical footprints where available.</li>
+        <li><strong>Satellite composites:</strong> Each season uses a median composite of all available cloud-free scenes in the date range (Summer 2020: 15 Landsat + 34 Sentinel-2; Winter 2020/21: 10 Landsat + 30 Sentinel-2). More scenes generally produce smoother composites.</li>
+    </ul>
+
+    <div class="highlight">
+        <strong>How to explore:</strong> Use the season dropdown in either the <a href="viewer.html" style="color:#1565c0;">3D Digital Twin</a> or the <a href="viewer_2d.html" style="color:#1565c0;">2D map viewer</a> to switch between all four seasons. Compare the same metric (e.g., LST heatmap) across Summer 2020 vs Summer 2025 to isolate temporal changes from seasonal effects.
     </div>
 
     <h3>10.6 Season-Independent Data</h3>

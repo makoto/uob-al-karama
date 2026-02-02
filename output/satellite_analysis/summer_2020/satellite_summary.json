@@ -1,0 +1,15 @@
+{
+  "area": "Al Karama, Dubai",
+  "analysis_date": "2025",
+  "landsat_images": 15,
+  "sentinel2_images": 34,
+  "lst_mean_celsius": 49.111599340451114,
+  "lst_min_celsius": 35.83726214000001,
+  "lst_max_celsius": 55.35757436000006,
+  "ndvi_mean": 0.08185374804128741,
+  "ndvi_min": -0.15571995079517365,
+  "ndvi_max": 0.6997236013412476,
+  "ndbi_mean": 0.025413032769620564,
+  "vegetation_class": "Very Low (desert/urban)",
+  "uhi_risk": "High"
+}

@@ -5,6 +5,24 @@ Single source of truth for date ranges, solar dates, and cloud-cover thresholds.
 """
 
 SEASONS = {
+    "summer_2020": {
+        "id": "summer_2020",
+        "label": "Summer 2020",
+        "satellite_start": "2020-06-01",
+        "satellite_end": "2020-09-30",
+        "solar_date": (2020, 7, 15),       # representative date for shade analysis
+        "cloud_cover_landsat": 20,
+        "cloud_cover_sentinel": 10,
+    },
+    "winter_2020": {
+        "id": "winter_2020",
+        "label": "Winter 2020/21",
+        "satellite_start": "2020-12-01",
+        "satellite_end": "2021-02-28",
+        "solar_date": (2021, 1, 15),       # representative date for shade analysis
+        "cloud_cover_landsat": 30,
+        "cloud_cover_sentinel": 20,
+    },
     "summer_2025": {
         "id": "summer_2025",
         "label": "Summer 2025",
