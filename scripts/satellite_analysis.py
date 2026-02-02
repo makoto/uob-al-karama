@@ -46,12 +46,12 @@ def calculate_lst(image):
 landsat = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2') \
     .merge(ee.ImageCollection('LANDSAT/LC09/C02/T1_L2')) \
     .filterBounds(AL_KARAMA) \
-    .filterDate('2024-06-01', '2024-09-30') \
+    .filterDate('2025-06-01', '2025-09-30') \
     .filter(ee.Filter.lt('CLOUD_COVER', 20)) \
     .map(calculate_lst)
 
 landsat_count = landsat.size().getInfo()
-print(f"  Landsat images (Summer 2024, <20% cloud): {landsat_count}")
+print(f"  Landsat images (Summer 2025, <20% cloud): {landsat_count}")
 
 if landsat_count > 0:
     # Get median LST
@@ -92,13 +92,13 @@ def mask_clouds_s2(image):
 # Get Sentinel-2 imagery
 sentinel2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
     .filterBounds(AL_KARAMA) \
-    .filterDate('2024-06-01', '2024-09-30') \
+    .filterDate('2025-06-01', '2025-09-30') \
     .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)) \
     .map(mask_clouds_s2) \
     .map(calculate_ndvi)
 
 s2_count = sentinel2.size().getInfo()
-print(f"  Sentinel-2 images (Summer 2024, <20% cloud): {s2_count}")
+print(f"  Sentinel-2 images (Summer 2025, <20% cloud): {s2_count}")
 
 if s2_count > 0:
     # Get median NDVI
@@ -228,13 +228,13 @@ html_content = f"""<!DOCTYPE html>
     <div id="map"></div>
     <div class="info-panel">
         <h2>🛰️ Satellite Analysis</h2>
-        <p>Al Karama, Dubai | 2024 Data</p>
+        <p>Al Karama, Dubai | 2025 Data</p>
 
         <div class="metric hot">
             <h4>🌡️ Land Surface Temperature</h4>
             <div class="value">{lst_stats.get('LST_mean', 0):.1f}<span class="unit">°C</span></div>
             <div>Range: {lst_stats.get('LST_min', 0):.1f}° - {lst_stats.get('LST_max', 0):.1f}°C</div>
-            <div style="font-size:12px;color:#666">Summer 2024 (Jun-Sep)</div>
+            <div style="font-size:12px;color:#666">Summer 2025 (Jun-Sep)</div>
         </div>
 
         <div class="metric green">
@@ -293,7 +293,7 @@ print(f"  Saved: {html_path}")
 # Save summary data
 summary = {
     'area': 'Al Karama, Dubai',
-    'analysis_date': '2024',
+    'analysis_date': '2025',
     'landsat_images': landsat_count,
     'sentinel2_images': s2_count,
     'lst_mean_celsius': lst_stats.get('LST_mean') if landsat_count > 0 else None,

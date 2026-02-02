@@ -146,8 +146,8 @@ mly.download_svi(
     <p>See the full interactive analysis: <a href="../output/satellite_analysis/satellite_analysis.html">Satellite Analysis Report</a></p>
     <table>
         <tr><th>Satellite</th><th>Data</th><th>Date</th><th>Resolution</th><th>Use</th></tr>
-        <tr><td>Landsat 8/9</td><td>Thermal infrared</td><td>Summer 2024 (Jun–Sep)</td><td>30m (100m native)</td><td>Land Surface Temperature</td></tr>
-        <tr><td>Sentinel-2</td><td>Multispectral</td><td>Summer 2024 (Jun–Sep)</td><td>10m</td><td>NDVI, NDBI vegetation/built-up</td></tr>
+        <tr><td>Landsat 8/9</td><td>Thermal infrared</td><td>Summer 2025 (Jun–Sep)</td><td>30m (100m native)</td><td>Land Surface Temperature</td></tr>
+        <tr><td>Sentinel-2</td><td>Multispectral</td><td>Summer 2025 (Jun–Sep)</td><td>10m</td><td>NDVI, NDBI vegetation/built-up</td></tr>
         <tr><td>GHSL (JRC)</td><td>Built-up height classes & continuous heights</td><td>2018 (P2023A release)</td><td>10m / 100m</td><td>Building height estimation</td></tr>
     </table>
 
@@ -157,7 +157,7 @@ mly.download_svi(
     </div>
 
     <div class="highlight">
-        <strong>Sentinel-2 date alignment:</strong> Both Landsat and Sentinel-2 are now filtered to summer 2024 (Jun&ndash;Sep) so that all satellite indices reflect the same season. Previously, Sentinel-2 used the full year (Jan&ndash;Dec 2024, 108 images) while Landsat was already summer-only. After alignment the Sentinel-2 image count dropped to 39, NDVI mean decreased slightly from 0.104 to 0.098 (less green during summer), and NDBI mean increased from 0.024 to 0.038 (higher built-up signal). The vegetation class changed from "Low (sparse vegetation)" to "Very Low (desert/urban)." This makes the NDVI and NDBI values seasonally consistent with the LST measurements.
+        <strong>Sentinel-2 date alignment:</strong> Both Landsat and Sentinel-2 are filtered to summer 2025 (Jun&ndash;Sep) so that all satellite indices reflect the same season and use the most recent available data. The analysis uses 30 Landsat and 44 Sentinel-2 images. Filtering to summer only (vs. a full-year composite) is important because vegetation indices like NDVI are season-dependent, and summer values are the most relevant to the heat analysis.
     </div>
 
     <h3>2.3 OpenStreetMap</h3>
@@ -256,8 +256,8 @@ Where:
 
     <div class="finding">
         <strong>Al Karama Result:</strong><br>
-        Mean LST = 48.6°C (summer)<br>
-        Range: 36°C to 54°C<br>
+        Mean LST = 48.3°C (summer)<br>
+        Range: 36°C to 55°C<br>
         The 18°C variation shows some areas are significantly cooler (likely parks/vegetation).
         <br><a href="viewer_2d.html#satellite" style="color: #1565c0;">View LST on 2D Viewer &rarr;</a>
     </div>
@@ -284,7 +284,7 @@ Where:
     </table>
 
     <div class="finding">
-        <strong>Al Karama Result:</strong> Mean NDVI = 0.098<br>
+        <strong>Al Karama Result:</strong> Mean NDVI = 0.096<br>
         Very low - mostly built-up with sparse vegetation.
         <br><a href="viewer_2d.html#satellite-ndvi" style="color: #1565c0;">View NDVI on 2D Viewer &rarr;</a>
     </div>
@@ -791,8 +791,8 @@ out center;
 
     <h3>9.2 Main Takeaways</h3>
     <ol>
-        <li><strong>Al Karama is hot:</strong> Mean surface temperature of 48.6°C in summer</li>
-        <li><strong>Very little vegetation:</strong> Only 3.55% green view, 0.098 NDVI</li>
+        <li><strong>Al Karama is hot:</strong> Mean surface temperature of 48.3°C in summer</li>
+        <li><strong>Very little vegetation:</strong> Only 3.55% green view, 0.096 NDVI</li>
         <li><strong>Most streets uncomfortable:</strong> 71% have low pedestrian comfort</li>
         <li><strong>Shade helps:</strong> Areas with low SVF are more comfortable</li>
         <li><strong>78% needs intervention:</strong> High or critical priority for heat mitigation</li>
@@ -803,7 +803,7 @@ out center;
 <h2 id="limitations">11. Limitations</h2>
 <div class="section">
     <div class="limitation">
-        <strong>1. Temporal mismatch:</strong> Street view images are from various dates, satellite data is from summer 2024 (Jun&ndash;Sep). Both Landsat and Sentinel-2 are now filtered to the same summer window, but street view images were captured at different times.
+        <strong>1. Temporal mismatch:</strong> Street view images are from various dates, satellite data is from summer 2025 (Jun&ndash;Sep). Both Landsat and Sentinel-2 are filtered to the same summer window, but street view images were captured at different times.
     </div>
 
     <div class="limitation">

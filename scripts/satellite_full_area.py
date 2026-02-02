@@ -40,7 +40,7 @@ def add_indices(image):
 
 sentinel2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
     .filterBounds(AL_KARAMA) \
-    .filterDate('2024-06-01', '2024-09-30') \
+    .filterDate('2025-06-01', '2025-09-30') \
     .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10)) \
     .map(mask_clouds_s2) \
     .map(add_indices)
@@ -57,7 +57,7 @@ def calculate_lst(image):
 landsat = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2') \
     .merge(ee.ImageCollection('LANDSAT/LC09/C02/T1_L2')) \
     .filterBounds(AL_KARAMA) \
-    .filterDate('2024-06-01', '2024-09-30') \
+    .filterDate('2025-06-01', '2025-09-30') \
     .filter(ee.Filter.lt('CLOUD_COVER', 20)) \
     .map(calculate_lst)
 
@@ -159,7 +159,7 @@ lsts = [d['lst'] for d in valid_data]
 ndvis = [d['ndvi'] for d in valid_data]
 ndbis = [d['ndbi'] for d in valid_data]
 
-print(f"\nLand Surface Temperature (Summer 2024):")
+print(f"\nLand Surface Temperature (Summer 2025):")
 print(f"  Mean: {statistics.mean(lsts):.1f}°C")
 print(f"  Median: {statistics.median(lsts):.1f}°C")
 print(f"  Min: {min(lsts):.1f}°C")

@@ -38,7 +38,7 @@ def add_ndvi(image):
 
 sentinel2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
     .filterBounds(AL_KARAMA) \
-    .filterDate('2024-06-01', '2024-09-30') \
+    .filterDate('2025-06-01', '2025-09-30') \
     .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10)) \
     .map(mask_clouds_s2) \
     .map(add_ndvi)
@@ -55,7 +55,7 @@ def calculate_lst(image):
 landsat = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2') \
     .merge(ee.ImageCollection('LANDSAT/LC09/C02/T1_L2')) \
     .filterBounds(AL_KARAMA) \
-    .filterDate('2024-06-01', '2024-09-30') \
+    .filterDate('2025-06-01', '2025-09-30') \
     .filter(ee.Filter.lt('CLOUD_COVER', 20)) \
     .map(calculate_lst)
 
