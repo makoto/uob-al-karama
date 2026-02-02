@@ -248,6 +248,64 @@
             vertical-align: middle;
         }
 
+        /* Route Planner */
+        .route-sub-panel {
+            padding: 8px 16px 8px 42px;
+            display: none;
+            font-size: 12px; color: #bbb;
+        }
+        .route-sub-panel.visible { display: block; }
+        .route-instructions { margin-bottom: 6px; color: #999; font-size: 11px; }
+        .route-status { font-size: 11px; color: #4fc3f7; margin-bottom: 8px; min-height: 16px; }
+        .route-comparison { display: flex; flex-direction: column; gap: 6px; }
+        .route-comparison-card {
+            background: rgba(255,255,255,0.04);
+            border-left: 3px solid #666;
+            border-radius: 4px;
+            padding: 8px 10px;
+        }
+        .route-comparison-card.shortest { border-left-color: #42a5f5; }
+        .route-comparison-card.comfort { border-left-color: #66bb6a; }
+        .route-card-header {
+            display: flex; align-items: center; gap: 6px; margin-bottom: 4px;
+        }
+        .route-card-badge {
+            font-size: 10px; font-weight: 600;
+            padding: 1px 6px; border-radius: 3px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .route-card-badge.shortest { background: rgba(66,165,245,0.2); color: #42a5f5; }
+        .route-card-badge.comfort { background: rgba(102,187,106,0.2); color: #66bb6a; }
+        .route-card-dist { font-size: 13px; font-weight: 600; color: #eee; }
+        .route-card-stats { font-size: 11px; color: #999; line-height: 1.5; }
+        .route-card-stats span { color: #ccc; }
+        .route-delta {
+            font-size: 11px; color: #ffb74d;
+            padding: 4px 0 2px; margin-top: 4px;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .route-clear-btn {
+            display: block; width: 100%;
+            margin-top: 8px; padding: 6px 0;
+            background: rgba(229,57,53,0.12); color: #ef5350;
+            border: 1px solid rgba(229,57,53,0.25);
+            border-radius: 4px; cursor: pointer;
+            font-size: 12px; text-align: center;
+            transition: background 0.15s;
+        }
+        .route-clear-btn:hover { background: rgba(229,57,53,0.25); }
+        .leaflet-container.route-mode { cursor: crosshair !important; }
+        .route-marker-origin {
+            width: 14px; height: 14px;
+            background: #42a5f5; border: 2px solid #fff;
+            border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        }
+        .route-marker-dest {
+            width: 14px; height: 14px;
+            background: #ef5350; border: 2px solid #fff;
+            border-radius: 50%; box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             #map { right: 0; bottom: 50vh; }
@@ -372,6 +430,44 @@
         <div class="layer-loading-spinner" id="load-green-access"></div>
     </div>
 
+    <!-- Walking Route Planner -->
+    <div class="layer-radio-row" onclick="selectLayer('routes')">
+        <input type="radio" name="layer" value="routes" id="radio-routes">
+        <span class="layer-radio-label">Walking Route Planner</span>
+        <span class="layer-info-btn" onclick="event.stopPropagation();showInfoPopover(event,'routes')">i</span>
+        <div class="layer-loading-spinner" id="load-routes"></div>
+    </div>
+    <div class="route-sub-panel" id="sub-routes">
+        <div class="route-instructions" id="route-instructions">Click the map to set origin, then destination.</div>
+        <div class="route-status" id="route-status"></div>
+        <div class="route-comparison" id="route-comparison" style="display:none;">
+            <div class="route-comparison-card shortest">
+                <div class="route-card-header">
+                    <span class="route-card-badge shortest">Shortest</span>
+                    <span class="route-card-dist" id="route-short-dist"></span>
+                </div>
+                <div class="route-card-stats">
+                    PCI: <span id="route-short-pci"></span> &middot;
+                    LST: <span id="route-short-lst"></span> &middot;
+                    Shade: <span id="route-short-shade"></span>
+                </div>
+            </div>
+            <div class="route-comparison-card comfort">
+                <div class="route-card-header">
+                    <span class="route-card-badge comfort">Comfort</span>
+                    <span class="route-card-dist" id="route-comf-dist"></span>
+                </div>
+                <div class="route-card-stats">
+                    PCI: <span id="route-comf-pci"></span> &middot;
+                    LST: <span id="route-comf-lst"></span> &middot;
+                    Shade: <span id="route-comf-shade"></span>
+                </div>
+            </div>
+            <div class="route-delta" id="route-delta"></div>
+        </div>
+        <button class="route-clear-btn" id="route-clear-btn" onclick="clearRoute()" style="display:none;">Clear Route</button>
+    </div>
+
     <!-- Export -->
     <div class="export-section">
         <div class="export-section-title">Export Current Layer</div>
@@ -455,7 +551,8 @@ var LAYER_DATA_KEYS = {
     clusters: 'clusters',
     satellite: 'satellite_grid',
     change5yr: 'change_summer_5yr',
-    'green-access': 'distance_to_green'
+    'green-access': 'distance_to_green',
+    routes: 'route_graph'
 };
 
 // ============================================================
@@ -928,12 +1025,22 @@ async function selectLayer(name) {
     var activeRow = radio ? radio.closest('.layer-radio-row') : null;
     if (activeRow) activeRow.classList.add('active');
 
-    // Show/hide sub-options
+    // Show/hide sub-options and route panel
     document.querySelectorAll('.sub-options').forEach(function(el) {
         el.classList.remove('visible');
     });
+    document.querySelectorAll('.route-sub-panel').forEach(function(el) {
+        el.classList.remove('visible');
+    });
     var subEl = document.getElementById('sub-' + name);
-    if (subEl) subEl.classList.add('visible');
+    if (subEl) {
+        subEl.classList.add('visible');
+    }
+
+    // Disable route mode when switching away from routes
+    if (currentLayer === 'routes' && name !== 'routes') {
+        disableRouteMode();
+    }
 
     // Clear current layer
     if (activeLayerGroup) {
@@ -942,6 +1049,31 @@ async function selectLayer(name) {
     }
 
     currentLayer = name;
+
+    // Special handling for routes layer
+    if (name === 'routes') {
+        // Load route graph and streets geometry
+        if (!CACHE['route_graph']) {
+            showLoading('routes', true);
+            showOverlay(true);
+            await loadData('route_graph');
+            // Also load streets for polyline geometry
+            await loadData('streets');
+            showLoading('routes', false);
+            showOverlay(false);
+        }
+        routeGraph = CACHE['route_graph'];
+        if (CACHE['streets']) {
+            routeStreetsGeo = CACHE['streets'].features;
+        }
+        if (routeGraph) {
+            routeAdj = buildRouteAdjacency(routeGraph);
+            enableRouteMode();
+        }
+        updateLegend();
+        updateHash();
+        return;
+    }
 
     // Load data
     var dataKey = LAYER_DATA_KEYS[name];
@@ -1051,6 +1183,10 @@ function parseHash() {
     if (parts[0] === 'green') {
         return { layer: 'green-access', sub: null };
     }
+    // Handle 'routes'
+    if (parts[0] === 'routes') {
+        return { layer: 'routes', sub: null };
+    }
     return { layer: parts[0], sub: parts[1] || null };
 }
 
@@ -1138,6 +1274,15 @@ function updateLegend() {
                 legendItem('#ffb74d', '200&ndash;400m') +
                 legendItem('#d32f2f', '&gt;400m');
             break;
+        case 'routes':
+            html = '<div class="legend-title">Pedestrian Comfort (PCI)</div>' +
+                '<div class="legend-gradient" style="background:linear-gradient(to right,#e53935,#ff9800,#ffeb3b,#4caf50,#1b5e20)"></div>' +
+                '<div class="legend-labels"><span>0 (Bad)</span><span>0.6+ (High)</span></div>' +
+                '<div style="margin-top:8px;">' +
+                '<div class="legend-item"><div class="legend-swatch" style="background:#42a5f5;border-bottom:2px dashed #42a5f5;height:0;margin-top:2px;"></div>Shortest (dashed)</div>' +
+                '<div class="legend-item"><div class="legend-swatch" style="background:#66bb6a"></div>Comfort (solid)</div>' +
+                '</div>';
+            break;
         case 'change5yr':
             if (change5yrMetric === 'd_lst') {
                 html = '<div class="legend-title">&Delta;LST (2020 &rarr; 2025)</div>' +
@@ -1200,13 +1345,14 @@ var EXPORT_FILE_MAP = {
     'satellite': { lst: 'satellite_lst', ndvi: 'satellite_ndvi', ndbi: 'satellite_ndbi' },
     'change5yr': { d_lst: 'change5yr_lst', d_ndvi: 'change5yr_ndvi', d_ndbi: 'change5yr_ndbi' },
     'clusters': 'clusters',
-    'green-access': 'green_access'
+    'green-access': 'green_access',
+    'routes': null
 };
 
 function updateExportLinks() {
     var entry = EXPORT_FILE_MAP[currentLayer];
     var basename;
-    if (typeof entry === 'object') {
+    if (entry && typeof entry === 'object') {
         if (currentLayer === 'centrality') basename = entry[centralityMetric];
         else if (currentLayer === 'combined') basename = entry[combinedMetric];
         else if (currentLayer === 'satellite') basename = entry[satelliteMetric];
@@ -1233,6 +1379,11 @@ function updateExportLinks() {
 async function switchArea(areaId) {
     DATA_BASE = 'data/' + areaId + '/';
     CACHE = {};
+    // Reset route planner state when switching areas
+    if (routeMode) disableRouteMode();
+    routeGraph = null;
+    routeAdj = null;
+    routeStreetsGeo = null;
 
     var resp = await fetch(DATA_BASE + 'area.json');
     AREA = await resp.json();
@@ -1300,6 +1451,328 @@ async function switchSeason(seasonId) {
             selectLayer(currentLayer);
         }
     }
+}
+
+// ============================================================
+//  WALKING ROUTE PLANNER
+// ============================================================
+
+var routeGraph = null;
+var routeAdj = null;        // adjacency list: nodeId -> [{to, edgeIdx, distW, comfW}]
+var routeOriginNode = null;
+var routeDestNode = null;
+var routeOriginMarker = null;
+var routeDestMarker = null;
+var routeLayerGroup = null;
+var routeMode = false;
+var routeStreetsGeo = null;  // streets.geojson features (for polyline geometry)
+
+function buildRouteAdjacency(graph) {
+    var adj = new Array(graph.nodes.length);
+    for (var i = 0; i < adj.length; i++) adj[i] = [];
+
+    // First pass: compute LST range for normalization
+    var lstMin = Infinity, lstMax = -Infinity;
+    for (var ei = 0; ei < graph.edges.length; ei++) {
+        var lst = graph.edges[ei][4];
+        if (lst !== null && lst !== undefined) {
+            if (lst < lstMin) lstMin = lst;
+            if (lst > lstMax) lstMax = lst;
+        }
+    }
+    var lstRange = (lstMax - lstMin) || 1;
+
+    // Second pass: build adjacency with composite comfort weight
+    // Edge format: [u, v, len, pci, lst, shade, fi]
+    for (var ei = 0; ei < graph.edges.length; ei++) {
+        var e = graph.edges[ei];
+        var u = e[0], v = e[1], len = e[2];
+        var pci = e[3], lst = e[4], shade = e[5];
+        var hasData = (pci !== null && pci !== undefined);
+
+        // Composite comfort score (0 = bad, 1 = great)
+        var comfort;
+        if (hasData) {
+            var pciVal = pci;
+            var shadeVal = (shade !== null && shade !== undefined) ? shade : 0.5;
+            var lstComfort = (lst !== null && lst !== undefined) ? 1 - (lst - lstMin) / lstRange : 0.5;
+            comfort = 0.40 * pciVal + 0.35 * shadeVal + 0.25 * lstComfort;
+        } else {
+            // Unmeasured streets get a pessimistic comfort (below most measured values)
+            // This makes the comfort router prefer streets with known comfort data
+            comfort = 0.25;
+        }
+
+        var distW = len;
+        // Aggressive formula: (3 - 2*comfort) gives multiplier range 1.0 (comfort=1) to 3.0 (comfort=0)
+        // Unmeasured edges (comfort=0.25) get multiplier 2.5 vs measured good edges (~0.6) get 1.8
+        var comfW = len * (3 - 2 * comfort);
+        var rec = { to: v, ei: ei, distW: distW, comfW: comfW };
+        adj[u].push(rec);
+        // Undirected: add reverse
+        adj[v].push({ to: u, ei: ei, distW: distW, comfW: comfW });
+    }
+    return adj;
+}
+
+function dijkstra(adj, start, end, weightKey) {
+    var n = adj.length;
+    var dist = new Float64Array(n);
+    var prev = new Int32Array(n);
+    var prevEdge = new Int32Array(n);
+    var visited = new Uint8Array(n);
+    for (var i = 0; i < n; i++) { dist[i] = Infinity; prev[i] = -1; prevEdge[i] = -1; }
+    dist[start] = 0;
+
+    // Simple binary heap (array-based min-heap)
+    var heap = [[0, start]];
+
+    while (heap.length > 0) {
+        // Pop min
+        var top = heapPop(heap);
+        var d = top[0], u = top[1];
+        if (visited[u]) continue;
+        visited[u] = 1;
+        if (u === end) break;
+
+        var neighbors = adj[u];
+        for (var j = 0; j < neighbors.length; j++) {
+            var nb = neighbors[j];
+            var w = nb[weightKey];
+            var nd = d + w;
+            if (nd < dist[nb.to]) {
+                dist[nb.to] = nd;
+                prev[nb.to] = u;
+                prevEdge[nb.to] = nb.ei;
+                heapPush(heap, [nd, nb.to]);
+            }
+        }
+    }
+
+    if (dist[end] === Infinity) return null; // no path
+
+    // Reconstruct path
+    var path = [];
+    var edges = [];
+    var node = end;
+    while (node !== start) {
+        path.push(node);
+        edges.push(prevEdge[node]);
+        node = prev[node];
+        if (node === -1) return null;
+    }
+    path.push(start);
+    path.reverse();
+    edges.reverse();
+    return { path: path, edges: edges, cost: dist[end] };
+}
+
+// Min-heap helpers
+function heapPush(h, item) {
+    h.push(item);
+    var i = h.length - 1;
+    while (i > 0) {
+        var p = (i - 1) >> 1;
+        if (h[p][0] <= h[i][0]) break;
+        var tmp = h[p]; h[p] = h[i]; h[i] = tmp;
+        i = p;
+    }
+}
+
+function heapPop(h) {
+    var top = h[0];
+    var last = h.pop();
+    if (h.length > 0) {
+        h[0] = last;
+        var i = 0, n = h.length;
+        while (true) {
+            var l = 2 * i + 1, r = 2 * i + 2, min = i;
+            if (l < n && h[l][0] < h[min][0]) min = l;
+            if (r < n && h[r][0] < h[min][0]) min = r;
+            if (min === i) break;
+            var tmp = h[i]; h[i] = h[min]; h[min] = tmp;
+            i = min;
+        }
+    }
+    return top;
+}
+
+function snapToNearestNode(latlng) {
+    if (!routeGraph) return null;
+    var lat = latlng.lat, lng = latlng.lng;
+    var bestDist = Infinity, bestIdx = -1;
+    var nodes = routeGraph.nodes;
+    for (var i = 0; i < nodes.length; i++) {
+        var dlat = nodes[i][0] - lat;
+        var dlng = nodes[i][1] - lng;
+        var d2 = dlat * dlat + dlng * dlng;
+        if (d2 < bestDist) { bestDist = d2; bestIdx = i; }
+    }
+    return bestIdx;
+}
+
+function onRouteMapClick(e) {
+    if (!routeMode || !routeGraph) return;
+
+    if (routeOriginNode === null) {
+        // Set origin
+        routeOriginNode = snapToNearestNode(e.latlng);
+        var n = routeGraph.nodes[routeOriginNode];
+        routeOriginMarker = L.marker([n[0], n[1]], {
+            icon: L.divIcon({ className: 'route-marker-origin', iconSize: [14, 14], iconAnchor: [7, 7] })
+        }).addTo(map);
+        document.getElementById('route-status').textContent = 'Origin set. Click to set destination.';
+    } else if (routeDestNode === null) {
+        // Set destination
+        routeDestNode = snapToNearestNode(e.latlng);
+
+        if (routeDestNode === routeOriginNode) {
+            document.getElementById('route-status').textContent = 'Same as origin. Click a different location.';
+            routeDestNode = null;
+            return;
+        }
+
+        var n = routeGraph.nodes[routeDestNode];
+        routeDestMarker = L.marker([n[0], n[1]], {
+            icon: L.divIcon({ className: 'route-marker-dest', iconSize: [14, 14], iconAnchor: [7, 7] })
+        }).addTo(map);
+        document.getElementById('route-status').textContent = 'Computing routes...';
+        computeAndDisplayRoutes();
+    }
+}
+
+function computeAndDisplayRoutes() {
+    var shortResult = dijkstra(routeAdj, routeOriginNode, routeDestNode, 'distW');
+    var comfResult = dijkstra(routeAdj, routeOriginNode, routeDestNode, 'comfW');
+
+    if (!shortResult || !comfResult) {
+        document.getElementById('route-status').textContent = 'No path found between these points.';
+        routeDestNode = null;
+        if (routeDestMarker) { map.removeLayer(routeDestMarker); routeDestMarker = null; }
+        return;
+    }
+
+    routeLayerGroup = L.layerGroup().addTo(map);
+    var defPci = routeGraph.default_pci;
+
+    function drawRoute(result, isDashed) {
+        var totalDist = 0, pciSum = 0, pciCount = 0, lstSum = 0, lstCount = 0, shadeSum = 0, shadeCount = 0;
+
+        for (var i = 0; i < result.edges.length; i++) {
+            var ei = result.edges[i];
+            var e = routeGraph.edges[ei];
+            var fi = e[6]; // feature index
+            var pci = e[3] !== null && e[3] !== undefined ? e[3] : defPci;
+            var lst = e[4];
+            var shade = e[5];
+            var len = e[2];
+
+            totalDist += len;
+            pciSum += pci * len; pciCount += len;
+            if (lst !== null && lst !== undefined) { lstSum += lst * len; lstCount += len; }
+            if (shade !== null && shade !== undefined) { shadeSum += shade * len; shadeCount += len; }
+
+            // Get geometry from streets.geojson
+            var coords;
+            if (routeStreetsGeo && routeStreetsGeo[fi]) {
+                coords = routeStreetsGeo[fi].geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
+            } else {
+                // Fallback: straight line between nodes
+                var uNode = routeGraph.nodes[e[0]];
+                var vNode = routeGraph.nodes[e[1]];
+                coords = [[uNode[0], uNode[1]], [vNode[0], vNode[1]]];
+            }
+
+            var style = {
+                color: comfortColor(pci),
+                weight: isDashed ? 4 : 5,
+                opacity: 0.85
+            };
+            if (isDashed) {
+                style.dashArray = '8,6';
+                style.opacity = 0.7;
+            }
+
+            var line = L.polyline(coords, style);
+            var popupHtml = '<b>' + (isDashed ? 'Shortest' : 'Comfort') + ' Route Segment</b><br>' +
+                'Length: ' + len.toFixed(1) + 'm<br>' +
+                'PCI: ' + pci.toFixed(3) +
+                (lst !== null && lst !== undefined ? '<br>LST: ' + lst.toFixed(1) + '&deg;C' : '') +
+                (shade !== null && shade !== undefined ? '<br>Shade: ' + (shade * 100).toFixed(1) + '%' : '');
+            line.bindPopup(popupHtml);
+            line.addTo(routeLayerGroup);
+        }
+
+        return {
+            dist: totalDist,
+            avgPci: pciCount > 0 ? pciSum / pciCount : 0,
+            avgLst: lstCount > 0 ? lstSum / lstCount : null,
+            avgShade: shadeCount > 0 ? shadeSum / shadeCount : null
+        };
+    }
+
+    // Draw shortest first (underneath), then comfort on top
+    var shortStats = drawRoute(shortResult, true);
+    var comfStats = drawRoute(comfResult, false);
+
+    // Update stats cards
+    document.getElementById('route-short-dist').textContent = shortStats.dist.toFixed(0) + 'm';
+    document.getElementById('route-short-pci').textContent = shortStats.avgPci.toFixed(3);
+    document.getElementById('route-short-lst').textContent = shortStats.avgLst !== null ? shortStats.avgLst.toFixed(1) + '\u00b0C' : 'N/A';
+    document.getElementById('route-short-shade').textContent = shortStats.avgShade !== null ? (shortStats.avgShade * 100).toFixed(1) + '%' : 'N/A';
+
+    document.getElementById('route-comf-dist').textContent = comfStats.dist.toFixed(0) + 'm';
+    document.getElementById('route-comf-pci').textContent = comfStats.avgPci.toFixed(3);
+    document.getElementById('route-comf-lst').textContent = comfStats.avgLst !== null ? comfStats.avgLst.toFixed(1) + '\u00b0C' : 'N/A';
+    document.getElementById('route-comf-shade').textContent = comfStats.avgShade !== null ? (comfStats.avgShade * 100).toFixed(1) + '%' : 'N/A';
+
+    // Delta summary
+    var distDelta = ((comfStats.dist - shortStats.dist) / shortStats.dist * 100);
+    var deltaText = 'Comfort route is ' + (distDelta > 0 ? '+' : '') + distDelta.toFixed(0) + '% ' +
+        (distDelta >= 0 ? 'longer' : 'shorter');
+    if (comfStats.avgLst !== null && shortStats.avgLst !== null) {
+        var lstDelta = comfStats.avgLst - shortStats.avgLst;
+        deltaText += ', ' + (lstDelta < 0 ? '' : '+') + lstDelta.toFixed(1) + '\u00b0C';
+        if (lstDelta < 0) deltaText += ' cooler';
+        else if (lstDelta > 0) deltaText += ' warmer';
+    }
+    document.getElementById('route-delta').textContent = deltaText;
+
+    // Show comparison panel
+    document.getElementById('route-comparison').style.display = '';
+    document.getElementById('route-clear-btn').style.display = '';
+    document.getElementById('route-status').textContent = '';
+    document.getElementById('route-instructions').style.display = 'none';
+
+    // Bring markers to front
+    if (routeOriginMarker) routeOriginMarker.bringToFront();
+    if (routeDestMarker) routeDestMarker.bringToFront();
+}
+
+function clearRoute() {
+    if (routeLayerGroup) { map.removeLayer(routeLayerGroup); routeLayerGroup = null; }
+    if (routeOriginMarker) { map.removeLayer(routeOriginMarker); routeOriginMarker = null; }
+    if (routeDestMarker) { map.removeLayer(routeDestMarker); routeDestMarker = null; }
+    routeOriginNode = null;
+    routeDestNode = null;
+    document.getElementById('route-comparison').style.display = 'none';
+    document.getElementById('route-clear-btn').style.display = 'none';
+    document.getElementById('route-status').textContent = '';
+    document.getElementById('route-instructions').style.display = '';
+    document.getElementById('route-instructions').textContent = 'Click the map to set origin, then destination.';
+}
+
+function enableRouteMode() {
+    routeMode = true;
+    map.getContainer().classList.add('route-mode');
+    map.on('click', onRouteMapClick);
+}
+
+function disableRouteMode() {
+    routeMode = false;
+    map.getContainer().classList.remove('route-mode');
+    map.off('click', onRouteMapClick);
+    clearRoute();
 }
 
 // ============================================================
@@ -1403,7 +1876,8 @@ var LAYER_INFO = {
     'clusters':      { label: 'Climate Clusters',           desc: 'K-means clustering of micro-climate variables to identify urban thermal zones.', anchor: '#clusters' },
     'satellite':     { label: 'Satellite Grid (30m)',       desc: 'Landsat-derived 30 m grid of LST, NDVI and NDBI across the district.', anchor: '#satellite' },
     'change5yr':     { label: '5-Year Change (2020→2025)', desc: 'Pixel-by-pixel comparison of summer satellite data between 2020 and 2025, showing changes in LST, NDVI and NDBI.', anchor: '#temporal' },
-    'green-access':  { label: 'Green Space Access',         desc: 'Walking distance from each sample point to the nearest green space.', anchor: '#clusters' }
+    'green-access':  { label: 'Green Space Access',         desc: 'Walking distance from each sample point to the nearest green space.', anchor: '#clusters' },
+    'routes':        { label: 'Walking Route Planner',       desc: 'Compare shortest-distance vs most-comfortable walking routes using Pedestrian Comfort Index (PCI), temperature and shade data.', anchor: '#combined' }
 };
 
 function showInfoPopover(event, key) {
