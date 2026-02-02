@@ -17,10 +17,6 @@ Output:
 import json
 import os
 import sys
-import math
-import io
-import base64
-import urllib.request
 import xml.etree.ElementTree as ET
 import numpy as np
 import matplotlib
@@ -30,7 +26,6 @@ from matplotlib.collections import LineCollection, PatchCollection
 from matplotlib.colors import Normalize, LinearSegmentedColormap, BoundaryNorm, ListedColormap
 from matplotlib.patches import Circle
 from matplotlib.backends.backend_pdf import PdfPages
-from PIL import Image
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -79,66 +74,6 @@ def make_fig(title, aspect='equal'):
     ax.set_ylabel('Latitude')
     ax.tick_params(labelsize=8)
     return fig, ax
-
-
-# ---------------------------------------------------------------------------
-# Tile constants and utilities (used by both individual exports and bundled SVG)
-# ---------------------------------------------------------------------------
-
-ZOOM = 16
-TILE_SIZE = 256
-TILE_URL = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png'
-TILE_SUBDOMAINS = 'abcd'
-PAD = 0.002  # degrees padding around data extent
-
-
-def _deg2tile(lat, lon, z):
-    """Convert lat/lon to tile x,y at zoom z."""
-    lat_rad = math.radians(lat)
-    n = 2 ** z
-    x = int((lon + 180) / 360 * n)
-    y = int((1 - math.log(math.tan(lat_rad) + 1 / math.cos(lat_rad)) / math.pi) / 2 * n)
-    return x, y
-
-
-def _tile2deg(x, y, z):
-    """Top-left corner of tile in lat/lon."""
-    n = 2 ** z
-    lon = x / n * 360 - 180
-    lat_rad = math.atan(math.sinh(math.pi * (1 - 2 * y / n)))
-    lat = math.degrees(lat_rad)
-    return lat, lon
-
-
-def _lat_to_merc(lat):
-    """Convert latitude to Web Mercator Y value."""
-    lat_rad = math.radians(lat)
-    return math.log(math.tan(lat_rad) + 1 / math.cos(lat_rad))
-
-
-def _download_tiles(tx_min, tx_max, ty_min, ty_max, z):
-    """Download and stitch basemap tiles into a single PIL Image."""
-    nx = tx_max - tx_min + 1
-    ny = ty_max - ty_min + 1
-    stitched = Image.new('RGB', (nx * TILE_SIZE, ny * TILE_SIZE))
-
-    count = 0
-    total = nx * ny
-    for ty in range(ty_min, ty_max + 1):
-        for tx in range(tx_min, tx_max + 1):
-            s = TILE_SUBDOMAINS[count % len(TILE_SUBDOMAINS)]
-            url = TILE_URL.replace('{s}', s).replace('{z}', str(z)).replace('{x}', str(tx)).replace('{y}', str(ty))
-            req = urllib.request.Request(url, headers={'User-Agent': 'AlKaramaExport/1.0'})
-            resp = urllib.request.urlopen(req)
-            tile_img = Image.open(io.BytesIO(resp.read())).convert('RGB')
-            px = (tx - tx_min) * TILE_SIZE
-            py = (ty - ty_min) * TILE_SIZE
-            stitched.paste(tile_img, (px, py))
-            count += 1
-            print(f'    Tile {count}/{total}', end='\r')
-
-    print(f'    Downloaded {total} tiles ({stitched.size[0]}x{stitched.size[1]} px)')
-    return stitched
 
 
 
@@ -473,128 +408,9 @@ def export_change5yr():
         save(fig, m['filename'])
 
 
-# ---------------------------------------------------------------------------
-# 9. Bundled All-Layers SVG with raster basemap
-# ---------------------------------------------------------------------------
-
-
-class SvgBuilder:
-    """Build a layered SVG with a raster basemap and vector analysis layers."""
-
-    def __init__(self, img_w, img_h, tl_lat, tl_lon, br_lat, br_lon):
-        self.img_w = img_w
-        self.img_h = img_h
-        self.tl_lat = tl_lat
-        self.tl_lon = tl_lon
-        self.br_lat = br_lat
-        self.br_lon = br_lon
-        self.merc_tl = _lat_to_merc(tl_lat)
-        self.merc_br = _lat_to_merc(br_lat)
-        self.layers = []  # list of (id, label, svg_content)
-
-    def lonlat_to_px(self, lat, lon):
-        """Convert lat/lon to pixel coordinates in the SVG."""
-        px_x = (lon - self.tl_lon) / (self.br_lon - self.tl_lon) * self.img_w
-        merc_pt = _lat_to_merc(lat)
-        px_y = (self.merc_tl - merc_pt) / (self.merc_tl - self.merc_br) * self.img_h
-        return px_x, px_y
-
-    def add_basemap(self, img):
-        """Add raster basemap as base64-encoded image layer."""
-        buf = io.BytesIO()
-        img.save(buf, format='PNG', optimize=True)
-        b64 = base64.b64encode(buf.getvalue()).decode('ascii')
-        content = (f'<image x="0" y="0" width="{self.img_w}" height="{self.img_h}" '
-                   f'href="data:image/png;base64,{b64}" />')
-        self.layers.append(('basemap', 'Basemap (CARTO Positron)', content))
-
-    def add_layer(self, layer_id, label, content):
-        """Add a named vector layer."""
-        self.layers.append((layer_id, label, content))
-
-    def build(self):
-        """Generate the complete SVG string."""
-        parts = [
-            '<?xml version="1.0" encoding="UTF-8"?>',
-            f'<svg xmlns="http://www.w3.org/2000/svg"',
-            f'     xmlns:xlink="http://www.w3.org/1999/xlink"',
-            f'     xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"',
-            f'     width="{self.img_w}" height="{self.img_h}"',
-            f'     viewBox="0 0 {self.img_w} {self.img_h}">',
-            f'<!-- Al Karama Urban Analysis - All Layers -->',
-            f'<!-- Basemap: CARTO Positron, Zoom {ZOOM} -->',
-            f'<!-- Coordinate space: Web Mercator pixels -->',
-            f'<!-- Lat: {self.br_lat:.6f} to {self.tl_lat:.6f} -->',
-            f'<!-- Lon: {self.tl_lon:.6f} to {self.br_lon:.6f} -->',
-        ]
-
-        for layer_id, label, content in self.layers:
-            parts.append(
-                f'<g id="{layer_id}" '
-                f'inkscape:groupmode="layer" '
-                f'inkscape:label="{label}">'
-            )
-            parts.append(content)
-            parts.append('</g>')
-
-        parts.append('</svg>')
-        return '\n'.join(parts)
-
-
 def _color_hex(r, g, b):
     """Convert 0-255 RGB to hex."""
     return f'#{int(r):02x}{int(g):02x}{int(b):02x}'
-
-
-def _build_centrality_svg(builder, streets, metric):
-    """Build SVG polyline elements for street centrality."""
-    if metric == 'betweenness':
-        colors = [(225, 190, 231), (206, 147, 216), (171, 71, 188), (142, 36, 170), (74, 20, 140)]
-        vmax = 0.196
-    else:
-        colors = [(187, 222, 251), (144, 202, 249), (66, 165, 245), (30, 136, 229), (13, 71, 161)]
-        vmax = 0.00058
-
-    parts = []
-    for feat in streets['features']:
-        val = feat['properties'].get(metric, 0) or 0
-        ratio = min(1.0, val / vmax)
-        idx = min(int(ratio * 4), 3)
-        t = (ratio * 4) - idx
-        c1, c2 = colors[idx], colors[min(idx + 1, 4)]
-        r = c1[0] + (c2[0] - c1[0]) * t
-        g = c1[1] + (c2[1] - c1[1]) * t
-        b = c1[2] + (c2[2] - c1[2]) * t
-        color = _color_hex(r, g, b)
-        width = 0.5 + ratio * 3
-
-        coords_list = []
-        geom = feat['geometry']
-        if geom['type'] == 'LineString':
-            coords_list.append(geom['coordinates'])
-        elif geom['type'] == 'MultiLineString':
-            coords_list.extend(geom['coordinates'])
-
-        for coords in coords_list:
-            points = []
-            for c in coords:
-                px, py = builder.lonlat_to_px(c[1], c[0])
-                points.append(f'{px:.1f},{py:.1f}')
-            parts.append(f'<polyline points="{" ".join(points)}" '
-                         f'fill="none" stroke="{color}" stroke-width="{width:.1f}" '
-                         f'stroke-opacity="0.85" stroke-linecap="round"/>')
-
-    return '\n'.join(parts)
-
-
-def _scatter_svg(builder, lons, lats, colors_list, radius=3, opacity=0.75):
-    """Build SVG circle elements for scatter data."""
-    parts = []
-    for i in range(len(lons)):
-        px, py = builder.lonlat_to_px(lats[i], lons[i])
-        parts.append(f'<circle cx="{px:.1f}" cy="{py:.1f}" r="{radius}" '
-                     f'fill="{colors_list[i]}" fill-opacity="{opacity}"/>')
-    return '\n'.join(parts)
 
 
 def _comfort_color(pci):
@@ -696,169 +512,6 @@ def _change_ndbi_color(v):
     return _diverging_color(v, -0.2, 0.2, _CHANGE_NDBI_COLORS)
 
 
-def export_all_layers_svg():
-    """Generate a single layered SVG with raster basemap + all vector layers."""
-    print('=== Bundled All-Layers SVG ===')
-
-    # ------------------------------------------------------------------
-    # 1. Compute bounding box from all data
-    # ------------------------------------------------------------------
-    all_lats = []
-    all_lons = []
-    for fname in ['segment_comfort.json']:
-        d = load_json(fname)
-        all_lats.extend(p['lat'] for p in d)
-        all_lons.extend(p['lon'] for p in d)
-    for fname in ['priority_points.json', 'combined_svi.json', 'distance_to_green.json',
-                   'clusters.json', 'satellite_grid.json']:
-        d = load_season_json(fname)
-        all_lats.extend(p['lat'] for p in d)
-        all_lons.extend(p['lon'] for p in d)
-
-    lat_min, lat_max = min(all_lats) - PAD, max(all_lats) + PAD
-    lon_min, lon_max = min(all_lons) - PAD, max(all_lons) + PAD
-    print(f'  Bbox: lat [{lat_min:.4f}, {lat_max:.4f}], lon [{lon_min:.4f}, {lon_max:.4f}]')
-
-    # ------------------------------------------------------------------
-    # 2. Download basemap tiles
-    # ------------------------------------------------------------------
-    tx_min, ty_min = _deg2tile(lat_max, lon_min, ZOOM)
-    tx_max, ty_max = _deg2tile(lat_min, lon_max, ZOOM)
-    print(f'  Downloading tiles (zoom {ZOOM})...')
-    basemap_img = _download_tiles(tx_min, tx_max, ty_min, ty_max, ZOOM)
-
-    img_w, img_h = basemap_img.size
-    tl_lat, tl_lon = _tile2deg(tx_min, ty_min, ZOOM)
-    br_lat, br_lon = _tile2deg(tx_max + 1, ty_max + 1, ZOOM)
-
-    # ------------------------------------------------------------------
-    # 3. Build SVG
-    # ------------------------------------------------------------------
-    builder = SvgBuilder(img_w, img_h, tl_lat, tl_lon, br_lat, br_lon)
-    builder.add_basemap(basemap_img)
-
-    # --- Street Centrality (Betweenness) ---
-    print('  Layer: Centrality (Betweenness)...')
-    streets = load_json('streets.geojson')
-    content = _build_centrality_svg(builder, streets, 'betweenness')
-    builder.add_layer('centrality_betweenness', 'Street Centrality (Betweenness)', content)
-
-    # --- Street Centrality (Closeness) ---
-    print('  Layer: Centrality (Closeness)...')
-    content = _build_centrality_svg(builder, streets, 'closeness')
-    builder.add_layer('centrality_closeness', 'Street Centrality (Closeness)', content)
-
-    # --- Pedestrian Comfort ---
-    print('  Layer: Pedestrian Comfort...')
-    data = load_json('segment_comfort.json')
-    lons = [d['lon'] for d in data]
-    lats = [d['lat'] for d in data]
-    colors_list = [_comfort_color(d['pci_mean']) for d in data]
-    content = _scatter_svg(builder, lons, lats, colors_list, radius=6, opacity=0.8)
-    builder.add_layer('comfort', 'Pedestrian Comfort (PCI)', content)
-
-    # --- Heat Mitigation Priority ---
-    print('  Layer: Heat Mitigation Priority...')
-    data = load_season_json('priority_points.json')
-    lons = [d['lon'] for d in data]
-    lats = [d['lat'] for d in data]
-    colors_list = [_priority_color(d.get('priority_level', '')) for d in data]
-    content = _scatter_svg(builder, lons, lats, colors_list, radius=2.5, opacity=0.7)
-    builder.add_layer('priority', 'Heat Mitigation Priority', content)
-
-    # --- Combined SVI: LST ---
-    print('  Layer: Combined LST...')
-    data = load_season_json('combined_svi.json')
-    lons = [d['lon'] for d in data]
-    lats = [d['lat'] for d in data]
-    colors_list = [_lst_color(d.get('lst', 0)) for d in data]
-    content = _scatter_svg(builder, lons, lats, colors_list, radius=2.5)
-    builder.add_layer('combined_lst', 'Combined SVI - LST', content)
-
-    # --- Combined SVI: GVI ---
-    print('  Layer: Combined GVI...')
-    colors_list = [_gvi_color(d.get('gvi', 0)) for d in data]
-    content = _scatter_svg(builder, lons, lats, colors_list, radius=2.5)
-    builder.add_layer('combined_gvi', 'Combined SVI - GVI', content)
-
-    # --- Combined SVI: SVF ---
-    print('  Layer: Combined SVF...')
-    colors_list = [_svf_color(d.get('svf', 0)) for d in data]
-    content = _scatter_svg(builder, lons, lats, colors_list, radius=2.5)
-    builder.add_layer('combined_svf', 'Combined SVI - SVF', content)
-
-    # --- Satellite Grid: LST ---
-    print('  Layer: Satellite LST...')
-    data = load_season_json('satellite_grid.json')
-    lons = [d['lon'] for d in data]
-    lats = [d['lat'] for d in data]
-    colors_list = [_sat_lst_color(d.get('lst', 0)) for d in data]
-    content = _scatter_svg(builder, lons, lats, colors_list, radius=2)
-    builder.add_layer('satellite_lst', 'Satellite Grid - LST (30m)', content)
-
-    # --- Satellite Grid: NDVI ---
-    print('  Layer: Satellite NDVI...')
-    colors_list = [_sat_ndvi_color(d.get('ndvi', 0)) for d in data]
-    content = _scatter_svg(builder, lons, lats, colors_list, radius=2)
-    builder.add_layer('satellite_ndvi', 'Satellite Grid - NDVI (30m)', content)
-
-    # --- Satellite Grid: NDBI ---
-    print('  Layer: Satellite NDBI...')
-    colors_list = [_sat_ndbi_color(d.get('ndbi', 0)) for d in data]
-    content = _scatter_svg(builder, lons, lats, colors_list, radius=2)
-    builder.add_layer('satellite_ndbi', 'Satellite Grid - NDBI (30m)', content)
-
-    # --- Climate Clusters ---
-    print('  Layer: Climate Clusters...')
-    data = load_season_json('clusters.json')
-    lons = [d['lon'] for d in data]
-    lats = [d['lat'] for d in data]
-    colors_list = [_cluster_color(d.get('cluster', 0)) for d in data]
-    content = _scatter_svg(builder, lons, lats, colors_list, radius=2.5)
-    builder.add_layer('clusters', 'Climate Clusters', content)
-
-    # --- Green Space Access ---
-    print('  Layer: Green Space Access...')
-    data = load_season_json('distance_to_green.json')
-    lons = [d['lon'] for d in data]
-    lats = [d['lat'] for d in data]
-    colors_list = [_green_access_color(d.get('dist_to_green_m', 0)) for d in data]
-    content = _scatter_svg(builder, lons, lats, colors_list, radius=2.5)
-    builder.add_layer('green_access', 'Green Space Access', content)
-
-    # --- 5-Year Change: ΔLST ---
-    print('  Layer: 5-Year Change ΔLST...')
-    data = load_json('change_summer_5yr.json')
-    lons = [d['lon'] for d in data]
-    lats = [d['lat'] for d in data]
-    colors_list = [_change_lst_color(d.get('d_lst', 0)) for d in data]
-    content = _scatter_svg(builder, lons, lats, colors_list, radius=2, opacity=0.75)
-    builder.add_layer('change5yr_lst', '5-Year Change - \u0394LST', content)
-
-    # --- 5-Year Change: ΔNDVI ---
-    print('  Layer: 5-Year Change ΔNDVI...')
-    colors_list = [_change_ndvi_color(d.get('d_ndvi', 0)) for d in data]
-    content = _scatter_svg(builder, lons, lats, colors_list, radius=2, opacity=0.75)
-    builder.add_layer('change5yr_ndvi', '5-Year Change - \u0394NDVI', content)
-
-    # --- 5-Year Change: ΔNDBI ---
-    print('  Layer: 5-Year Change ΔNDBI...')
-    colors_list = [_change_ndbi_color(d.get('d_ndbi', 0)) for d in data]
-    content = _scatter_svg(builder, lons, lats, colors_list, radius=2, opacity=0.75)
-    builder.add_layer('change5yr_ndbi', '5-Year Change - \u0394NDBI', content)
-
-    # ------------------------------------------------------------------
-    # 4. Write SVG
-    # ------------------------------------------------------------------
-    svg_content = builder.build()
-    out_path = os.path.join(OUT_DIR, 'all_layers.svg')
-    with open(out_path, 'w') as f:
-        f.write(svg_content)
-
-    size_mb = os.path.getsize(out_path) / (1024 * 1024)
-    print(f'  => all_layers.svg ({size_mb:.1f} MB)')
-    print(f'     {len(builder.layers)} layers (1 raster basemap + {len(builder.layers) - 1} vector)')
-
 
 # ---------------------------------------------------------------------------
 # Main
@@ -877,9 +530,6 @@ def main():
     export_clusters()
     export_green_access()
     export_change5yr()
-
-    print()
-    export_all_layers_svg()
 
     # List all generated files
     files = sorted(os.listdir(OUT_DIR))
