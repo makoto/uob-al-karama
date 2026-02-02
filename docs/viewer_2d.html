@@ -352,6 +352,19 @@
         <label><input type="radio" name="satellite-metric" value="ndbi" onchange="setSatelliteMetric('ndbi')"> NDBI</label>
     </div>
 
+    <!-- 5-Year Change Detection -->
+    <div class="layer-radio-row" onclick="selectLayer('change5yr')">
+        <input type="radio" name="layer" value="change5yr" id="radio-change5yr">
+        <span class="layer-radio-label">5-Year Change (2020→2025)</span>
+        <span class="layer-info-btn" onclick="event.stopPropagation();showInfoPopover(event,'change5yr')">i</span>
+        <div class="layer-loading-spinner" id="load-change5yr"></div>
+    </div>
+    <div class="sub-options" id="sub-change5yr">
+        <label><input type="radio" name="change5yr-metric" value="d_lst" checked onchange="setChange5yrMetric('d_lst')"> &Delta;LST</label>
+        <label><input type="radio" name="change5yr-metric" value="d_ndvi" onchange="setChange5yrMetric('d_ndvi')"> &Delta;NDVI</label>
+        <label><input type="radio" name="change5yr-metric" value="d_ndbi" onchange="setChange5yrMetric('d_ndbi')"> &Delta;NDBI</label>
+    </div>
+
     <!-- Green Access -->
     <div class="layer-radio-row" onclick="selectLayer('green-access')">
         <input type="radio" name="layer" value="green-access" id="radio-green-access">
@@ -421,6 +434,7 @@ var currentLayer = null;
 var centralityMetric = 'betweenness';
 var combinedMetric = 'lst';
 var satelliteMetric = 'lst';
+var change5yrMetric = 'd_lst';
 var lstMin = 36, lstMax = 54;       // dynamic LST range, updated when data loads
 var satLstMin = 36, satLstMax = 54; // satellite grid LST range
 var currentBasemap = 'positron';
@@ -445,6 +459,7 @@ var LAYER_DATA_KEYS = {
     combined: 'combined_svi',
     clusters: 'clusters',
     satellite: 'satellite_grid',
+    change5yr: 'change_summer_5yr',
     'green-access': 'distance_to_green'
 };
 
@@ -647,6 +662,43 @@ function satNDBIColor(v) {
                     Math.round(c1[2]+(c2[2]-c1[2])*t) + ')';
 }
 
+// Diverging color functions for 5-Year Change Detection
+function changeLSTColor(v) {
+    // Blue (cooled) → white (no change) → red (warmed), range [-3, +3]°C
+    var ratio = Math.max(0, Math.min(1, (v + 3) / 6));
+    var colors = [[33,102,172],[146,197,222],[247,247,247],[244,165,130],[214,96,77],[178,24,43]];
+    var idx = Math.min(Math.floor(ratio * 5), 4);
+    var t = (ratio * 5) - idx;
+    var c1 = colors[idx], c2 = colors[idx + 1];
+    return 'rgb(' + Math.round(c1[0]+(c2[0]-c1[0])*t) + ',' +
+                    Math.round(c1[1]+(c2[1]-c1[1])*t) + ',' +
+                    Math.round(c1[2]+(c2[2]-c1[2])*t) + ')';
+}
+
+function changeNDVIColor(v) {
+    // Brown (veg loss) → white (no change) → green (greened), range [-0.2, +0.2]
+    var ratio = Math.max(0, Math.min(1, (v + 0.2) / 0.4));
+    var colors = [[140,81,10],[216,179,101],[247,247,247],[166,219,160],[90,174,97],[27,120,55]];
+    var idx = Math.min(Math.floor(ratio * 5), 4);
+    var t = (ratio * 5) - idx;
+    var c1 = colors[idx], c2 = colors[idx + 1];
+    return 'rgb(' + Math.round(c1[0]+(c2[0]-c1[0])*t) + ',' +
+                    Math.round(c1[1]+(c2[1]-c1[1])*t) + ',' +
+                    Math.round(c1[2]+(c2[2]-c1[2])*t) + ')';
+}
+
+function changeNDBIColor(v) {
+    // Blue (reduced built-up) → white (no change) → orange-red (more built-up), range [-0.2, +0.2]
+    var ratio = Math.max(0, Math.min(1, (v + 0.2) / 0.4));
+    var colors = [[69,117,180],[145,191,219],[247,247,247],[252,174,97],[244,109,67],[215,48,39]];
+    var idx = Math.min(Math.floor(ratio * 5), 4);
+    var t = (ratio * 5) - idx;
+    var c1 = colors[idx], c2 = colors[idx + 1];
+    return 'rgb(' + Math.round(c1[0]+(c2[0]-c1[0])*t) + ',' +
+                    Math.round(c1[1]+(c2[1]-c1[1])*t) + ',' +
+                    Math.round(c1[2]+(c2[2]-c1[2])*t) + ')';
+}
+
 // ============================================================
 //  LAYER BUILDERS
 // ============================================================
@@ -835,6 +887,36 @@ function buildSatelliteLayer(data) {
     return group;
 }
 
+function buildChange5yrLayer(data) {
+    var dense = data.length > 30000;
+    var radius = dense ? 4 : 3;
+    var opacity = dense ? 0.6 : 0.8;
+    var group = L.layerGroup();
+    for (var i = 0; i < data.length; i++) {
+        var d = data[i];
+        var color;
+        if (change5yrMetric === 'd_lst') color = changeLSTColor(d.d_lst);
+        else if (change5yrMetric === 'd_ndvi') color = changeNDVIColor(d.d_ndvi);
+        else color = changeNDBIColor(d.d_ndbi);
+
+        L.circleMarker([d.lat, d.lon], {
+            radius: radius,
+            fillColor: color,
+            fillOpacity: opacity,
+            weight: 0
+        }).bindPopup(
+            '<b>5-Year Change (2020 &rarr; 2025)</b><br>' +
+            '<b>&Delta;LST:</b> ' + (d.d_lst || 0).toFixed(2) + '&deg;C' +
+            ' <span style="color:#888">(' + (d.lst_2020 || 0).toFixed(1) + ' &rarr; ' + (d.lst_2025 || 0).toFixed(1) + ')</span><br>' +
+            '<b>&Delta;NDVI:</b> ' + (d.d_ndvi || 0).toFixed(4) +
+            ' <span style="color:#888">(' + (d.ndvi_2020 || 0).toFixed(3) + ' &rarr; ' + (d.ndvi_2025 || 0).toFixed(3) + ')</span><br>' +
+            '<b>&Delta;NDBI:</b> ' + (d.d_ndbi || 0).toFixed(4) +
+            ' <span style="color:#888">(' + (d.ndbi_2020 || 0).toFixed(3) + ' &rarr; ' + (d.ndbi_2025 || 0).toFixed(3) + ')</span>'
+        ).addTo(group);
+    }
+    return group;
+}
+
 // ============================================================
 //  LAYER SWITCHING
 // ============================================================
@@ -901,6 +983,9 @@ async function selectLayer(name) {
         case 'satellite':
             activeLayerGroup = buildSatelliteLayer(data);
             break;
+        case 'change5yr':
+            activeLayerGroup = buildChange5yrLayer(data);
+            break;
         case 'green-access':
             activeLayerGroup = buildGreenAccessLayer(data);
             break;
@@ -939,6 +1024,11 @@ function setSatelliteMetric(m) {
     if (currentLayer === 'satellite') selectLayer('satellite');
 }
 
+function setChange5yrMetric(m) {
+    change5yrMetric = m;
+    if (currentLayer === 'change5yr') selectLayer('change5yr');
+}
+
 // ============================================================
 //  URL HASH
 // ============================================================
@@ -951,6 +1041,8 @@ function updateHash() {
         hash += '-' + combinedMetric;
     } else if (currentLayer === 'satellite' && satelliteMetric !== 'lst') {
         hash += '-' + satelliteMetric;
+    } else if (currentLayer === 'change5yr' && change5yrMetric !== 'd_lst') {
+        hash += '-' + change5yrMetric;
     }
     history.replaceState(null, '', '#' + hash);
 }
@@ -1051,6 +1143,21 @@ function updateLegend() {
                 legendItem('#ffb74d', '200&ndash;400m') +
                 legendItem('#d32f2f', '&gt;400m');
             break;
+        case 'change5yr':
+            if (change5yrMetric === 'd_lst') {
+                html = '<div class="legend-title">&Delta;LST (2020 &rarr; 2025)</div>' +
+                    '<div class="legend-gradient" style="background:linear-gradient(to right,rgb(33,102,172),rgb(146,197,222),rgb(247,247,247),rgb(244,165,130),rgb(178,24,43))"></div>' +
+                    '<div class="legend-labels"><span>&minus;3&deg;C (cooled)</span><span>0</span><span>+3&deg;C (warmed)</span></div>';
+            } else if (change5yrMetric === 'd_ndvi') {
+                html = '<div class="legend-title">&Delta;NDVI (2020 &rarr; 2025)</div>' +
+                    '<div class="legend-gradient" style="background:linear-gradient(to right,rgb(140,81,10),rgb(216,179,101),rgb(247,247,247),rgb(166,219,160),rgb(27,120,55))"></div>' +
+                    '<div class="legend-labels"><span>&minus;0.2 (veg loss)</span><span>0</span><span>+0.2 (greened)</span></div>';
+            } else {
+                html = '<div class="legend-title">&Delta;NDBI (2020 &rarr; 2025)</div>' +
+                    '<div class="legend-gradient" style="background:linear-gradient(to right,rgb(69,117,180),rgb(145,191,219),rgb(247,247,247),rgb(252,174,97),rgb(215,48,39))"></div>' +
+                    '<div class="legend-labels"><span>&minus;0.2 (reduced)</span><span>0</span><span>+0.2 (built up)</span></div>';
+            }
+            break;
     }
 
     el.innerHTML = html;
@@ -1096,6 +1203,7 @@ var EXPORT_FILE_MAP = {
     'priority': 'priority',
     'combined': { lst: 'combined_lst', gvi: 'combined_gvi', svf: 'combined_svf' },
     'satellite': { lst: 'satellite_lst', ndvi: 'satellite_ndvi', ndbi: 'satellite_ndbi' },
+    'change5yr': { d_lst: 'change5yr_lst', d_ndvi: 'change5yr_ndvi', d_ndbi: 'change5yr_ndbi' },
     'clusters': 'clusters',
     'green-access': 'green_access'
 };
@@ -1107,6 +1215,7 @@ function updateExportLinks() {
         if (currentLayer === 'centrality') basename = entry[centralityMetric];
         else if (currentLayer === 'combined') basename = entry[combinedMetric];
         else if (currentLayer === 'satellite') basename = entry[satelliteMetric];
+        else if (currentLayer === 'change5yr') basename = entry[change5yrMetric];
     } else {
         basename = entry;
     }
@@ -1278,6 +1387,9 @@ async function init() {
         } else if (parsed.layer === 'satellite') {
             satelliteMetric = parsed.sub;
             document.querySelector('input[name="satellite-metric"][value="' + parsed.sub + '"]').checked = true;
+        } else if (parsed.layer === 'change5yr') {
+            change5yrMetric = parsed.sub;
+            document.querySelector('input[name="change5yr-metric"][value="' + parsed.sub + '"]').checked = true;
         }
     }
     selectLayer(parsed.layer);
@@ -1295,6 +1407,7 @@ var LAYER_INFO = {
     'combined':      { label: 'Combined SVI + Satellite',   desc: 'Point-level fusion of street-view indicators (GVI, SVF) with satellite thermal/vegetation data.', anchor: '#combined' },
     'clusters':      { label: 'Climate Clusters',           desc: 'K-means clustering of micro-climate variables to identify urban thermal zones.', anchor: '#clusters' },
     'satellite':     { label: 'Satellite Grid (30m)',       desc: 'Landsat-derived 30 m grid of LST, NDVI and NDBI across the district.', anchor: '#satellite' },
+    'change5yr':     { label: '5-Year Change (2020→2025)', desc: 'Pixel-by-pixel comparison of summer satellite data between 2020 and 2025, showing changes in LST, NDVI and NDBI.', anchor: '#satellite' },
     'green-access':  { label: 'Green Space Access',         desc: 'Walking distance from each sample point to the nearest green space.', anchor: '#clusters' }
 };
 

@@ -133,6 +133,17 @@
                         <span class="layer-info-btn" onclick="showInfoPopover(event,'green-access')">i</span>
                         <span class="layer-loading" id="load-green-access" style="display:none"></span>
                     </div>
+                    <div class="layer-row">
+                        <input type="checkbox" class="layer-toggle" id="tog-change5yr" onchange="onLayerToggle('change5yr')">
+                        <label class="layer-label" for="tog-change5yr">5-Year Change (2020&rarr;2025)</label>
+                        <span class="layer-info-btn" onclick="showInfoPopover(event,'change5yr')">i</span>
+                        <span class="layer-loading" id="load-change5yr" style="display:none"></span>
+                    </div>
+                    <div class="layer-options" id="opt-change5yr" style="display:none">
+                        <label><input type="radio" name="change5yr-metric" value="d_lst" checked onchange="setChange5yrMetric('d_lst')"> &Delta;LST</label>
+                        <label><input type="radio" name="change5yr-metric" value="d_ndvi" onchange="setChange5yrMetric('d_ndvi')"> &Delta;NDVI</label>
+                        <label><input type="radio" name="change5yr-metric" value="d_ndbi" onchange="setChange5yrMetric('d_ndbi')"> &Delta;NDBI</label>
+                    </div>
                 </div>
             </div>
 
@@ -301,6 +312,7 @@ var layerState = {
     'gpu-shadows': true, 'building-shadows': true, 'tree-shadows': true,
     'street-shade': false,
     priority: false, combined: false, clusters: false, 'green-access': false,
+    change5yr: false,
     centrality: false, comfort: false,
     pois: false
 };
@@ -311,6 +323,7 @@ var streetMode = 'shade';            // 'shade' | 'neutral'
 var combinedMetric = 'lst';          // 'lst' | 'gvi' | 'svf'
 var lstMin = 46, lstMax = 53;        // dynamic LST range for combined layer
 var centralityMetric = 'betweenness'; // 'betweenness' | 'closeness'
+var change5yrMetric = 'd_lst';       // 'd_lst' | 'd_ndvi' | 'd_ndbi'
 
 // Time
 var TIMES = [6, 8, 10, 12, 14, 16, 18];
@@ -490,6 +503,12 @@ async function onLayerToggle(key) {
         if (crOpt) crOpt.style.display = cb.checked ? '' : 'none';
     }
 
+    // Show change5yr options
+    if (key === 'change5yr') {
+        var ch5Opt = document.getElementById('opt-change5yr');
+        if (ch5Opt) ch5Opt.style.display = cb.checked ? '' : 'none';
+    }
+
     // Lazy-load data if needed
     if (cb.checked) {
         await ensureDataLoaded(key);
@@ -513,7 +532,8 @@ async function ensureDataLoaded(key) {
         'green-access': 'distance_to_green',
         'centrality': 'streets',
         'comfort': 'segment_comfort',
-        'pois': 'pois'
+        'pois': 'pois',
+        'change5yr': 'change_summer_5yr'
     };
 
     var dataKey = dataKeyMap[key];
@@ -540,6 +560,7 @@ function setBuildingColor(mode) { buildingColorMode = mode; rebuildDeck(); updat
 function setStreetMode(mode) { streetMode = mode; rebuildDeck(); }
 function setCombinedMetric(m) { combinedMetric = m; rebuildDeck(); updateLegend(); }
 function setCentralityMetric(m) { centralityMetric = m; rebuildDeck(); updateLegend(); }
+function setChange5yrMetric(m) { change5yrMetric = m; rebuildDeck(); updateLegend(); }
 
 // ═══════════════════════════════════════════════════════
 //  COLOR FUNCTIONS
@@ -647,6 +668,37 @@ function comfortColor(pci) {
     if (pci >= 0.4) return [255, 235, 59, 200];
     if (pci >= 0.3) return [255, 152, 0, 200];
     return [211, 47, 47, 200];
+}
+
+// Diverging color functions for 5-Year Change Detection (return [r,g,b,a])
+function changeLSTColor(v) {
+    var ratio = Math.max(0, Math.min(1, (v + 3) / 6));
+    var colors = [[33,102,172],[146,197,222],[247,247,247],[244,165,130],[214,96,77],[178,24,43]];
+    var idx = Math.min(Math.floor(ratio * 5), 4);
+    var t = (ratio * 5) - idx;
+    var c1 = colors[idx], c2 = colors[idx + 1];
+    var a = Math.round(120 + 120 * Math.abs(ratio - 0.5) * 2);
+    return [Math.round(c1[0]+(c2[0]-c1[0])*t), Math.round(c1[1]+(c2[1]-c1[1])*t), Math.round(c1[2]+(c2[2]-c1[2])*t), a];
+}
+
+function changeNDVIColor(v) {
+    var ratio = Math.max(0, Math.min(1, (v + 0.2) / 0.4));
+    var colors = [[140,81,10],[216,179,101],[247,247,247],[166,219,160],[90,174,97],[27,120,55]];
+    var idx = Math.min(Math.floor(ratio * 5), 4);
+    var t = (ratio * 5) - idx;
+    var c1 = colors[idx], c2 = colors[idx + 1];
+    var a = Math.round(120 + 120 * Math.abs(ratio - 0.5) * 2);
+    return [Math.round(c1[0]+(c2[0]-c1[0])*t), Math.round(c1[1]+(c2[1]-c1[1])*t), Math.round(c1[2]+(c2[2]-c1[2])*t), a];
+}
+
+function changeNDBIColor(v) {
+    var ratio = Math.max(0, Math.min(1, (v + 0.2) / 0.4));
+    var colors = [[69,117,180],[145,191,219],[247,247,247],[252,174,97],[244,109,67],[215,48,39]];
+    var idx = Math.min(Math.floor(ratio * 5), 4);
+    var t = (ratio * 5) - idx;
+    var c1 = colors[idx], c2 = colors[idx + 1];
+    var a = Math.round(120 + 120 * Math.abs(ratio - 0.5) * 2);
+    return [Math.round(c1[0]+(c2[0]-c1[0])*t), Math.round(c1[1]+(c2[1]-c1[1])*t), Math.round(c1[2]+(c2[2]-c1[2])*t), a];
 }
 
 // ═══════════════════════════════════════════════════════
@@ -832,6 +884,25 @@ function buildLayers() {
             getFillColor: function(d) { return greenAccessColor(d.dist_to_green_m); },
             pickable: true,
             opacity: 0.8
+        }));
+    }
+
+    // === THERMAL: 5-Year Change Detection ===
+    if (layerState.change5yr && CACHE.change_summer_5yr) {
+        layers.push(new deck.ScatterplotLayer({
+            id: 'change5yr-points',
+            data: CACHE.change_summer_5yr,
+            getPosition: function(d) { return [d.lon, d.lat]; },
+            getRadius: 4,
+            radiusUnits: 'pixels',
+            getFillColor: function(d) {
+                if (change5yrMetric === 'd_lst') return changeLSTColor(d.d_lst);
+                if (change5yrMetric === 'd_ndvi') return changeNDVIColor(d.d_ndvi);
+                return changeNDBIColor(d.d_ndbi);
+            },
+            pickable: true,
+            opacity: 0.9,
+            updateTriggers: { getFillColor: [change5yrMetric] }
         }));
     }
 
@@ -1087,6 +1158,20 @@ function getTooltip(info) {
         };
     }
 
+    // 5-Year Change
+    if (lid === 'change5yr-points') {
+        return {
+            html: '<div style="padding:6px;max-width:280px;"><b>5-Year Change (2020 &rarr; 2025)</b><br>' +
+                '<b>&Delta;LST:</b> ' + (d.d_lst || 0).toFixed(2) + '°C' +
+                ' <span style="color:#aaa;">(' + (d.lst_2020 || 0).toFixed(1) + ' &rarr; ' + (d.lst_2025 || 0).toFixed(1) + ')</span><br>' +
+                '<b>&Delta;NDVI:</b> ' + (d.d_ndvi || 0).toFixed(4) +
+                ' <span style="color:#aaa;">(' + (d.ndvi_2020 || 0).toFixed(3) + ' &rarr; ' + (d.ndvi_2025 || 0).toFixed(3) + ')</span><br>' +
+                '<b>&Delta;NDBI:</b> ' + (d.d_ndbi || 0).toFixed(4) +
+                ' <span style="color:#aaa;">(' + (d.ndbi_2020 || 0).toFixed(3) + ' &rarr; ' + (d.ndbi_2025 || 0).toFixed(3) + ')</span></div>',
+            style: { background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }
+        };
+    }
+
     // Centrality
     if (lid === 'centrality-paths') {
         var p = d.properties;
@@ -1338,6 +1423,21 @@ function updateLegend() {
         items.push('<div class="legend-item"><div class="legend-color" style="background:#ffb74d"></div> 200-400m</div>');
         items.push('<div class="legend-item"><div class="legend-color" style="background:#d32f2f"></div> &gt;400m</div>');
     }
+    if (layerState.change5yr) {
+        if (change5yrMetric === 'd_lst') {
+            items.push('<div class="legend-title">&Delta;LST (2020 &rarr; 2025)</div>');
+            items.push('<div class="legend-gradient" style="background:linear-gradient(to right,rgb(33,102,172),rgb(146,197,222),rgb(247,247,247),rgb(244,165,130),rgb(178,24,43))"></div>');
+            items.push('<div class="legend-labels"><span>&minus;3°C (cooled)</span><span>0</span><span>+3°C (warmed)</span></div>');
+        } else if (change5yrMetric === 'd_ndvi') {
+            items.push('<div class="legend-title">&Delta;NDVI (2020 &rarr; 2025)</div>');
+            items.push('<div class="legend-gradient" style="background:linear-gradient(to right,rgb(140,81,10),rgb(216,179,101),rgb(247,247,247),rgb(166,219,160),rgb(27,120,55))"></div>');
+            items.push('<div class="legend-labels"><span>&minus;0.2 (veg loss)</span><span>0</span><span>+0.2 (greened)</span></div>');
+        } else {
+            items.push('<div class="legend-title">&Delta;NDBI (2020 &rarr; 2025)</div>');
+            items.push('<div class="legend-gradient" style="background:linear-gradient(to right,rgb(69,117,180),rgb(145,191,219),rgb(247,247,247),rgb(252,174,97),rgb(215,48,39))"></div>');
+            items.push('<div class="legend-labels"><span>&minus;0.2 (reduced)</span><span>0</span><span>+0.2 (built up)</span></div>');
+        }
+    }
     if (layerState.centrality) {
         var cLabel = centralityMetric === 'betweenness' ? 'Betweenness' : 'Closeness';
         items.push('<div class="legend-title">' + cLabel + ' Centrality</div>');
@@ -1582,6 +1682,7 @@ var LAYER_INFO = {
     'combined':          { label: 'Combined SVI + Satellite',   desc: 'Point-level fusion of street-view indicators (GVI, SVF) with satellite thermal/vegetation data.', anchor: '#combined' },
     'clusters':          { label: 'Climate Clusters',           desc: 'K-means clustering of micro-climate variables to identify urban thermal zones.', anchor: '#clusters' },
     'green-access':      { label: 'Green Space Access',         desc: 'Walking distance from each sample point to the nearest green space.', anchor: '#clusters' },
+    'change5yr':         { label: '5-Year Change (2020→2025)', desc: 'Pixel-by-pixel comparison of summer satellite data between 2020 and 2025, showing changes in LST, NDVI and NDBI.', anchor: '#satellite' },
     'centrality':        { label: 'Street Centrality',          desc: 'Network analysis metrics (betweenness, closeness) indicating pedestrian route importance.', anchor: '#network' },
     'comfort':           { label: 'Pedestrian Comfort',         desc: 'Pedestrian Comfort Index combining shade, temperature, greenery and sky openness.', anchor: '#combined' },
     'pois':              { label: 'POIs',                       desc: 'Points of interest from OpenStreetMap (food, shopping, health, etc.) via Overpass API.', anchor: '#shade-poi' }
