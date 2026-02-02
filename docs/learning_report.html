@@ -147,10 +147,12 @@ mly.download_svi(
         <tr><th>Satellite</th><th>Data</th><th>Resolution</th><th>Use</th></tr>
         <tr><td>Landsat 8/9</td><td>Thermal infrared</td><td>30m (100m native)</td><td>Land Surface Temperature</td></tr>
         <tr><td>Sentinel-2</td><td>Multispectral</td><td>10m</td><td>NDVI, NDBI vegetation/built-up</td></tr>
+        <tr><td>GHSL (JRC)</td><td>Built-up height classes & continuous heights</td><td>10m / 100m</td><td>Building height estimation</td></tr>
     </table>
 
     <div class="highlight">
         <strong>Google Earth Engine (GEE):</strong> We used GEE to access and process satellite data. It's free for research/academic use. You need to register at <a href="https://earthengine.google.com/">earthengine.google.com</a>.
+        GEE also hosts the <strong>JRC Global Human Settlement Layer (GHSL)</strong>, which provides satellite-derived building height data globally. We used the GHSL Built-C (10m categorical height classes) and Built-H (100m continuous heights) datasets to fill in the majority of building heights that were missing from OpenStreetMap (see <a href="#building-heights">Section 5</a>).
     </div>
 
     <h3>2.3 OpenStreetMap</h3>
