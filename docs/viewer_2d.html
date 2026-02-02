@@ -239,6 +239,16 @@
         }
         .info-popover .info-link:hover { text-decoration: underline; }
 
+        .seasonal-badge {
+            font-size: 10px;
+            color: #4fc3f7;
+            background: rgba(79,195,247,0.12);
+            padding: 1px 5px;
+            border-radius: 3px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             #map { right: 0; bottom: 50vh; }
@@ -303,7 +313,7 @@
     <!-- Heat Mitigation Priority -->
     <div class="layer-radio-row" onclick="selectLayer('priority')">
         <input type="radio" name="layer" value="priority" id="radio-priority">
-        <span class="layer-radio-label">Heat Mitigation Priority</span>
+        <span class="layer-radio-label">Heat Mitigation Priority<span class="seasonal-badge">seasonal</span></span>
         <span class="layer-info-btn" onclick="event.stopPropagation();showInfoPopover(event,'priority')">i</span>
         <div class="layer-loading-spinner" id="load-priority"></div>
     </div>
@@ -311,7 +321,7 @@
     <!-- Combined SVI+Satellite -->
     <div class="layer-radio-row" onclick="selectLayer('combined')">
         <input type="radio" name="layer" value="combined" id="radio-combined">
-        <span class="layer-radio-label">Combined SVI + Satellite</span>
+        <span class="layer-radio-label">Combined SVI + Satellite<span class="seasonal-badge">seasonal</span></span>
         <span class="layer-info-btn" onclick="event.stopPropagation();showInfoPopover(event,'combined')">i</span>
         <div class="layer-loading-spinner" id="load-combined"></div>
     </div>
@@ -324,7 +334,7 @@
     <!-- Climate Clusters -->
     <div class="layer-radio-row" onclick="selectLayer('clusters')">
         <input type="radio" name="layer" value="clusters" id="radio-clusters">
-        <span class="layer-radio-label">Climate Clusters</span>
+        <span class="layer-radio-label">Climate Clusters<span class="seasonal-badge">seasonal</span></span>
         <span class="layer-info-btn" onclick="event.stopPropagation();showInfoPopover(event,'clusters')">i</span>
         <div class="layer-loading-spinner" id="load-clusters"></div>
     </div>
@@ -332,7 +342,7 @@
     <!-- Satellite Grid -->
     <div class="layer-radio-row" onclick="selectLayer('satellite')">
         <input type="radio" name="layer" value="satellite" id="radio-satellite">
-        <span class="layer-radio-label">Satellite Grid (30m)</span>
+        <span class="layer-radio-label">Satellite Grid (30m)<span class="seasonal-badge">seasonal</span></span>
         <span class="layer-info-btn" onclick="event.stopPropagation();showInfoPopover(event,'satellite')">i</span>
         <div class="layer-loading-spinner" id="load-satellite"></div>
     </div>
@@ -345,7 +355,7 @@
     <!-- Green Access -->
     <div class="layer-radio-row" onclick="selectLayer('green-access')">
         <input type="radio" name="layer" value="green-access" id="radio-green-access">
-        <span class="layer-radio-label">Green Space Access</span>
+        <span class="layer-radio-label">Green Space Access<span class="seasonal-badge">seasonal</span></span>
         <span class="layer-info-btn" onclick="event.stopPropagation();showInfoPopover(event,'green-access')">i</span>
         <div class="layer-loading-spinner" id="load-green-access"></div>
     </div>
@@ -673,15 +683,15 @@ function buildComfortLayer(data) {
     var group = L.layerGroup();
     data.forEach(function(d) {
         L.circleMarker([d.lat, d.lon], {
-            radius: 8,
+            radius: 4,
             fillColor: comfortColor(d.pci_mean),
-            fillOpacity: 0.8,
+            fillOpacity: 0.7,
             color: '#000',
-            weight: 0.5,
-            opacity: 0.5
+            weight: 0.3,
+            opacity: 0.3
         }).bindPopup(
             '<b>Pedestrian Comfort</b><br>' +
-            'Rank: #' + (d.rank || '-') +
+            'Level: ' + (d.comfort_level || '-') +
             '<br>PCI: ' + (d.pci_mean || 0).toFixed(3) +
             '<br>LST: ' + (d.lst_mean || 0).toFixed(1) + '&deg;C' +
             '<br>GVI: ' + ((d.gvi_mean || 0) * 100).toFixed(1) + '%' +

@@ -71,19 +71,19 @@
                     </div>
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-building-shadows" checked onchange="onLayerToggle('building-shadows')">
-                        <label class="layer-label" for="tog-building-shadows">Building Shadows (projected)</label>
+                        <label class="layer-label" for="tog-building-shadows">Building Shadows (projected)<span class="seasonal-badge">seasonal</span></label>
                         <span class="layer-info-btn" onclick="showInfoPopover(event,'building-shadows')">i</span>
                         <span class="layer-loading" id="load-building-shadows" style="display:none"></span>
                     </div>
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-tree-shadows" checked onchange="onLayerToggle('tree-shadows')">
-                        <label class="layer-label" for="tog-tree-shadows">Tree Shadows (projected)</label>
+                        <label class="layer-label" for="tog-tree-shadows">Tree Shadows (projected)<span class="seasonal-badge">seasonal</span></label>
                         <span class="layer-info-btn" onclick="showInfoPopover(event,'tree-shadows')">i</span>
                         <span class="layer-loading" id="load-tree-shadows" style="display:none"></span>
                     </div>
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-street-shade" onchange="onLayerToggle('street-shade')">
-                        <label class="layer-label" for="tog-street-shade">Street Shade %</label>
+                        <label class="layer-label" for="tog-street-shade">Street Shade %<span class="seasonal-badge">seasonal</span></label>
                         <span class="layer-info-btn" onclick="showInfoPopover(event,'street-shade')">i</span>
                         <span class="layer-loading" id="load-street-shade" style="display:none"></span>
                     </div>
@@ -106,13 +106,13 @@
                 <div class="accordion-body">
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-priority" onchange="onLayerToggle('priority')">
-                        <label class="layer-label" for="tog-priority">Heat Mitigation Priority</label>
+                        <label class="layer-label" for="tog-priority">Heat Mitigation Priority<span class="seasonal-badge">seasonal</span></label>
                         <span class="layer-info-btn" onclick="showInfoPopover(event,'priority')">i</span>
                         <span class="layer-loading" id="load-priority" style="display:none"></span>
                     </div>
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-combined" onchange="onLayerToggle('combined')">
-                        <label class="layer-label" for="tog-combined">Combined SVI+Satellite</label>
+                        <label class="layer-label" for="tog-combined">Combined SVI+Satellite<span class="seasonal-badge">seasonal</span></label>
                         <span class="layer-info-btn" onclick="showInfoPopover(event,'combined')">i</span>
                         <span class="layer-loading" id="load-combined" style="display:none"></span>
                     </div>
@@ -123,13 +123,13 @@
                     </div>
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-clusters" onchange="onLayerToggle('clusters')">
-                        <label class="layer-label" for="tog-clusters">Climate Clusters</label>
+                        <label class="layer-label" for="tog-clusters">Climate Clusters<span class="seasonal-badge">seasonal</span></label>
                         <span class="layer-info-btn" onclick="showInfoPopover(event,'clusters')">i</span>
                         <span class="layer-loading" id="load-clusters" style="display:none"></span>
                     </div>
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-green-access" onchange="onLayerToggle('green-access')">
-                        <label class="layer-label" for="tog-green-access">Green Space Access</label>
+                        <label class="layer-label" for="tog-green-access">Green Space Access<span class="seasonal-badge">seasonal</span></label>
                         <span class="layer-info-btn" onclick="showInfoPopover(event,'green-access')">i</span>
                         <span class="layer-loading" id="load-green-access" style="display:none"></span>
                     </div>
@@ -866,11 +866,11 @@ function buildLayers() {
             id: 'comfort-points',
             data: CACHE.segment_comfort,
             getPosition: function(d) { return [d.lon, d.lat]; },
-            getRadius: 10,
+            getRadius: 5,
             radiusUnits: 'pixels',
             getFillColor: function(d) { return comfortColor(d.pci_mean); },
             pickable: true,
-            opacity: 0.8
+            opacity: 0.7
         }));
     }
 
@@ -1103,7 +1103,8 @@ function getTooltip(info) {
     // Comfort
     if (lid === 'comfort-points') {
         return {
-            html: '<div style="padding:6px;"><b>Pedestrian Comfort</b><br>PCI: ' + (d.pci_mean || 0).toFixed(3) +
+            html: '<div style="padding:6px;"><b>Pedestrian Comfort</b><br>Level: ' + (d.comfort_level || '-') +
+                '<br>PCI: ' + (d.pci_mean || 0).toFixed(3) +
                 '<br>LST: ' + (d.lst_mean || 0).toFixed(1) + '°C' +
                 '<br>GVI: ' + ((d.gvi_mean || 0) * 100).toFixed(1) + '%' +
                 '<br>Shade: ' + ((d.shade_mean || 0) * 100).toFixed(1) + '%</div>',

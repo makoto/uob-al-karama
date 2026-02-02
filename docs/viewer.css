@@ -707,6 +707,18 @@ body {
 }
 .info-popover .info-link:hover { text-decoration: underline; }
 
+/* === Seasonal Badge === */
+
+.seasonal-badge {
+    font-size: 10px;
+    color: #4fc3f7;
+    background: rgba(79,195,247,0.12);
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
 /* === Responsive === */
 
 @media (max-width: 768px) {
