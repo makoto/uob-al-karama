@@ -930,8 +930,17 @@ out center;
         <li><strong>Satellite composites:</strong> Each season uses a median composite of all available cloud-free scenes in the date range (Summer 2020: 15 Landsat + 34 Sentinel-2; Winter 2020/21: 10 Landsat + 30 Sentinel-2). More scenes generally produce smoother composites.</li>
     </ul>
 
+    <h4>Interactive Change Detection Map</h4>
+    <p>In addition to comparing seasons via the dropdown, both viewers offer a dedicated <strong>5-Year Change</strong> layer that computes and visualises pixel-by-pixel differences between Summer 2020 and Summer 2025. For each of the 90,300 grid points the layer displays:</p>
+    <ul>
+        <li><strong>&Delta;LST</strong> &mdash; temperature change on a blue (cooled) &rarr; white (no change) &rarr; red (warmed) diverging scale, clamped to &pm;3&deg;C.</li>
+        <li><strong>&Delta;NDVI</strong> &mdash; vegetation change on a brown (loss) &rarr; white &rarr; green (greened) scale, clamped to &pm;0.2.</li>
+        <li><strong>&Delta;NDBI</strong> &mdash; built-up change on a blue (reduced) &rarr; white &rarr; orange-red (increased) scale, clamped to &pm;0.2.</li>
+    </ul>
+    <p>Clicking any point shows both years' original values alongside the delta, making it easy to distinguish areas of genuine change from noise. The layer is season-independent (it always compares the same two summer composites) and persists when switching the season dropdown.</p>
+
     <div class="highlight">
-        <strong>How to explore:</strong> Use the season dropdown in either the <a href="viewer.html" style="color:#1565c0;">3D Digital Twin</a> or the <a href="viewer_2d.html" style="color:#1565c0;">2D map viewer</a> to switch between all four seasons. Compare the same metric (e.g., LST heatmap) across Summer 2020 vs Summer 2025 to isolate temporal changes from seasonal effects.
+        <strong>How to explore:</strong> Use the season dropdown in either the <a href="viewer.html" style="color:#1565c0;">3D Digital Twin</a> or the <a href="viewer_2d.html" style="color:#1565c0;">2D map viewer</a> to switch between all four seasons. Compare the same metric (e.g., LST heatmap) across Summer 2020 vs Summer 2025 to isolate temporal changes from seasonal effects. Alternatively, enable the <strong>5-Year Change</strong> layer for a direct pixel-by-pixel difference map with diverging colour scales.
     </div>
 
     <h3>10.6 Season-Independent Data</h3>

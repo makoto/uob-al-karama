@@ -1221,7 +1221,7 @@ function updateExportLinks() {
     }
     if (!basename) basename = 'centrality_betweenness';
 
-    var suffix = (currentBasemap !== 'none') ? '_basemap' : '';
+    var suffix = '';
     var base = DATA_BASE + 'exports/';
     var svgLink = document.getElementById('export-svg-link');
     var pdfLink = document.getElementById('export-pdf-link');
@@ -1407,7 +1407,7 @@ var LAYER_INFO = {
     'combined':      { label: 'Combined SVI + Satellite',   desc: 'Point-level fusion of street-view indicators (GVI, SVF) with satellite thermal/vegetation data.', anchor: '#combined' },
     'clusters':      { label: 'Climate Clusters',           desc: 'K-means clustering of micro-climate variables to identify urban thermal zones.', anchor: '#clusters' },
     'satellite':     { label: 'Satellite Grid (30m)',       desc: 'Landsat-derived 30 m grid of LST, NDVI and NDBI across the district.', anchor: '#satellite' },
-    'change5yr':     { label: '5-Year Change (2020→2025)', desc: 'Pixel-by-pixel comparison of summer satellite data between 2020 and 2025, showing changes in LST, NDVI and NDBI.', anchor: '#satellite' },
+    'change5yr':     { label: '5-Year Change (2020→2025)', desc: 'Pixel-by-pixel comparison of summer satellite data between 2020 and 2025, showing changes in LST, NDVI and NDBI.', anchor: '#temporal' },
     'green-access':  { label: 'Green Space Access',         desc: 'Walking distance from each sample point to the nearest green space.', anchor: '#clusters' }
 };
 
