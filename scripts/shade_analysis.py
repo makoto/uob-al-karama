@@ -8,6 +8,7 @@ Computes shadow projections from 3,243 buildings at 5 times of day
 Uses NOAA solar position algorithm (no external solar library needed).
 """
 
+import argparse
 import json
 import math
 import os
@@ -22,12 +23,20 @@ import pandas as pd
 from shapely.geometry import Polygon, MultiPolygon, LineString, mapping
 from shapely.ops import unary_union
 from shapely import strtree
+from seasons_config import get_season_config
+
+# ── CLI args ───────────────────────────────────────────────────────────
+_parser = argparse.ArgumentParser(description="Building shade analysis")
+_parser.add_argument('--season', default='summer_2025',
+                     help='Season id (e.g. summer_2025, winter_2025)')
+_cli = _parser.parse_args()
+_season = get_season_config(_cli.season)
 
 # ── Configuration ──────────────────────────────────────────────────────
 LATITUDE = 25.2485   # Al Karama center
 LONGITUDE = 55.3025
 TIMEZONE_OFFSET = 4   # UAE = UTC+4
-DATE = (2024, 7, 15)  # July 15, peak summer
+DATE = _season['solar_date']
 
 TIMES_LOCAL = [6, 8, 10, 12, 14, 16, 18]  # Local hours to analyze
 
@@ -38,7 +47,7 @@ STREETS_PATH = os.path.join(os.path.dirname(__file__),
 CANOPY_PATH = os.path.join(os.path.dirname(__file__),
     '..', 'docs', 'shade_analysis', 'canopy_polygons_with_height.geojson')
 OUT_DIR = os.path.join(os.path.dirname(__file__),
-    '..', 'docs', 'shade_analysis')
+    '..', 'docs', 'shade_analysis', _season['id'])
 
 UTM_CRS = 'EPSG:32640'  # UTM Zone 40N for Dubai
 
@@ -141,15 +150,20 @@ def get_sun_positions():
     """Calculate sun positions for all analysis times."""
     year, month, day = DATE
     positions = {}
-    print("\n  Sun Positions for July 15, Dubai:")
+    date_str = f"{year}-{month:02d}-{day:02d}"
+    print(f"\n  Sun Positions for {date_str}, Dubai:")
     print(f"  {'Local Time':>12} {'Altitude':>10} {'Azimuth':>10} {'Shadow Factor':>14}")
     print("  " + "-" * 50)
     for hour_local in TIMES_LOCAL:
         hour_utc = hour_local - TIMEZONE_OFFSET
         alt, az = solar_position(year, month, day, hour_utc, LATITUDE, LONGITUDE)
-        shadow_factor = 1.0 / math.tan(math.radians(alt)) if alt > 0 else float('inf')
+        if alt <= 0:
+            shadow_factor = float('inf')
+            print(f"  {hour_local:>8}:00   {alt:>8.1f}°  {az:>8.1f}°   (below horizon)")
+        else:
+            shadow_factor = 1.0 / math.tan(math.radians(alt))
+            print(f"  {hour_local:>8}:00   {alt:>8.1f}°  {az:>8.1f}°  {shadow_factor:>12.2f}x")
         positions[hour_local] = {'altitude': alt, 'azimuth': az, 'shadow_factor': shadow_factor}
-        print(f"  {hour_local:>8}:00   {alt:>8.1f}°  {az:>8.1f}°  {shadow_factor:>12.2f}x")
     return positions
 
 
@@ -1826,6 +1840,17 @@ def main():
         sp = sun_positions[hour]
         alt, az = sp['altitude'], sp['azimuth']
         print(f"\n  {hour:02d}:00 - alt={alt:.1f}, az={az:.1f}")
+
+        # Skip hours where the sun is below the horizon (e.g. winter early morning)
+        if alt <= 0:
+            print(f"    Sun below horizon — skipping shadow computation")
+            shade_results[hour] = [0.0] * len(streets_utm)
+            # Write empty shadow GeoJSON
+            empty_gdf = gpd.GeoDataFrame(geometry=[], crs=UTM_CRS).to_crs('EPSG:4326')
+            shadow_geojson_path = os.path.join(OUT_DIR, f'shadows_{hour:02d}.geojson')
+            empty_gdf.to_file(shadow_geojson_path, driver='GeoJSON')
+            shadow_geojsons_wgs[hour] = empty_gdf.to_json()
+            continue
 
         # Project shadows for all buildings
         shadow_geoms = []

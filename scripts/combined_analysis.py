@@ -3,17 +3,24 @@ Combined Urban Climate Analysis
 Overlays satellite thermal data with street-level GVI/SVF data.
 """
 
+import argparse
 import ee
 import os
 import json
 import pandas as pd
 import numpy as np
+from seasons_config import get_season_config
+
+parser = argparse.ArgumentParser(description="Combined Urban Climate Analysis")
+parser.add_argument('--season', default='summer_2025', help='Season id (e.g. summer_2025, winter_2025)')
+args = parser.parse_args()
+season = get_season_config(args.season)
 
 # Initialize Earth Engine
 ee.Initialize(project='uobdubai')
 print("✅ Connected to Google Earth Engine")
 
-output_dir = "output/combined_analysis"
+output_dir = os.path.join("output/combined_analysis", season['id'])
 os.makedirs(output_dir, exist_ok=True)
 
 # Load street-level data
@@ -40,7 +47,7 @@ all_results = []
 # Prepare satellite imagery
 print("\nPreparing satellite composites...")
 
-# Landsat LST composite (summer 2025)
+# Landsat LST composite
 def calculate_lst(image):
     thermal = image.select('ST_B10').multiply(0.00341802).add(149.0)
     lst_celsius = thermal.subtract(273.15)
@@ -49,8 +56,8 @@ def calculate_lst(image):
 landsat = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2') \
     .merge(ee.ImageCollection('LANDSAT/LC09/C02/T1_L2')) \
     .filterBounds(ee.Geometry.Rectangle([55.29, 25.23, 55.32, 25.26])) \
-    .filterDate('2025-06-01', '2025-09-30') \
-    .filter(ee.Filter.lt('CLOUD_COVER', 20)) \
+    .filterDate(season['satellite_start'], season['satellite_end']) \
+    .filter(ee.Filter.lt('CLOUD_COVER', season['cloud_cover_landsat'])) \
     .map(calculate_lst)
 
 lst_composite = landsat.select('LST').median()
@@ -67,8 +74,8 @@ def mask_clouds_s2(image):
 
 sentinel2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
     .filterBounds(ee.Geometry.Rectangle([55.29, 25.23, 55.32, 25.26])) \
-    .filterDate('2025-06-01', '2025-09-30') \
-    .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)) \
+    .filterDate(season['satellite_start'], season['satellite_end']) \
+    .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', season['cloud_cover_sentinel'])) \
     .map(mask_clouds_s2) \
     .map(calculate_ndvi)
 
@@ -77,8 +84,8 @@ ndvi_composite = sentinel2.select('NDVI').median()
 # Combined image
 combined = lst_composite.addBands(ndvi_composite)
 
-print("  LST composite: Landsat 8/9 (Summer 2025)")
-print("  NDVI composite: Sentinel-2 (Summer 2025)")
+print(f"  LST composite: Landsat 8/9 ({season['label']})")
+print(f"  NDVI composite: Sentinel-2 ({season['label']})")
 
 # Sample in batches
 print(f"\nSampling at {len(gvi_svf)} locations (in batches of {batch_size})...")

@@ -7,17 +7,24 @@ Uses Google Earth Engine to extract:
 - Surface reflectance
 """
 
+import argparse
 import ee
 import os
 import json
 import pandas as pd
 import numpy as np
+from seasons_config import get_season_config
+
+parser = argparse.ArgumentParser(description="Satellite-based Urban Climate Analysis")
+parser.add_argument('--season', default='summer_2025', help='Season id (e.g. summer_2025, winter_2025)')
+args = parser.parse_args()
+season = get_season_config(args.season)
 
 # Initialize Earth Engine
 ee.Initialize(project='uobdubai')
 print("✅ Connected to Google Earth Engine")
 
-output_dir = "output/satellite_analysis"
+output_dir = os.path.join("output/satellite_analysis", season['id'])
 os.makedirs(output_dir, exist_ok=True)
 
 # Al Karama bounding box
@@ -42,16 +49,16 @@ def calculate_lst(image):
     lst_celsius = thermal.subtract(273.15)
     return image.addBands(lst_celsius.rename('LST'))
 
-# Get Landsat 8/9 imagery (summer months for heat analysis)
+# Get Landsat 8/9 imagery
 landsat = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2') \
     .merge(ee.ImageCollection('LANDSAT/LC09/C02/T1_L2')) \
     .filterBounds(AL_KARAMA) \
-    .filterDate('2025-06-01', '2025-09-30') \
-    .filter(ee.Filter.lt('CLOUD_COVER', 20)) \
+    .filterDate(season['satellite_start'], season['satellite_end']) \
+    .filter(ee.Filter.lt('CLOUD_COVER', season['cloud_cover_landsat'])) \
     .map(calculate_lst)
 
 landsat_count = landsat.size().getInfo()
-print(f"  Landsat images (Summer 2025, <20% cloud): {landsat_count}")
+print(f"  Landsat images ({season['label']}, <{season['cloud_cover_landsat']}% cloud): {landsat_count}")
 
 if landsat_count > 0:
     # Get median LST
@@ -92,13 +99,13 @@ def mask_clouds_s2(image):
 # Get Sentinel-2 imagery
 sentinel2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
     .filterBounds(AL_KARAMA) \
-    .filterDate('2025-06-01', '2025-09-30') \
-    .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)) \
+    .filterDate(season['satellite_start'], season['satellite_end']) \
+    .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', season['cloud_cover_sentinel'])) \
     .map(mask_clouds_s2) \
     .map(calculate_ndvi)
 
 s2_count = sentinel2.size().getInfo()
-print(f"  Sentinel-2 images (Summer 2025, <20% cloud): {s2_count}")
+print(f"  Sentinel-2 images ({season['label']}, <{season['cloud_cover_sentinel']}% cloud): {s2_count}")
 
 if s2_count > 0:
     # Get median NDVI

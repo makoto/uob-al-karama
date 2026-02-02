@@ -370,6 +370,9 @@
     <a href="index.html" class="nav-link">&#8592; Dashboard</a>
     <a href="viewer.html" class="nav-link">3D Digital Twin</a>
     <span class="nav-title">2D Analysis Viewer</span>
+    <select class="area-dropdown" id="seasonSelect" onchange="switchSeason(this.value)">
+        <option value="">Loading...</option>
+    </select>
     <select class="area-dropdown" id="areaSelect" onchange="switchArea(this.value)">
         <option value="al_karama">Al Karama</option>
     </select>
@@ -391,8 +394,16 @@
 
 var AREA = null;
 var DATA_BASE = '';
+var SEASON_DATA_BASE = '';
+var currentSeason = '';
 var CACHE = {};
 var map = null;
+
+// Keys whose data lives under the season subdirectory
+var SEASON_DEPENDENT_KEYS = [
+    'combined_svi', 'satellite_grid', 'priority',
+    'clusters', 'distance_to_green'
+];
 var activeLayerGroup = null;
 var boundaryLayer = null;
 var boundaryVisible = true;
@@ -400,6 +411,8 @@ var currentLayer = null;
 var centralityMetric = 'betweenness';
 var combinedMetric = 'lst';
 var satelliteMetric = 'lst';
+var lstMin = 36, lstMax = 54;       // dynamic LST range, updated when data loads
+var satLstMin = 36, satLstMax = 54; // satellite grid LST range
 var currentBasemap = 'positron';
 var basemapTileLayer = null;
 
@@ -429,23 +442,43 @@ var LAYER_DATA_KEYS = {
 //  DATA LOADING
 // ============================================================
 
+function isSeasonDependent(key) {
+    var normKey = key.replace(/-/g, '_');
+    return SEASON_DEPENDENT_KEYS.indexOf(normKey) >= 0;
+}
+
 async function loadData(key) {
     if (CACHE[key]) return CACHE[key];
 
     var path = null;
-    if (AREA.layers[key]) {
+    var normKey = key.replace(/-/g, '_');
+    var seasonLayers = (AREA.seasons && AREA.seasons[currentSeason])
+        ? AREA.seasons[currentSeason].layers : null;
+
+    if (seasonLayers && seasonLayers[normKey]) {
+        path = seasonLayers[normKey];
+    } else if (AREA.layers[normKey]) {
+        path = AREA.layers[normKey];
+    } else if (AREA.layers[key]) {
         path = AREA.layers[key];
-    } else {
-        path = AREA.layers[key.replace(/-/g, '_')];
     }
     if (!path) { console.warn('No path for data key:', key); return null; }
 
-    var url = DATA_BASE + path;
+    var base = isSeasonDependent(key) ? SEASON_DATA_BASE : DATA_BASE;
+    var url = base + path;
     var resp = await fetch(url);
     if (!resp.ok) { console.warn('Failed to load:', url); return null; }
 
     CACHE[key] = await resp.json();
     return CACHE[key];
+}
+
+function clearSeasonCache() {
+    var keysToDelete = [];
+    for (var k in CACHE) {
+        if (isSeasonDependent(k)) keysToDelete.push(k);
+    }
+    keysToDelete.forEach(function(k) { delete CACHE[k]; });
 }
 
 async function loadBoundary() {
@@ -456,12 +489,13 @@ async function loadBoundary() {
         boundaryLayer = L.geoJSON(geojson, {
             style: {
                 color: '#4fc3f7',
-                weight: 2.5,
+                weight: 3,
                 dashArray: '8,6',
                 fillColor: '#4fc3f7',
                 fillOpacity: 0.03
             },
-            interactive: false
+            interactive: false,
+            pane: 'overlayPane'
         });
         if (boundaryVisible) boundaryLayer.addTo(map);
     } catch (e) {
@@ -534,7 +568,7 @@ function priorityColor(level) {
 }
 
 function lstColor(lst) {
-    var ratio = Math.max(0, Math.min(1, (lst - 46) / (53 - 46)));
+    var ratio = Math.max(0, Math.min(1, (lst - lstMin) / (lstMax - lstMin || 1)));
     if (ratio < 0.25) return '#3c50c8';
     if (ratio < 0.5) return '#3cc8c8';
     if (ratio < 0.75) return '#f0b428';
@@ -569,7 +603,7 @@ function greenAccessColor(dist) {
 }
 
 function satLSTColor(v) {
-    var ratio = Math.max(0, Math.min(1, (v - 36) / (54 - 36)));
+    var ratio = Math.max(0, Math.min(1, (v - satLstMin) / (satLstMax - satLstMin || 1)));
     var colors = [[49,54,149],[69,117,180],[171,217,233],[254,224,144],[244,109,67],[165,0,38]];
     var idx = Math.min(Math.floor(ratio * 5), 4);
     var t = (ratio * 5) - idx;
@@ -580,20 +614,27 @@ function satLSTColor(v) {
 }
 
 function satNDVIColor(v) {
-    if (v < 0) return '#8B4513';
-    if (v < 0.1) return '#D2691E';
-    if (v < 0.2) return '#F5DEB3';
-    if (v < 0.3) return '#90EE90';
-    if (v < 0.4) return '#228B22';
-    return '#006400';
+    // Continuous gradient: brown (-0.1) → tan (0) → light green (0.2) → dark green (0.5)
+    var ratio = Math.max(0, Math.min(1, (v - (-0.1)) / (0.5 - (-0.1))));
+    var colors = [[139,69,19],[210,180,140],[245,245,220],[144,238,144],[34,139,34],[0,100,0]];
+    var idx = Math.min(Math.floor(ratio * 5), 4);
+    var t = (ratio * 5) - idx;
+    var c1 = colors[idx], c2 = colors[idx + 1];
+    return 'rgb(' + Math.round(c1[0]+(c2[0]-c1[0])*t) + ',' +
+                    Math.round(c1[1]+(c2[1]-c1[1])*t) + ',' +
+                    Math.round(c1[2]+(c2[2]-c1[2])*t) + ')';
 }
 
 function satNDBIColor(v) {
-    if (v < -0.1) return '#1a9850';
-    if (v < 0) return '#91cf60';
-    if (v < 0.1) return '#fee08b';
-    if (v < 0.2) return '#fc8d59';
-    return '#d73027';
+    // Continuous gradient: green (-0.2) → yellow (0) → red (0.3)
+    var ratio = Math.max(0, Math.min(1, (v - (-0.2)) / (0.3 - (-0.2))));
+    var colors = [[26,152,80],[145,207,96],[254,224,139],[252,141,89],[215,48,39]];
+    var idx = Math.min(Math.floor(ratio * 4), 3);
+    var t = (ratio * 4) - idx;
+    var c1 = colors[idx], c2 = colors[idx + 1];
+    return 'rgb(' + Math.round(c1[0]+(c2[0]-c1[0])*t) + ',' +
+                    Math.round(c1[1]+(c2[1]-c1[1])*t) + ',' +
+                    Math.round(c1[2]+(c2[2]-c1[2])*t) + ')';
 }
 
 // ============================================================
@@ -676,6 +717,9 @@ function buildPriorityLayer(data) {
 }
 
 function buildCombinedLayer(data) {
+    var range = computeLSTRange(data, 'lst');
+    lstMin = Math.floor(range[0]);
+    lstMax = Math.ceil(range[1]);
     var group = L.layerGroup();
     data.forEach(function(d) {
         var color;
@@ -738,7 +782,26 @@ function buildGreenAccessLayer(data) {
     return group;
 }
 
+function computeLSTRange(data, field) {
+    var min = Infinity, max = -Infinity;
+    for (var i = 0; i < data.length; i++) {
+        var v = data[i][field || 'lst'];
+        if (v != null && isFinite(v)) {
+            if (v < min) min = v;
+            if (v > max) max = v;
+        }
+    }
+    return [isFinite(min) ? min : 0, isFinite(max) ? max : 50];
+}
+
 function buildSatelliteLayer(data) {
+    var range = computeLSTRange(data, 'lst');
+    satLstMin = Math.floor(range[0]);
+    satLstMax = Math.ceil(range[1]);
+    // Adapt radius and opacity to point density
+    var dense = data.length > 30000;
+    var radius = dense ? 4 : 3;
+    var opacity = dense ? 0.55 : 0.8;
     var group = L.layerGroup();
     for (var i = 0; i < data.length; i++) {
         var d = data[i];
@@ -748,9 +811,9 @@ function buildSatelliteLayer(data) {
         else color = satNDBIColor(d.ndbi);
 
         L.circleMarker([d.lat, d.lon], {
-            radius: 3,
+            radius: radius,
             fillColor: color,
-            fillOpacity: 0.8,
+            fillOpacity: opacity,
             weight: 0
         }).bindPopup(
             '<b>Satellite Grid</b><br>' +
@@ -835,6 +898,11 @@ async function selectLayer(name) {
 
     if (activeLayerGroup) {
         activeLayerGroup.addTo(map);
+    }
+
+    // Re-add boundary on top so it's not hidden by dense data layers
+    if (boundaryLayer && boundaryVisible) {
+        boundaryLayer.bringToFront();
     }
 
     updateLegend();
@@ -935,7 +1003,7 @@ function updateLegend() {
             html = '<div class="legend-title">' + metricLabels[combinedMetric] + '</div>';
             if (combinedMetric === 'lst') {
                 html += '<div class="legend-gradient" style="background:linear-gradient(to right,#3c50c8,#3cc8c8,#f0b428,#dc3220)"></div>' +
-                    '<div class="legend-labels"><span>46&deg;C</span><span>53&deg;C</span></div>';
+                    '<div class="legend-labels"><span>' + lstMin + '&deg;C</span><span>' + lstMax + '&deg;C</span></div>';
             } else if (combinedMetric === 'gvi') {
                 html += '<div class="legend-gradient" style="background:linear-gradient(to right,#f7f7f7,#c7e9c0,#74c476,#238b45,#006d2c)"></div>' +
                     '<div class="legend-labels"><span>0%</span><span>20%+</span></div>';
@@ -948,22 +1016,15 @@ function updateLegend() {
             if (satelliteMetric === 'lst') {
                 html = '<div class="legend-title">Land Surface Temperature</div>' +
                     '<div class="legend-gradient" style="background:linear-gradient(to right,rgb(49,54,149),rgb(69,117,180),rgb(171,217,233),rgb(254,224,144),rgb(244,109,67),rgb(165,0,38))"></div>' +
-                    '<div class="legend-labels"><span>36&deg;C</span><span>54&deg;C</span></div>';
+                    '<div class="legend-labels"><span>' + satLstMin + '&deg;C</span><span>' + satLstMax + '&deg;C</span></div>';
             } else if (satelliteMetric === 'ndvi') {
                 html = '<div class="legend-title">Vegetation (NDVI)</div>' +
-                    legendItem('#8B4513', '&lt;0 (Bare)') +
-                    legendItem('#D2691E', '0&ndash;0.1') +
-                    legendItem('#F5DEB3', '0.1&ndash;0.2') +
-                    legendItem('#90EE90', '0.2&ndash;0.3') +
-                    legendItem('#228B22', '0.3&ndash;0.4') +
-                    legendItem('#006400', '&gt;0.4 (Dense)');
+                    '<div class="legend-gradient" style="background:linear-gradient(to right,rgb(139,69,19),rgb(210,180,140),rgb(245,245,220),rgb(144,238,144),rgb(34,139,34),rgb(0,100,0))"></div>' +
+                    '<div class="legend-labels"><span>&minus;0.1 (Bare)</span><span>0.5 (Dense)</span></div>';
             } else {
                 html = '<div class="legend-title">Built-up Index (NDBI)</div>' +
-                    legendItem('#1a9850', '&lt;-0.1 (Green)') +
-                    legendItem('#91cf60', '-0.1&ndash;0') +
-                    legendItem('#fee08b', '0&ndash;0.1') +
-                    legendItem('#fc8d59', '0.1&ndash;0.2') +
-                    legendItem('#d73027', '&gt;0.2 (Built-up)');
+                    '<div class="legend-gradient" style="background:linear-gradient(to right,rgb(26,152,80),rgb(145,207,96),rgb(254,224,139),rgb(252,141,89),rgb(215,48,39))"></div>' +
+                    '<div class="legend-labels"><span>&minus;0.2 (Green)</span><span>0.3 (Built-up)</span></div>';
             }
             break;
         case 'clusters':
@@ -1062,8 +1123,29 @@ async function switchArea(areaId) {
     var resp = await fetch(DATA_BASE + 'area.json');
     AREA = await resp.json();
 
+    // Populate season dropdown
+    var seasonSelect = document.getElementById('seasonSelect');
+    if (AREA.available_seasons && AREA.available_seasons.length > 0) {
+        seasonSelect.innerHTML = '';
+        AREA.available_seasons.forEach(function(sid) {
+            var opt = document.createElement('option');
+            opt.value = sid;
+            opt.textContent = AREA.seasons[sid].label;
+            seasonSelect.appendChild(opt);
+        });
+        currentSeason = AREA.default_season || AREA.available_seasons[0];
+        seasonSelect.value = currentSeason;
+        seasonSelect.style.display = '';
+    } else {
+        currentSeason = '';
+        seasonSelect.style.display = 'none';
+    }
+    SEASON_DATA_BASE = currentSeason ? DATA_BASE + currentSeason + '/' : DATA_BASE;
+
+    var seasonLabel = (AREA.seasons && AREA.seasons[currentSeason])
+        ? AREA.seasons[currentSeason].label + ' \u2014 ' : '';
     document.getElementById('areaSubtitle').textContent =
-        AREA.name + ', ' + AREA.city;
+        seasonLabel + AREA.name + ', ' + AREA.city;
     document.title = '2D Analysis Viewer - ' + AREA.name;
 
     // Recenter map
@@ -1081,6 +1163,28 @@ async function switchArea(areaId) {
     // Reload current layer
     if (currentLayer) {
         selectLayer(currentLayer);
+    }
+}
+
+async function switchSeason(seasonId) {
+    currentSeason = seasonId;
+    SEASON_DATA_BASE = DATA_BASE + seasonId + '/';
+
+    // Clear season-dependent cache entries
+    clearSeasonCache();
+
+    // Update subtitle
+    var seasonLabel = (AREA.seasons && AREA.seasons[currentSeason])
+        ? AREA.seasons[currentSeason].label + ' \u2014 ' : '';
+    document.getElementById('areaSubtitle').textContent =
+        seasonLabel + AREA.name + ', ' + AREA.city;
+
+    // Reload current layer if it uses season-dependent data
+    if (currentLayer) {
+        var dataKey = LAYER_DATA_KEYS[currentLayer] || currentLayer;
+        if (isSeasonDependent(dataKey)) {
+            selectLayer(currentLayer);
+        }
     }
 }
 
@@ -1110,8 +1214,29 @@ async function init() {
     var resp = await fetch(DATA_BASE + 'area.json');
     AREA = await resp.json();
 
+    // Set up season
+    var seasonSelect = document.getElementById('seasonSelect');
+    if (AREA.available_seasons && AREA.available_seasons.length > 0) {
+        seasonSelect.innerHTML = '';
+        AREA.available_seasons.forEach(function(sid) {
+            var opt = document.createElement('option');
+            opt.value = sid;
+            opt.textContent = AREA.seasons[sid].label;
+            seasonSelect.appendChild(opt);
+        });
+        currentSeason = AREA.default_season || AREA.available_seasons[0];
+        seasonSelect.value = currentSeason;
+        seasonSelect.style.display = '';
+    } else {
+        currentSeason = '';
+        seasonSelect.style.display = 'none';
+    }
+    SEASON_DATA_BASE = currentSeason ? DATA_BASE + currentSeason + '/' : DATA_BASE;
+
+    var seasonLabel = (AREA.seasons && AREA.seasons[currentSeason])
+        ? AREA.seasons[currentSeason].label + ' \u2014 ' : '';
     document.getElementById('areaSubtitle').textContent =
-        AREA.name + ', ' + AREA.city;
+        seasonLabel + AREA.name + ', ' + AREA.city;
 
     // Init Leaflet map with canvas renderer for performance (10K+ markers)
     map = L.map('map', {

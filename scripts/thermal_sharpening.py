@@ -3,16 +3,23 @@ Thermal Sharpening: Downscale Landsat LST (30m) to 10m using Sentinel-2 NDVI.
 Uses the LST-NDVI relationship to disaggregate thermal data.
 """
 
+import argparse
 import ee
 import os
 import json
 import numpy as np
 from scipy import stats
+from seasons_config import get_season_config
+
+parser = argparse.ArgumentParser(description="Thermal sharpening 30m -> 10m")
+parser.add_argument('--season', default='summer_2025', help='Season id (e.g. summer_2025, winter_2025)')
+args = parser.parse_args()
+season = get_season_config(args.season)
 
 ee.Initialize(project='uobdubai')
 print("✅ Connected to Google Earth Engine")
 
-output_dir = "output/thermal_sharpening"
+output_dir = os.path.join("output/thermal_sharpening", season['id'])
 os.makedirs(output_dir, exist_ok=True)
 
 AL_KARAMA = ee.Geometry.Rectangle([55.290, 25.230, 55.320, 25.260])
@@ -38,8 +45,8 @@ def add_ndvi(image):
 
 sentinel2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
     .filterBounds(AL_KARAMA) \
-    .filterDate('2025-06-01', '2025-09-30') \
-    .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10)) \
+    .filterDate(season['satellite_start'], season['satellite_end']) \
+    .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', season['cloud_cover_sentinel'])) \
     .map(mask_clouds_s2) \
     .map(add_ndvi)
 
@@ -55,8 +62,8 @@ def calculate_lst(image):
 landsat = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2') \
     .merge(ee.ImageCollection('LANDSAT/LC09/C02/T1_L2')) \
     .filterBounds(AL_KARAMA) \
-    .filterDate('2025-06-01', '2025-09-30') \
-    .filter(ee.Filter.lt('CLOUD_COVER', 20)) \
+    .filterDate(season['satellite_start'], season['satellite_end']) \
+    .filter(ee.Filter.lt('CLOUD_COVER', season['cloud_cover_landsat'])) \
     .map(calculate_lst)
 
 lst_30m = landsat.select('LST').median().clip(AL_KARAMA)

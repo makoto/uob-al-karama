@@ -3,15 +3,22 @@ Download actual satellite imagery for Al Karama from Google Earth Engine.
 Exports: RGB, NDVI, and Land Surface Temperature as GeoTIFF files.
 """
 
+import argparse
 import ee
 import os
 import requests
 import time
+from seasons_config import get_season_config
+
+parser = argparse.ArgumentParser(description="Download satellite imagery")
+parser.add_argument('--season', default='summer_2025', help='Season id (e.g. summer_2025, winter_2025)')
+args = parser.parse_args()
+season = get_season_config(args.season)
 
 ee.Initialize(project='uobdubai')
 print("✅ Connected to Google Earth Engine")
 
-output_dir = "data/satellite"
+output_dir = os.path.join("data/satellite", season['id'])
 os.makedirs(output_dir, exist_ok=True)
 
 # Al Karama bounding box
@@ -37,8 +44,8 @@ def add_ndvi(image):
 
 sentinel2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
     .filterBounds(AL_KARAMA) \
-    .filterDate('2025-06-01', '2025-09-30') \
-    .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10)) \
+    .filterDate(season['satellite_start'], season['satellite_end']) \
+    .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', season['cloud_cover_sentinel'])) \
     .map(mask_clouds_s2) \
     .map(add_ndvi)
 
@@ -64,8 +71,8 @@ def calculate_lst(image):
 landsat = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2') \
     .merge(ee.ImageCollection('LANDSAT/LC09/C02/T1_L2')) \
     .filterBounds(AL_KARAMA) \
-    .filterDate('2025-06-01', '2025-09-30') \
-    .filter(ee.Filter.lt('CLOUD_COVER', 20)) \
+    .filterDate(season['satellite_start'], season['satellite_end']) \
+    .filter(ee.Filter.lt('CLOUD_COVER', season['cloud_cover_landsat'])) \
     .map(calculate_lst)
 
 lst_composite = landsat.select('LST').median().clip(AL_KARAMA)

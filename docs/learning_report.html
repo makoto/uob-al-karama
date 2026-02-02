@@ -32,6 +32,10 @@
         .limitation { background: #ffebee; padding: 15px; border-radius: 6px; border-left: 4px solid #f44336; margin: 15px 0; }
         .diagram { background: #f5f5f5; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; font-family: monospace; }
         img { max-width: 100%; }
+        .side-by-side { display: flex; gap: 10px; margin: 15px 0; }
+        .side-by-side figure { flex: 1; margin: 0; }
+        .side-by-side img { width: 100%; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+        .side-by-side figcaption { text-align: center; font-size: 0.9em; color: #555; margin-top: 6px; }
         .formula { background: #f5f5f5; padding: 10px 20px; border-radius: 6px; font-family: monospace; margin: 10px 0; }
     </style>
 </head>
@@ -40,7 +44,7 @@
 <h1>Learning Report: Al Karama Urban Climate Analysis</h1>
 <p><strong>Location:</strong> Al Karama, Dubai, UAE<br>
 <strong>Purpose:</strong> Understand urban heat, vegetation, and pedestrian comfort using freely available data<br>
-<strong>Date:</strong> January 2026</p>
+<strong>Date:</strong> February 2026</p>
 
 <div class="toc">
     <strong>Table of Contents</strong>
@@ -56,10 +60,11 @@
         <li><a href="#shade">9. Building Shade Analysis</a>
             <ul><li><a href="#shade-poi">9.8 Points of Interest (Overpass API)</a></li></ul>
         </li>
-        <li><a href="#findings">10. Key Findings</a></li>
-        <li><a href="#limitations">11. Limitations</a></li>
-        <li><a href="#files">12. Output Files Reference</a></li>
-        <li><a href="#field-survey">13. Field Survey Guide</a></li>
+        <li><a href="#seasonal">10. Seasonal Comparison (Summer vs Winter)</a></li>
+        <li><a href="#findings">11. Key Findings</a></li>
+        <li><a href="#limitations">12. Limitations</a></li>
+        <li><a href="#files">13. Output Files Reference</a></li>
+        <li><a href="#field-survey">14. Field Survey Guide</a></li>
         <li><a href="#unused-depth">Appendix A: Unused Methodology &mdash; Depth Estimation</a></li>
     </ul>
 </div>
@@ -145,10 +150,12 @@ mly.download_svi(
     <h3>2.2 Satellite Imagery</h3>
     <p>See the full interactive analysis: <a href="../output/satellite_analysis/satellite_analysis.html">Satellite Analysis Report</a></p>
     <table>
-        <tr><th>Satellite</th><th>Data</th><th>Date</th><th>Resolution</th><th>Use</th></tr>
-        <tr><td>Landsat 8/9</td><td>Thermal infrared</td><td>Summer 2025 (Jun–Sep)</td><td>30m (100m native)</td><td>Land Surface Temperature</td></tr>
-        <tr><td>Sentinel-2</td><td>Multispectral</td><td>Summer 2025 (Jun–Sep)</td><td>10m</td><td>NDVI, NDBI vegetation/built-up</td></tr>
-        <tr><td>GHSL (JRC)</td><td>Built-up height classes & continuous heights</td><td>2018 (P2023A release)</td><td>10m / 100m</td><td>Building height estimation</td></tr>
+        <tr><th>Satellite</th><th>Data</th><th>Season</th><th>Date Range</th><th>Resolution</th><th>Use</th></tr>
+        <tr><td>Landsat 8/9</td><td>Thermal infrared</td><td>Summer 2025</td><td>Jun&ndash;Sep 2025</td><td>30m (100m native)</td><td>Land Surface Temperature</td></tr>
+        <tr><td>Landsat 8/9</td><td>Thermal infrared</td><td>Winter 2025/26</td><td>Dec 2025&ndash;Feb 2026</td><td>30m (100m native)</td><td>Land Surface Temperature</td></tr>
+        <tr><td>Sentinel-2</td><td>Multispectral</td><td>Summer 2025</td><td>Jun&ndash;Sep 2025</td><td>10m</td><td>NDVI, NDBI vegetation/built-up</td></tr>
+        <tr><td>Sentinel-2</td><td>Multispectral</td><td>Winter 2025/26</td><td>Dec 2025&ndash;Feb 2026</td><td>10m</td><td>NDVI, NDBI vegetation/built-up</td></tr>
+        <tr><td>GHSL (JRC)</td><td>Built-up height classes &amp; continuous heights</td><td>&mdash;</td><td>2018 (P2023A release)</td><td>10m / 100m</td><td>Building height estimation</td></tr>
     </table>
 
     <div class="highlight">
@@ -157,7 +164,7 @@ mly.download_svi(
     </div>
 
     <div class="highlight">
-        <strong>Sentinel-2 date alignment:</strong> Both Landsat and Sentinel-2 are filtered to summer 2025 (Jun&ndash;Sep) so that all satellite indices reflect the same season and use the most recent available data. The analysis uses 30 Landsat and 44 Sentinel-2 images. Filtering to summer only (vs. a full-year composite) is important because vegetation indices like NDVI are season-dependent, and summer values are the most relevant to the heat analysis.
+        <strong>Seasonal satellite analysis:</strong> Both Landsat and Sentinel-2 are filtered per season &mdash; summer 2025 (Jun&ndash;Sep) and winter 2025/26 (Dec&ndash;Feb) &mdash; so that all satellite indices reflect the same time window. Filtering by season (vs. a full-year composite) is important because vegetation indices like NDVI are season-dependent, and comparing summer vs. winter reveals how the urban heat island effect shifts with solar geometry. The viewers include a <strong>season dropdown</strong> to switch between summer and winter data.
     </div>
 
     <h3>2.3 OpenStreetMap</h3>
@@ -596,21 +603,38 @@ High priority = busy street that is uncomfortable
         Julian Day &rarr; Solar Declination &rarr; Hour Angle &rarr; Altitude &amp; Azimuth
     </div>
 
-    <p><strong>Analysis date:</strong> July 15 (peak summer in Dubai), 7 time slots from 6 AM to 6 PM.</p>
+    <p><strong>Analysis dates:</strong> July 15 (peak summer) and January 15 (mid-winter), 7 time slots from 6 AM to 6 PM.</p>
 
+    <p><strong>Summer (July 15):</strong></p>
     <table>
         <tr><th>Local Time</th><th>Altitude</th><th>Azimuth</th><th>Shadow Length Factor</th></tr>
-        <tr><td>06:00</td><td>3.7&deg;</td><td>68.0&deg; (ENE)</td><td>15.32&times; height</td></tr>
-        <tr><td>08:00</td><td>29.7&deg;</td><td>78.7&deg; (E)</td><td>1.75&times;</td></tr>
-        <tr><td>10:00</td><td>56.6&deg;</td><td>88.9&deg; (E)</td><td>0.66&times;</td></tr>
-        <tr><td>12:00</td><td>83.1&deg;</td><td>122.6&deg; (SE)</td><td>0.12&times; (near overhead)</td></tr>
-        <tr><td>14:00</td><td>67.9&deg;</td><td>264.9&deg; (W)</td><td>0.41&times;</td></tr>
-        <tr><td>16:00</td><td>40.8&deg;</td><td>277.2&deg; (W)</td><td>1.16&times;</td></tr>
-        <tr><td>18:00</td><td>14.3&deg;</td><td>287.2&deg; (WNW)</td><td>3.93&times;</td></tr>
+        <tr><td>06:00</td><td>3.8&deg;</td><td>68.0&deg; (ENE)</td><td>15.23&times; height</td></tr>
+        <tr><td>08:00</td><td>29.7&deg;</td><td>78.6&deg; (E)</td><td>1.75&times;</td></tr>
+        <tr><td>10:00</td><td>56.7&deg;</td><td>88.9&deg; (E)</td><td>0.66&times;</td></tr>
+        <tr><td>12:00</td><td>83.2&deg;</td><td>122.4&deg; (SE)</td><td>0.12&times; (near overhead)</td></tr>
+        <tr><td>14:00</td><td>67.9&deg;</td><td>265.0&deg; (W)</td><td>0.41&times;</td></tr>
+        <tr><td>16:00</td><td>40.8&deg;</td><td>277.3&deg; (W)</td><td>1.16&times;</td></tr>
+        <tr><td>18:00</td><td>14.3&deg;</td><td>287.3&deg; (WNW)</td><td>3.93&times;</td></tr>
+    </table>
+
+    <p><strong>Winter (January 15):</strong></p>
+    <table>
+        <tr><th>Local Time</th><th>Altitude</th><th>Azimuth</th><th>Shadow Length Factor</th></tr>
+        <tr><td>06:00</td><td>&minus;14.9&deg;</td><td>106.7&deg; (ESE)</td><td><em>Below horizon</em></td></tr>
+        <tr><td>08:00</td><td>10.1&deg;</td><td>119.3&deg; (ESE)</td><td>5.61&times; height</td></tr>
+        <tr><td>10:00</td><td>31.3&deg;</td><td>138.9&deg; (SE)</td><td>1.64&times;</td></tr>
+        <tr><td>12:00</td><td>43.2&deg;</td><td>171.0&deg; (S)</td><td>1.07&times;</td></tr>
+        <tr><td>14:00</td><td>38.6&deg;</td><td>207.7&deg; (SSW)</td><td>1.25&times;</td></tr>
+        <tr><td>16:00</td><td>20.8&deg;</td><td>232.8&deg; (SW)</td><td>2.63&times;</td></tr>
+        <tr><td>18:00</td><td>&minus;2.8&deg;</td><td>248.0&deg; (WSW)</td><td><em>Below horizon</em></td></tr>
     </table>
 
     <div class="highlight">
-        <strong>Key insight:</strong> At noon in July, the sun is nearly overhead (83&deg; altitude) so shadows are minimal. Early morning (6 AM) and late afternoon (6 PM) produce extremely long shadows &mdash; at 6 AM the sun is only 3.7&deg; above the horizon, casting shadows over 15&times; building height. This reveals how shadow coverage changes dramatically throughout the day.
+        <strong>Key insight &mdash; summer:</strong> At noon in July, the sun is nearly overhead (83.2&deg; altitude) so shadows are minimal (0.12&times; building height). Early morning and late afternoon produce extremely long shadows &mdash; at 6 AM the sun is only 3.8&deg; above the horizon, casting shadows over 15&times; building height.
+    </div>
+
+    <div class="highlight">
+        <strong>Key insight &mdash; winter:</strong> In January, the sun never climbs above 43.2&deg; (at noon), meaning shadows are always at least 1&times; building height even at midday. At 6 AM and 6 PM the sun is below the horizon entirely &mdash; no direct sun exposure. The sun's arc shifts south, with azimuth ranging from ESE (119&deg;) to SW (233&deg;) instead of summer's nearly east&ndash;west path (68&deg;&ndash;287&deg;). This produces fundamentally different shadow patterns that favour north-facing streets.
     </div>
 
     <h3>9.3 Shadow Projection Method</h3>
@@ -773,9 +797,113 @@ out center;
 </div>
 
 <!-- ============================================================ -->
-<h2 id="findings">10. Key Findings</h2>
+<h2 id="seasonal">10. Seasonal Comparison (Summer vs Winter)</h2>
 <div class="section">
-    <h3>9.1 Correlations</h3>
+    <h3>10.1 Why Compare Seasons?</h3>
+    <p>Dubai experiences extreme heat in summer but mild, pleasant winters. Comparing the two seasons reveals how solar geometry, temperature, and vegetation change &mdash; and whether shade infrastructure designed for summer also benefits winter pedestrians. The analysis pipeline now supports a <code>--season</code> flag, and both the 3D and 2D viewers include a season dropdown to switch between datasets.</p>
+
+    <h3>10.2 Solar Geometry</h3>
+    <p>The most striking difference between seasons is the sun's path across the sky:</p>
+
+    <table>
+        <tr><th>Metric</th><th>Summer (Jul 15)</th><th>Winter (Jan 15)</th><th>Difference</th></tr>
+        <tr><td>Peak solar altitude (noon)</td><td>83.2&deg;</td><td>43.2&deg;</td><td>&minus;40.0&deg;</td></tr>
+        <tr><td>Noon shadow factor</td><td>0.12&times;</td><td>1.07&times;</td><td>~9&times; longer shadows</td></tr>
+        <tr><td>Sunrise/sunset (local)</td><td>~5:30 AM / 7:10 PM</td><td>~7:00 AM / 5:40 PM</td><td>~2.5 h shorter day</td></tr>
+        <tr><td>Usable analysis hours (sun &gt; 0&deg;)</td><td>7 (6 AM&ndash;6 PM)</td><td>5 (8 AM&ndash;4 PM)</td><td>&minus;2 hours</td></tr>
+        <tr><td>Sun azimuth range</td><td>68&deg;&ndash;287&deg; (E&ndash;WNW)</td><td>119&deg;&ndash;233&deg; (ESE&ndash;SW)</td><td>Narrower, shifted south</td></tr>
+    </table>
+
+    <div class="finding">
+        <strong>Key implication:</strong> In summer, the sun passes nearly overhead, so only tall buildings cast meaningful noon shadows. In winter, even a 10m building casts a 10.7m shadow at noon. This means winter pedestrians benefit significantly more from existing building shade, especially on streets running east&ndash;west with buildings on the south side.
+    </div>
+
+    <h3>10.3 Shadow Coverage</h3>
+    <p>The shadow projection analysis (Section 9) was run for both seasons. The lower winter sun produces dramatically more shade at midday, while summer's longer daylight hours produce shade at dawn and dusk when the winter sun is below the horizon:</p>
+
+    <table>
+        <tr><th>Time</th><th>Summer Shade</th><th>Winter Shade</th><th>Change</th></tr>
+        <tr><td>06:00 AM</td><td>93.8%</td><td>0.0% <em>(sun below horizon)</em></td><td>&mdash;</td></tr>
+        <tr><td>08:00 AM</td><td>39.4%</td><td>60.3%</td><td>+20.9 pp</td></tr>
+        <tr><td>10:00 AM</td><td>19.9%</td><td>35.6%</td><td>+15.7 pp</td></tr>
+        <tr><td>12:00 PM</td><td>5.9%</td><td>27.9%</td><td>+22.0 pp</td></tr>
+        <tr><td>02:00 PM</td><td>13.2%</td><td>25.2%</td><td>+12.0 pp</td></tr>
+        <tr><td>04:00 PM</td><td>26.6%</td><td>48.6%</td><td>+22.0 pp</td></tr>
+        <tr><td>06:00 PM</td><td>51.6%</td><td>0.0% <em>(sun below horizon)</em></td><td>&mdash;</td></tr>
+    </table>
+
+    <div class="finding">
+        <strong>Key finding:</strong> Winter noon shade (27.9%) is nearly 5&times; the summer noon shade (5.9%). At the most critical midday hours (10 AM&ndash;2 PM), winter shade coverage averages 29.6% versus summer's 13.0%. This confirms that existing building geometry provides substantial passive shade in winter, while summer remains the season of greatest pedestrian heat stress.
+    </div>
+
+    <h3>10.4 Satellite Metric Differences</h3>
+    <p>The satellite analysis was run for both seasons using Landsat 8/9 and Sentinel-2 data. The table below shows measured values (not projections):</p>
+
+    <table>
+        <tr><th>Metric</th><th>Summer 2025</th><th>Winter 2025/26</th><th>Difference</th></tr>
+        <tr><td>LST mean</td><td>48.3&deg;C</td><td>27.1&deg;C</td><td>&minus;21.2&deg;C</td></tr>
+        <tr><td>LST range</td><td>35.9&ndash;54.8&deg;C</td><td>21.4&ndash;33.0&deg;C</td><td>~15&deg;C lower across board</td></tr>
+        <tr><td>NDVI mean</td><td>0.096</td><td>0.114</td><td>+0.018 (slightly greener)</td></tr>
+        <tr><td>NDVI range</td><td>&minus;0.14 to 0.78</td><td>&minus;0.27 to 0.88</td><td>Wider range in winter</td></tr>
+        <tr><td>NDBI mean</td><td>0.033</td><td>0.010</td><td>&minus;0.023</td></tr>
+    </table>
+
+    <div class="finding">
+        <strong>What this means for pedestrians:</strong>
+        <ul>
+            <li><strong>Summer:</strong> Extreme heat (48.3&deg;C surface, peak 54.8&deg;C) + minimal shade at peak hours (5.9% at noon) = severe heat stress. Shade interventions are critical.</li>
+            <li><strong>Winter:</strong> Mild temperatures (27.1&deg;C surface) + naturally longer shadows from lower sun (27.9% at noon) = comfortable walking conditions for most of the day. The same streets that are dangerously hot in summer become pleasant in winter.</li>
+            <li><strong>Vegetation:</strong> NDVI is slightly higher in winter (0.114 vs 0.096), consistent with Dubai's irrigated landscape responding to cooler temperatures and occasional winter rainfall.</li>
+            <li><strong>Design implication:</strong> Heat mitigation infrastructure (trees, shade structures) should be optimized for summer conditions when the need is greatest. Winter benefits come largely "for free" from existing buildings.</li>
+        </ul>
+    </div>
+
+    <p>The Land Surface Temperature (LST) heatmaps below illustrate the seasonal contrast. Note that each map uses its own dynamic colour scale to highlight spatial variation within that season:</p>
+
+    <div class="side-by-side">
+        <figure>
+            <img src="images/summer_lst.png" alt="LST heatmap — Summer 2025">
+            <figcaption><strong>Summer 2025</strong> &mdash; LST range 35&ndash;55&deg;C. The district is dominated by red/orange, with hot-spots exceeding 54&deg;C in dense built-up areas. Cooler blue patches correspond to parks and irrigated vegetation.</figcaption>
+        </figure>
+        <figure>
+            <img src="images/winter_lst.png" alt="LST heatmap — Winter 2025/26">
+            <figcaption><strong>Winter 2025/26</strong> &mdash; LST range 21&ndash;33&deg;C. The same district appears far cooler, with widespread blue tones. Relative hot-spots still align with dense impervious surfaces, but at 21&deg;C lower than summer.</figcaption>
+        </figure>
+    </div>
+
+    <h3>10.5 3D Viewer: Summer vs Winter</h3>
+    <p>The 3D Digital Twin viewer reflects seasonal differences in real-time GPU sun shadows, pre-computed shadow overlays, and shade coverage charts. The screenshots below show the same noon south-facing view with GPU Sun Shadows and Building Shadows enabled:</p>
+
+    <div class="side-by-side">
+        <figure>
+            <img src="images/summer_south_view.png" alt="3D viewer — Summer 2025, noon, south view">
+            <figcaption><strong>Summer 2025</strong> &mdash; Sun at 83.2&deg; altitude. Shadows fall almost directly beneath buildings; rooftops and facades are uniformly lit.</figcaption>
+        </figure>
+        <figure>
+            <img src="images/winter_south_view.png" alt="3D viewer — Winter 2025/26, noon, south view">
+            <figcaption><strong>Winter 2025/26</strong> &mdash; Sun at 43.2&deg; altitude. Long shadows extend northward from buildings, creating shaded streets between blocks.</figcaption>
+        </figure>
+    </div>
+
+    <div class="highlight">
+        <strong>How to explore:</strong> Open the <a href="viewer.html" style="color:#1565c0;">3D Digital Twin</a> and use the season dropdown in the top navigation bar. The time slider at the bottom animates the sun through the day &mdash; try comparing 8&nbsp;AM shadows between seasons to see how winter's low sun creates long east-facing shadows.
+    </div>
+
+    <h3>10.6 Season-Independent Data</h3>
+    <p>Some data layers do not change between seasons and are shared across both:</p>
+    <ul>
+        <li><strong>Building footprints and heights</strong> &mdash; structural, not seasonal</li>
+        <li><strong>Tree canopy polygons</strong> &mdash; Dubai's irrigated urban trees are largely evergreen</li>
+        <li><strong>Street network and centrality</strong> &mdash; infrastructure doesn't change</li>
+        <li><strong>Street View GVI/SVF</strong> &mdash; Mapillary images are snapshots; we reuse the same values for both seasons</li>
+        <li><strong>Points of Interest</strong> &mdash; from OpenStreetMap, not season-dependent</li>
+    </ul>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="findings">11. Key Findings</h2>
+<div class="section">
+    <h3>11.1 Correlations</h3>
     <table>
         <tr><th>Relationship</th><th>Correlation (r)</th><th>Interpretation</th></tr>
         <tr><td>GVI ↔ NDVI</td><td><strong>0.501</strong></td><td>Street greenery matches satellite vegetation - data validates!</td></tr>
@@ -789,7 +917,7 @@ out center;
         Satellite LST measures <em>surface</em> temperature, but pedestrians experience <em>air</em> temperature and radiant heat. Also, our measurements are at different times (satellite = specific overpass time, street view = whenever image was captured).
     </div>
 
-    <h3>9.2 Main Takeaways</h3>
+    <h3>11.2 Main Takeaways</h3>
     <ol>
         <li><strong>Al Karama is hot:</strong> Mean surface temperature of 48.3°C in summer</li>
         <li><strong>Very little vegetation:</strong> Only 3.55% green view, 0.096 NDVI</li>
@@ -800,10 +928,10 @@ out center;
 </div>
 
 <!-- ============================================================ -->
-<h2 id="limitations">11. Limitations</h2>
+<h2 id="limitations">12. Limitations</h2>
 <div class="section">
     <div class="limitation">
-        <strong>1. Temporal mismatch:</strong> Street view images are from various dates, satellite data is from summer 2025 (Jun&ndash;Sep). Both Landsat and Sentinel-2 are filtered to the same summer window, but street view images were captured at different times.
+        <strong>1. Temporal mismatch:</strong> Street view images are from various dates, satellite data is from summer 2025 (Jun&ndash;Sep) and winter 2025/26 (Dec&ndash;Feb). Both Landsat and Sentinel-2 are filtered to matching seasonal windows, but street view images were captured at different times and are reused across seasons.
     </div>
 
     <div class="limitation">
@@ -819,7 +947,7 @@ out center;
     </div>
 
     <div class="limitation">
-        <strong>5. Single season:</strong> We only analyzed summer data. Winter conditions would be different.
+        <strong>5. Two seasons only:</strong> We analyze summer (Jun&ndash;Sep) and winter (Dec&ndash;Feb). Transitional seasons (spring, autumn) are not covered. Additionally, winter satellite data may have fewer cloud-free scenes than summer in this region.
     </div>
 
     <div class="limitation">
@@ -828,7 +956,7 @@ out center;
 </div>
 
 <!-- ============================================================ -->
-<h2 id="files">12. Output Files Reference</h2>
+<h2 id="files">13. Output Files Reference</h2>
 <div class="section">
     <h3>Interactive Viewers</h3>
     <table>
@@ -841,21 +969,28 @@ out center;
     </table>
 
     <h3>Data Files (<a href="https://github.com/makoto/uob-al-karama/tree/master/docs/data/al_karama" style="color: #1565c0;">data/al_karama/</a>)</h3>
+
+    <p><strong>Season-independent files</strong> (shared root):</p>
     <table>
         <tr><th>File</th><th>Description</th><th>Records</th></tr>
-        <tr><td>area.json</td><td>Area manifest (center, zoom, layer paths, sun info)</td><td>&mdash;</td></tr>
+        <tr><td>area.json</td><td>Area manifest with seasons metadata, sun info, layer paths</td><td>&mdash;</td></tr>
         <tr><td>buildings.geojson</td><td>Building footprints with GEE-enhanced heights</td><td>3,243</td></tr>
         <tr><td>canopy.geojson</td><td>Tree canopy polygons with IDW-interpolated heights</td><td>1,033</td></tr>
         <tr><td>streets.geojson</td><td>Street network with centrality, PCI, LST, priority</td><td>5,656</td></tr>
         <tr><td>pois.json</td><td>Points of interest (8 categories, Overpass API)</td><td>1,290</td></tr>
+        <tr><td>street_metrics.json</td><td>Street-level aggregated metrics</td><td>5,656</td></tr>
+        <tr><td>segment_comfort.json</td><td>Pedestrian comfort by street segment</td><td>420</td></tr>
+    </table>
+
+    <p><strong>Season-specific files</strong> (under <code>summer_2025/</code> and <code>winter_2025/</code>):</p>
+    <table>
+        <tr><th>File</th><th>Description</th><th>Records</th></tr>
         <tr><td>combined_svi.json</td><td>Street-level GVI/SVF + satellite LST/NDVI</td><td>10,098</td></tr>
         <tr><td>satellite_grid.json</td><td>Satellite LST/NDVI/NDBI grid (30m, subsampled)</td><td>20,000</td></tr>
         <tr><td>priority_points.json</td><td>Heat mitigation priority scores and levels</td><td>11,576</td></tr>
-        <tr><td>segment_comfort.json</td><td>Pedestrian comfort by street segment</td><td>420</td></tr>
         <tr><td>clusters.json</td><td>K-means climate cluster assignments</td><td>10,098</td></tr>
         <tr><td>distance_to_green.json</td><td>Distance to nearest green space</td><td>11,576</td></tr>
-        <tr><td>street_shade.csv</td><td>Shade % per street per hour (7 hours)</td><td>5,656</td></tr>
-        <tr><td>street_metrics.json</td><td>Street-level aggregated metrics</td><td>5,656</td></tr>
+        <tr><td>street_shade.csv</td><td>Shade % per street per hour</td><td>5,656</td></tr>
         <tr><td>shadows/shadows_HH.geojson</td><td>Shadow polygons per hour (&times;7 files)</td><td>&mdash;</td></tr>
     </table>
 
@@ -863,27 +998,28 @@ out center;
     <table>
         <tr><th>Script</th><th>Purpose</th></tr>
         <tr><td>setup_gee.py</td><td>Test Google Earth Engine connection</td></tr>
-        <tr><td>satellite_analysis.py</td><td>Download and analyze satellite data</td></tr>
-        <tr><td>satellite_full_area.py</td><td>Full area grid analysis at 10m</td></tr>
-        <tr><td>thermal_sharpening.py</td><td>Downscale LST from 30m to 10m using NDVI regression</td></tr>
-        <tr><td>combined_analysis.py</td><td>Merge street-level GVI/SVF with satellite thermal data</td></tr>
+        <tr><td>satellite_analysis.py</td><td>Download and analyze satellite data (<code>--season</code> flag)</td></tr>
+        <tr><td>satellite_full_area.py</td><td>Full area grid analysis at 10m (<code>--season</code> flag)</td></tr>
+        <tr><td>thermal_sharpening.py</td><td>Downscale LST from 30m to 10m using NDVI regression (<code>--season</code> flag)</td></tr>
+        <tr><td>combined_analysis.py</td><td>Merge street-level GVI/SVF with satellite thermal data (<code>--season</code> flag)</td></tr>
         <tr><td>heat_mitigation_priorities.py</td><td>Calculate intervention priorities</td></tr>
         <tr><td>walking_route_analysis.py</td><td>Pedestrian comfort analysis</td></tr>
         <tr><td>network_analysis_v3.py</td><td>Street network centrality</td></tr>
         <tr><td>quick_analyses.py</td><td>Correlations, clusters, accessibility</td></tr>
         <tr><td>gee_building_heights.py</td><td>Extract GHSL/nDSM building heights from GEE, merge with OSM</td></tr>
-        <tr><td>shade_analysis.py</td><td>Building + tree canopy shadow projection and street shade coverage analysis</td></tr>
+        <tr><td>shade_analysis.py</td><td>Building + tree canopy shadow projection and street shade coverage analysis (<code>--season</code> flag)</td></tr>
+        <tr><td>seasons_config.py</td><td>Season definitions (dates, solar params) &mdash; shared config module</td></tr>
         <tr><td>fetch_canopy_height.py</td><td>Fetch Meta 1m canopy height data from GEE, extract polygons, and assign heights via IDW interpolation</td></tr>
     </table>
 </div>
 
 <!-- ============================================================ -->
-<h2 id="field-survey">13. Field Survey Guide</h2>
+<h2 id="field-survey">14. Field Survey Guide</h2>
 <div class="section">
-    <h3>13.1 Objective</h3>
+    <h3>14.1 Objective</h3>
     <p>Validate estimated building heights by conducting on-site measurements using clinometer-based distance-angle methods. A 50m-radius test area was selected around a central Mapillary camera location.</p>
 
-    <h3>13.2 Test Area</h3>
+    <h3>14.2 Test Area</h3>
     <table>
         <tr><th>Property</th><th>Value</th></tr>
         <tr><td>Location</td><td>Al Karama, Dubai (25.2421&deg;N, 55.3048&deg;E)</td></tr>
@@ -892,7 +1028,7 @@ out center;
         <tr><td>Center camera ID</td><td>827604215891753</td></tr>
     </table>
 
-    <h3>13.3 Measurement Protocol</h3>
+    <h3>14.3 Measurement Protocol</h3>
     <p><strong>Buildings to measure:</strong></p>
     <ol>
         <li>Select 3&ndash;5 buildings for calibration</li>
@@ -914,7 +1050,7 @@ out center;
 Building Height = Distance &times; tan(Angle) + Observer Height
     </div>
 
-    <h3>13.4 Recommended Apps</h3>
+    <h3>14.4 Recommended Apps</h3>
     <table>
         <tr><th>Platform</th><th>Apps</th></tr>
         <tr><td>iOS</td><td>Measure (built-in), Theodolite</td></tr>
@@ -945,7 +1081,7 @@ Building Height = Distance &times; tan(Angle) + Observer Height
 </div>
 
 <div class="section" style="text-align: center; margin-top: 40px;">
-    <p><em>Report generated January 2026</em></p>
+    <p><em>Report generated February 2026</em></p>
     <p><a href="index.html">&larr; Back to Dashboard</a></p>
 </div>
 

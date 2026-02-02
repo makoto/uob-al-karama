@@ -242,6 +242,9 @@
         </div>
     </div>
     <span class="nav-title">3D Digital Twin</span>
+    <select class="area-dropdown" id="seasonSelect" onchange="switchSeason(this.value)">
+        <option value="">Loading...</option>
+    </select>
     <select class="area-dropdown" id="areaSelect" onchange="switchArea(this.value)">
         <option value="al_karama">Al Karama</option>
     </select>
@@ -279,8 +282,17 @@
 
 var AREA = null;                 // area.json manifest
 var DATA_BASE = '';              // e.g. "data/al_karama/"
+var SEASON_DATA_BASE = '';       // e.g. "data/al_karama/summer_2025/"
+var currentSeason = '';          // current season id
 var CACHE = {};                  // data cache: key → fetched data
 var deckgl = null;
+
+// Keys whose data lives under the season subdirectory
+var SEASON_DEPENDENT_KEYS = [
+    'street_shade', 'combined_svi', 'satellite_grid',
+    'priority', 'clusters', 'distance_to_green'
+];
+// Shadow keys (shadows_06 etc.) are also season-dependent
 
 // Layer visibility
 var layerState = {
@@ -297,6 +309,7 @@ var layerState = {
 var buildingColorMode = 'default';   // 'default' | 'height' | 'usage'
 var streetMode = 'shade';            // 'shade' | 'neutral'
 var combinedMetric = 'lst';          // 'lst' | 'gvi' | 'svf'
+var lstMin = 46, lstMax = 53;        // dynamic LST range for combined layer
 var centralityMetric = 'betweenness'; // 'betweenness' | 'closeness'
 
 // Time
@@ -362,23 +375,42 @@ for (var _cat in POI_CAT_EMOJI) {
 //  DATA LOADING
 // ═══════════════════════════════════════════════════════
 
+function isSeasonDependent(key) {
+    if (key.startsWith('shadows_')) return true;
+    var normKey = key.replace(/-/g, '_');
+    return SEASON_DEPENDENT_KEYS.indexOf(normKey) >= 0;
+}
+
 async function loadData(key) {
     if (CACHE[key]) return CACHE[key];
-    var path = null;
 
-    // Resolve path from area manifest
+    var path = null;
+    var seasonLayers = (AREA.seasons && AREA.seasons[currentSeason])
+        ? AREA.seasons[currentSeason].layers : null;
+
+    // Resolve path: check season layers first, then common layers
     if (key.startsWith('shadows_')) {
         var hour = key.replace('shadows_', '');
-        path = AREA.layers.shadows[hour];
-    } else if (AREA.layers[key]) {
-        path = AREA.layers[key];
+        if (seasonLayers && seasonLayers.shadows) {
+            path = seasonLayers.shadows[hour];
+        } else if (AREA.layers.shadows) {
+            path = AREA.layers.shadows[hour];
+        }
     } else {
-        // Try direct key match (e.g. 'distance_to_green')
-        path = AREA.layers[key.replace(/-/g, '_')];
+        var normKey = key.replace(/-/g, '_');
+        if (seasonLayers && seasonLayers[normKey]) {
+            path = seasonLayers[normKey];
+        } else if (AREA.layers[normKey]) {
+            path = AREA.layers[normKey];
+        } else if (AREA.layers[key]) {
+            path = AREA.layers[key];
+        }
     }
     if (!path) { console.warn('No path for data key:', key); return null; }
 
-    var url = DATA_BASE + path;
+    // Season-dependent files are under SEASON_DATA_BASE, common under DATA_BASE
+    var base = isSeasonDependent(key) ? SEASON_DATA_BASE : DATA_BASE;
+    var url = base + path;
     var resp = await fetch(url);
     if (!resp.ok) { console.warn('Failed to load:', url); return null; }
 
@@ -388,6 +420,15 @@ async function loadData(key) {
         CACHE[key] = await resp.json();
     }
     return CACHE[key];
+}
+
+function clearSeasonCache() {
+    // Remove all season-dependent keys from cache
+    var keysToDelete = [];
+    for (var k in CACHE) {
+        if (isSeasonDependent(k)) keysToDelete.push(k);
+    }
+    keysToDelete.forEach(function(k) { delete CACHE[k]; });
 }
 
 function parseCSV(text) {
@@ -531,8 +572,20 @@ function shadeColor(pct) {
     return [220, 60, 40, 200];
 }
 
+function computeLSTRange(data, field) {
+    var min = Infinity, max = -Infinity;
+    for (var i = 0; i < data.length; i++) {
+        var v = data[i][field || 'lst'];
+        if (v != null && isFinite(v)) {
+            if (v < min) min = v;
+            if (v > max) max = v;
+        }
+    }
+    return [isFinite(min) ? min : 0, isFinite(max) ? max : 50];
+}
+
 function lstColor(lst) {
-    var ratio = Math.max(0, Math.min(1, (lst - 46) / (53 - 46)));
+    var ratio = Math.max(0, Math.min(1, (lst - lstMin) / (lstMax - lstMin || 1)));
     if (ratio < 0.25) return [60, 80, 200];
     if (ratio < 0.5) return [60, 200, 200];
     if (ratio < 0.75) return [240, 180, 40];
@@ -734,6 +787,9 @@ function buildLayers() {
 
     // === THERMAL: Combined SVI+Satellite ===
     if (layerState.combined && CACHE.combined_svi) {
+        var _cRange = computeLSTRange(CACHE.combined_svi, 'lst');
+        lstMin = Math.floor(_cRange[0]);
+        lstMax = Math.ceil(_cRange[1]);
         layers.push(new deck.ScatterplotLayer({
             id: 'combined-points',
             data: CACHE.combined_svi,
@@ -868,7 +924,9 @@ function buildLayers() {
 
 function buildLightingEffect(timeIdx) {
     var h = TIMES[timeIdx];
-    var ts = AREA.utc_timestamps[h];
+    var seasonObj = (AREA.seasons && AREA.seasons[currentSeason]) ? AREA.seasons[currentSeason] : null;
+    var ts = seasonObj ? seasonObj.utc_timestamps[h] : (AREA.utc_timestamps ? AREA.utc_timestamps[h] : null);
+    if (!ts) ts = '2025-07-15T08:00:00Z'; // fallback
     var timestamp = new Date(ts);
 
     var sunLight = new deck._SunLight({
@@ -890,11 +948,17 @@ function buildLightingEffect(timeIdx) {
 
 function updateSunInfo(timeIdx) {
     var h = TIMES[timeIdx];
-    var si = AREA.sun_info[h];
+    // Use season-specific sun_info if available, else fall back to area-level
+    var seasonObj = (AREA.seasons && AREA.seasons[currentSeason]) ? AREA.seasons[currentSeason] : null;
+    var si = seasonObj ? seasonObj.sun_info[h] : (AREA.sun_info ? AREA.sun_info[h] : null);
     if (!si) return;
     document.getElementById('sunAlt').textContent = 'Altitude: ' + si.altitude + '\u00b0';
     document.getElementById('sunAz').textContent = 'Azimuth: ' + si.azimuth + '\u00b0';
-    document.getElementById('sunShadow').textContent = 'Shadow: \u00d7' + si.shadow_factor.toFixed(1);
+    if (si.shadow_factor != null) {
+        document.getElementById('sunShadow').textContent = 'Shadow: \u00d7' + si.shadow_factor.toFixed(1);
+    } else {
+        document.getElementById('sunShadow').textContent = 'Shadow: below horizon';
+    }
 
     // Rotate compass needle
     var needle = document.getElementById('compassNeedle');
@@ -1250,7 +1314,7 @@ function updateLegend() {
         items.push('<div class="legend-title">' + metricLabels[combinedMetric] + '</div>');
         if (combinedMetric === 'lst') {
             items.push('<div class="legend-gradient" style="background:linear-gradient(to right,rgb(60,80,200),rgb(60,200,200),rgb(240,180,40),rgb(220,50,30))"></div>');
-            items.push('<div class="legend-labels"><span>46°C</span><span>53°C</span></div>');
+            items.push('<div class="legend-labels"><span>' + lstMin + '°C</span><span>' + lstMax + '°C</span></div>');
         } else if (combinedMetric === 'gvi') {
             items.push('<div class="legend-gradient" style="background:linear-gradient(to right,#f7f7f7,#c7e9c0,#74c476,#238b45,#005a32)"></div>');
             items.push('<div class="legend-labels"><span>0%</span><span>20%+</span></div>');
@@ -1329,9 +1393,34 @@ async function switchArea(areaId) {
     var resp = await fetch(DATA_BASE + 'area.json');
     AREA = await resp.json();
 
-    // Update UI
-    document.getElementById('areaSubtitle').textContent =
-        AREA.analysis_date + ' \u2014 ' + AREA.name + ', ' + AREA.city;
+    // Populate season dropdown
+    var seasonSelect = document.getElementById('seasonSelect');
+    if (AREA.available_seasons && AREA.available_seasons.length > 0) {
+        seasonSelect.innerHTML = '';
+        AREA.available_seasons.forEach(function(sid) {
+            var opt = document.createElement('option');
+            opt.value = sid;
+            opt.textContent = AREA.seasons[sid].label;
+            seasonSelect.appendChild(opt);
+        });
+        currentSeason = AREA.default_season || AREA.available_seasons[0];
+        seasonSelect.value = currentSeason;
+        seasonSelect.style.display = '';
+    } else {
+        // Legacy area.json without seasons — hide dropdown
+        currentSeason = '';
+        seasonSelect.style.display = 'none';
+    }
+
+    SEASON_DATA_BASE = currentSeason ? DATA_BASE + currentSeason + '/' : DATA_BASE;
+
+    // Update UI subtitle
+    var seasonLabel = (AREA.seasons && AREA.seasons[currentSeason])
+        ? AREA.seasons[currentSeason].label : '';
+    var subtitle = seasonLabel
+        ? seasonLabel + ' \u2014 ' + AREA.name + ', ' + AREA.city
+        : AREA.name + ', ' + AREA.city;
+    document.getElementById('areaSubtitle').textContent = subtitle;
     document.title = '3D Digital Twin - ' + AREA.name;
 
     // Load immediate-tier data
@@ -1372,6 +1461,43 @@ async function switchArea(areaId) {
         });
     }
 
+    updateLegend();
+    prefetchNeighborShadows(currentTimeIdx);
+}
+
+async function switchSeason(seasonId) {
+    currentSeason = seasonId;
+    SEASON_DATA_BASE = DATA_BASE + seasonId + '/';
+
+    // Clear season-dependent cache entries
+    clearSeasonCache();
+
+    // Update subtitle
+    var seasonLabel = (AREA.seasons && AREA.seasons[currentSeason])
+        ? AREA.seasons[currentSeason].label : '';
+    document.getElementById('areaSubtitle').textContent =
+        seasonLabel + ' \u2014 ' + AREA.name + ', ' + AREA.city;
+
+    // Reload season-dependent data that is currently visible
+    document.getElementById('initLoader').classList.add('active');
+
+    var reloadPromises = [loadData('street_shade')];
+    var hPad = padHour(TIMES[currentTimeIdx]);
+    reloadPromises.push(loadData('shadows_' + hPad));
+
+    // Reload any season-dependent layers that are currently toggled on
+    if (layerState.combined) reloadPromises.push(loadData('combined_svi'));
+    if (layerState.priority) reloadPromises.push(loadData('priority'));
+    if (layerState.clusters) reloadPromises.push(loadData('clusters'));
+    if (layerState['green-access']) reloadPromises.push(loadData('distance_to_green'));
+
+    await Promise.all(reloadPromises);
+    document.getElementById('initLoader').classList.remove('active');
+
+    // Refresh visuals
+    buildShadeChart();
+    updateSunInfo(currentTimeIdx);
+    rebuildDeck();
     updateLegend();
     prefetchNeighborShadows(currentTimeIdx);
 }
