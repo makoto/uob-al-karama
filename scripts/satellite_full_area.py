@@ -40,7 +40,7 @@ def add_indices(image):
 
 sentinel2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
     .filterBounds(AL_KARAMA) \
-    .filterDate('2024-01-01', '2024-12-31') \
+    .filterDate('2024-06-01', '2024-09-30') \
     .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 10)) \
     .map(mask_clouds_s2) \
     .map(add_indices)

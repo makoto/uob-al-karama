@@ -67,7 +67,7 @@ def mask_clouds_s2(image):
 
 sentinel2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
     .filterBounds(ee.Geometry.Rectangle([55.29, 25.23, 55.32, 25.26])) \
-    .filterDate('2024-01-01', '2024-12-31') \
+    .filterDate('2024-06-01', '2024-09-30') \
     .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)) \
     .map(mask_clouds_s2) \
     .map(calculate_ndvi)
@@ -78,7 +78,7 @@ ndvi_composite = sentinel2.select('NDVI').median()
 combined = lst_composite.addBands(ndvi_composite)
 
 print("  LST composite: Landsat 8/9 (Summer 2024)")
-print("  NDVI composite: Sentinel-2 (2024)")
+print("  NDVI composite: Sentinel-2 (Summer 2024)")
 
 # Sample in batches
 print(f"\nSampling at {len(gvi_svf)} locations (in batches of {batch_size})...")

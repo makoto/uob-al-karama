@@ -144,15 +144,19 @@ mly.download_svi(
 
     <h3>2.2 Satellite Imagery</h3>
     <table>
-        <tr><th>Satellite</th><th>Data</th><th>Resolution</th><th>Use</th></tr>
-        <tr><td>Landsat 8/9</td><td>Thermal infrared</td><td>30m (100m native)</td><td>Land Surface Temperature</td></tr>
-        <tr><td>Sentinel-2</td><td>Multispectral</td><td>10m</td><td>NDVI, NDBI vegetation/built-up</td></tr>
-        <tr><td>GHSL (JRC)</td><td>Built-up height classes & continuous heights</td><td>10m / 100m</td><td>Building height estimation</td></tr>
+        <tr><th>Satellite</th><th>Data</th><th>Date</th><th>Resolution</th><th>Use</th></tr>
+        <tr><td>Landsat 8/9</td><td>Thermal infrared</td><td>Summer 2024 (Jun–Sep)</td><td>30m (100m native)</td><td>Land Surface Temperature</td></tr>
+        <tr><td>Sentinel-2</td><td>Multispectral</td><td>Summer 2024 (Jun–Sep)</td><td>10m</td><td>NDVI, NDBI vegetation/built-up</td></tr>
+        <tr><td>GHSL (JRC)</td><td>Built-up height classes & continuous heights</td><td>2018 (P2023A release)</td><td>10m / 100m</td><td>Building height estimation</td></tr>
     </table>
 
     <div class="highlight">
         <strong>Google Earth Engine (GEE):</strong> We used GEE to access and process satellite data. It's free for research/academic use. You need to register at <a href="https://earthengine.google.com/">earthengine.google.com</a>.
         GEE also hosts the <strong>JRC Global Human Settlement Layer (GHSL)</strong>, which provides satellite-derived building height data globally. We used the GHSL Built-C (10m categorical height classes) and Built-H (100m continuous heights) datasets to fill in the majority of building heights that were missing from OpenStreetMap (see <a href="#building-heights">Section 5</a>).
+    </div>
+
+    <div class="highlight">
+        <strong>Sentinel-2 date alignment:</strong> Both Landsat and Sentinel-2 are now filtered to summer 2024 (Jun&ndash;Sep) so that all satellite indices reflect the same season. Previously, Sentinel-2 used the full year (Jan&ndash;Dec 2024, 108 images) while Landsat was already summer-only. After alignment the Sentinel-2 image count dropped to 39, NDVI mean decreased slightly from 0.104 to 0.098 (less green during summer), and NDBI mean increased from 0.024 to 0.038 (higher built-up signal). The vegetation class changed from "Low (sparse vegetation)" to "Very Low (desert/urban)." This makes the NDVI and NDBI values seasonally consistent with the LST measurements.
     </div>
 
     <h3>2.3 OpenStreetMap</h3>
@@ -279,8 +283,8 @@ Where:
     </table>
 
     <div class="finding">
-        <strong>Al Karama Result:</strong> Mean NDVI = 0.104<br>
-        Very low - mostly built-up with sparse vegetation. Only 11% of area has NDVI > 0.3.
+        <strong>Al Karama Result:</strong> Mean NDVI = 0.098<br>
+        Very low - mostly built-up with sparse vegetation.
         <br><a href="viewer_2d.html#satellite-ndvi" style="color: #1565c0;">View NDVI on 2D Viewer &rarr;</a>
     </div>
 
@@ -787,7 +791,7 @@ out center;
     <h3>9.2 Main Takeaways</h3>
     <ol>
         <li><strong>Al Karama is hot:</strong> Mean surface temperature of 48.6°C in summer</li>
-        <li><strong>Very little vegetation:</strong> Only 3.55% green view, 0.104 NDVI</li>
+        <li><strong>Very little vegetation:</strong> Only 3.55% green view, 0.098 NDVI</li>
         <li><strong>Most streets uncomfortable:</strong> 71% have low pedestrian comfort</li>
         <li><strong>Shade helps:</strong> Areas with low SVF are more comfortable</li>
         <li><strong>78% needs intervention:</strong> High or critical priority for heat mitigation</li>
@@ -798,7 +802,7 @@ out center;
 <h2 id="limitations">11. Limitations</h2>
 <div class="section">
     <div class="limitation">
-        <strong>1. Temporal mismatch:</strong> Street view images are from various dates, satellite data is from summer 2024. They don't represent the same moment in time.
+        <strong>1. Temporal mismatch:</strong> Street view images are from various dates, satellite data is from summer 2024 (Jun&ndash;Sep). Both Landsat and Sentinel-2 are now filtered to the same summer window, but street view images were captured at different times.
     </div>
 
     <div class="limitation">

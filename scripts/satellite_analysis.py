@@ -92,13 +92,13 @@ def mask_clouds_s2(image):
 # Get Sentinel-2 imagery
 sentinel2 = ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED') \
     .filterBounds(AL_KARAMA) \
-    .filterDate('2024-01-01', '2024-12-31') \
+    .filterDate('2024-06-01', '2024-09-30') \
     .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20)) \
     .map(mask_clouds_s2) \
     .map(calculate_ndvi)
 
 s2_count = sentinel2.size().getInfo()
-print(f"  Sentinel-2 images (2024, <20% cloud): {s2_count}")
+print(f"  Sentinel-2 images (Summer 2024, <20% cloud): {s2_count}")
 
 if s2_count > 0:
     # Get median NDVI
