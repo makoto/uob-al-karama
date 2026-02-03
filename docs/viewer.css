@@ -757,4 +757,135 @@ body {
   .view-presets {
     bottom: 12px;
   }
+
+  .route-replay-bar {
+    right: 0;
+    bottom: auto;
+  }
+}
+
+/* === Route Controls === */
+
+.route-action-btn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid #4fc3f7;
+  background: rgba(79, 195, 247, 0.12);
+  color: #4fc3f7;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.route-action-btn:hover {
+  background: rgba(79, 195, 247, 0.25);
+}
+
+.route-action-btn.active {
+  background: #4fc3f7;
+  color: #111;
+}
+
+#route-controls label {
+  font-size: 11px;
+  color: #999;
+  cursor: pointer;
+  margin-right: 6px;
+}
+
+#route-controls input[type="radio"] {
+  accent-color: #4fc3f7;
+  width: 12px;
+  height: 12px;
+}
+
+/* === Route Replay Bar === */
+
+.route-replay-bar {
+  position: absolute;
+  bottom: 56px;
+  left: 0;
+  right: 340px;
+  z-index: 11;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-top: 1px solid rgba(79, 195, 247, 0.3);
+  padding: 8px 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.replay-btn {
+  background: none;
+  border: 2px solid #4fc3f7;
+  color: #4fc3f7;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+
+.replay-btn:hover {
+  background: rgba(79, 195, 247, 0.15);
+}
+
+.replay-btn.playing {
+  background: #4fc3f7;
+  color: #111;
+}
+
+.replay-exit {
+  border-color: #999;
+  color: #999;
+  font-size: 13px;
+}
+
+.replay-exit:hover {
+  border-color: #f44;
+  color: #f44;
+  background: rgba(244, 67, 54, 0.1);
+}
+
+.replay-progress-slider {
+  flex: 1;
+  accent-color: #4fc3f7;
+}
+
+.replay-dist {
+  font-size: 12px;
+  color: #ccc;
+  min-width: 100px;
+  text-align: center;
+}
+
+.replay-speed {
+  appearance: none;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ccc;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.replay-speed option {
+  background: #1a1a1a;
+  color: #eee;
+}
+
+/* Route picking cursor */
+
+.route-picking #map-canvas canvas,
+.route-picking #deckgl-overlay {
+  cursor: crosshair !important;
 }
