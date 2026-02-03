@@ -294,7 +294,10 @@
         <option value="2">2x</option>
         <option value="4">4x</option>
         <option value="8">8x</option>
+        <option value="16">16x</option>
+        <option value="32">32x</option>
     </select>
+    <button class="replay-btn replay-share" id="replayShareBtn" onclick="shareRoute()" title="Copy shareable link">&#128279;</button>
     <button class="replay-btn replay-exit" id="replayExitBtn" onclick="exitRouteReplay()">&#10005;</button>
 </div>
 
@@ -405,9 +408,8 @@ var POI_CAT_EMOJI = {
 var routeGraph = null;
 var routeAdj = null;
 var routeMode = false;
-var routeOriginNode = null;
-var routeDestNode = null;
-var routeResult = null;
+var routeWaypoints = [];       // array of node indices
+var routeSegments = [];        // array of dijkstra results, one per consecutive pair
 var routeEdgePaths = null;
 var routeCoords = null;
 var routeWeightMode = 'comfW';
@@ -1087,20 +1089,23 @@ function buildLayers() {
         }
     }
 
-    // === ROUTE: Origin/Destination markers ===
-    if (routeOriginNode !== null && routeGraph) {
-        var originMarkers = [{ node: routeOriginNode, color: [76, 175, 80] }];
-        if (routeDestNode !== null) {
-            originMarkers.push({ node: routeDestNode, color: [244, 67, 54] });
-        }
+    // === ROUTE: Waypoint markers ===
+    if (routeWaypoints.length > 0 && routeGraph) {
+        var wpMarkers = routeWaypoints.map(function(nodeIdx, i) {
+            var color;
+            if (i === 0) color = [76, 175, 80];                                     // green: origin
+            else if (!routeMode && i === routeWaypoints.length - 1) color = [244, 67, 54]; // red: final dest
+            else color = [255, 193, 7];                                              // amber: intermediate
+            return { node: nodeIdx, color: color, idx: i };
+        });
         layers.push(new deck.ScatterplotLayer({
             id: 'route-markers',
-            data: originMarkers,
+            data: wpMarkers,
             getPosition: function(d) {
                 var n = routeGraph.nodes[d.node];
                 return [n[1], n[0]];
             },
-            getRadius: 8,
+            getRadius: function(d) { return d.idx === 0 || (!routeMode && d.idx === wpMarkers.length - 1) ? 8 : 6; },
             radiusUnits: 'pixels',
             getFillColor: function(d) { return d.color; },
             getLineColor: [255, 255, 255],
@@ -1108,7 +1113,8 @@ function buildLayers() {
             lineWidthUnits: 'pixels',
             stroked: true,
             pickable: false,
-            parameters: { depthTest: false }
+            parameters: { depthTest: false },
+            updateTriggers: { getPosition: [routeWaypoints.length, routeMode] }
         }));
     }
 
@@ -1848,18 +1854,30 @@ function snapToNearestNode(lngLat) {
 
 function startRouteMode() {
     if (!routeGraph || !routeAdj) return;
+    if (routeMode) {
+        // Toggle off — finalize
+        routeMode = false;
+        document.getElementById('route-set-btn').classList.remove('active');
+        document.getElementById('route-set-btn').textContent = 'Set Route';
+        document.getElementById('app').classList.remove('route-picking');
+        if (routeWaypoints.length >= 2) {
+            document.getElementById('route-status').textContent =
+                'Route: ' + routeAnimTotalDist.toFixed(0) + 'm (' + routeWaypoints.length + ' waypoints)';
+        }
+        return;
+    }
     clearRoute();
     routeMode = true;
     document.getElementById('route-set-btn').classList.add('active');
+    document.getElementById('route-set-btn').textContent = 'Done';
     document.getElementById('route-status').textContent = 'Click on map to set origin.';
     document.getElementById('app').classList.add('route-picking');
 }
 
 function clearRoute() {
     routeMode = false;
-    routeOriginNode = null;
-    routeDestNode = null;
-    routeResult = null;
+    routeWaypoints = [];
+    routeSegments = [];
     routeEdgePaths = null;
     routeCoords = null;
     routeAnimSamples = null;
@@ -1869,6 +1887,7 @@ function clearRoute() {
     routeAnimTotalDist = 0;
     if (routeAnimFrameId) { cancelAnimationFrame(routeAnimFrameId); routeAnimFrameId = null; }
     document.getElementById('route-set-btn').classList.remove('active');
+    document.getElementById('route-set-btn').textContent = 'Set Route';
     document.getElementById('route-clear-btn').style.display = 'none';
     document.getElementById('route-status').textContent = '';
     document.getElementById('routeReplayBar').style.display = 'none';
@@ -1878,8 +1897,8 @@ function clearRoute() {
 
 function setRouteWeight(w) {
     routeWeightMode = w;
-    if (routeOriginNode !== null && routeDestNode !== null) {
-        computeRoute();
+    if (routeWaypoints.length >= 2) {
+        recomputeFullRoute();
     }
 }
 
@@ -1889,87 +1908,103 @@ function onDeckClick(info, event) {
     var coord = info.coordinate;
     if (!coord) return;
 
-    if (routeOriginNode === null) {
-        routeOriginNode = snapToNearestNode(coord);
-        document.getElementById('route-status').textContent = 'Origin set. Click to set destination.';
-        document.getElementById('route-clear-btn').style.display = '';
-        rebuildDeck();
-    } else if (routeDestNode === null) {
-        routeDestNode = snapToNearestNode(coord);
-        if (routeDestNode === routeOriginNode) {
-            document.getElementById('route-status').textContent = 'Same as origin. Click a different location.';
-            routeDestNode = null;
-            return;
-        }
-        routeMode = false;
-        document.getElementById('route-set-btn').classList.remove('active');
-        document.getElementById('app').classList.remove('route-picking');
-        computeRoute();
+    var nodeIdx = snapToNearestNode(coord);
+
+    // Don't allow duplicate of previous waypoint
+    if (routeWaypoints.length > 0 && nodeIdx === routeWaypoints[routeWaypoints.length - 1]) {
+        document.getElementById('route-status').textContent = 'Same as previous point. Click a different location.';
+        return;
     }
-}
 
-function computeRoute() {
-    if (routeOriginNode === null || routeDestNode === null) return;
+    routeWaypoints.push(nodeIdx);
+    document.getElementById('route-clear-btn').style.display = '';
 
-    var result = routeDijkstra(routeAdj, routeOriginNode, routeDestNode, routeWeightMode);
-    if (!result) {
-        document.getElementById('route-status').textContent = 'No path found between these points.';
-        routeDestNode = null;
+    if (routeWaypoints.length === 1) {
+        document.getElementById('route-status').textContent =
+            'Origin set. Click to add waypoints. Click Done when finished.';
         rebuildDeck();
         return;
     }
 
-    routeResult = result;
+    // Compute segment between last two waypoints
+    var from = routeWaypoints[routeWaypoints.length - 2];
+    var to = routeWaypoints[routeWaypoints.length - 1];
+    var result = routeDijkstra(routeAdj, from, to, routeWeightMode);
+    if (!result) {
+        document.getElementById('route-status').textContent = 'No path to this point. Try another location.';
+        routeWaypoints.pop();
+        return;
+    }
 
-    // Build path polylines from street geometry
+    routeSegments.push(result);
+    buildCombinedRoute();
+    rebuildDeck();
+}
+
+// Build combined route geometry from all segments
+function buildCombinedRoute() {
     routeEdgePaths = [];
     var allCoords = [];
     var totalDist = 0;
 
-    for (var i = 0; i < result.edges.length; i++) {
-        var ei = result.edges[i];
-        var e = routeGraph.edges[ei];
-        var fi = e[6];
-        var coords;
+    for (var s = 0; s < routeSegments.length; s++) {
+        var result = routeSegments[s];
+        for (var i = 0; i < result.edges.length; i++) {
+            var ei = result.edges[i];
+            var e = routeGraph.edges[ei];
+            var fi = e[6];
+            var coords;
 
-        if (CACHE.streets && CACHE.streets.features[fi]) {
-            coords = CACHE.streets.features[fi].geometry.coordinates;
-        } else {
-            var uNode = routeGraph.nodes[e[0]];
-            var vNode = routeGraph.nodes[e[1]];
-            coords = [[uNode[1], uNode[0]], [vNode[1], vNode[0]]];
-        }
+            if (CACHE.streets && CACHE.streets.features[fi]) {
+                coords = CACHE.streets.features[fi].geometry.coordinates;
+            } else {
+                var uNode = routeGraph.nodes[e[0]];
+                var vNode = routeGraph.nodes[e[1]];
+                coords = [[uNode[1], uNode[0]], [vNode[1], vNode[0]]];
+            }
 
-        // Determine direction: edge goes u->v, path goes path[i]->path[i+1]
-        var pathU = result.path[i], pathV = result.path[i + 1];
-        var edgeU = e[0], edgeV = e[1];
-        if (pathU === edgeV && pathV === edgeU) {
-            coords = coords.slice().reverse();
-        }
+            // Determine direction
+            var pathU = result.path[i], pathV = result.path[i + 1];
+            if (pathU === e[1] && pathV === e[0]) {
+                coords = coords.slice().reverse();
+            }
 
-        routeEdgePaths.push(coords);
-        totalDist += e[2];
+            routeEdgePaths.push(coords);
+            totalDist += e[2];
 
-        // Append to flat coordinate list (avoid duplicating junction points)
-        for (var j = (i === 0 ? 0 : 1); j < coords.length; j++) {
-            allCoords.push(coords[j]); // [lng, lat]
+            // Append to flat coordinate list (avoid duplicating junction points)
+            var startJ = (allCoords.length === 0) ? 0 : 1;
+            for (var j = startJ; j < coords.length; j++) {
+                allCoords.push(coords[j]);
+            }
         }
     }
 
     routeCoords = allCoords;
     routeAnimTotalDist = totalDist;
-
-    // Build animation samples
     routeAnimSamples = buildAnimationSamples(allCoords, totalDist);
 
     // Update UI
     document.getElementById('route-status').textContent =
-        'Route: ' + totalDist.toFixed(0) + 'm (' + routeResult.edges.length + ' edges)';
-    document.getElementById('route-clear-btn').style.display = '';
+        'Route: ' + totalDist.toFixed(0) + 'm (' + routeWaypoints.length + ' waypoints). Click to add more, or Done.';
     document.getElementById('routeReplayBar').style.display = 'flex';
     document.getElementById('replayDist').textContent = '0m / ' + totalDist.toFixed(0) + 'm';
     document.getElementById('replayProgress').value = 0;
+}
 
+// Recompute all segments (e.g. after weight mode change)
+function recomputeFullRoute() {
+    routeSegments = [];
+    for (var i = 0; i < routeWaypoints.length - 1; i++) {
+        var result = routeDijkstra(routeAdj, routeWaypoints[i], routeWaypoints[i + 1], routeWeightMode);
+        if (!result) {
+            document.getElementById('route-status').textContent = 'Segment ' + (i + 1) + ' failed. Clearing route.';
+            clearRoute();
+            return;
+        }
+        routeSegments.push(result);
+    }
+    buildCombinedRoute();
     rebuildDeck();
 }
 
@@ -2220,6 +2255,112 @@ function exitRouteReplay() {
     rebuildDeck();
 }
 
+function shareRoute() {
+    if (routeWaypoints.length < 2) return;
+    var params = new URLSearchParams();
+    params.set('waypoints', routeWaypoints.join(','));
+    params.set('weight', routeWeightMode);
+    params.set('speed', routeAnimSpeed);
+    if (currentSeason) params.set('season', currentSeason);
+    params.set('time', currentTimeIdx);
+    var url = window.location.origin + window.location.pathname + '?' + params.toString();
+
+    navigator.clipboard.writeText(url).then(function() {
+        var btn = document.getElementById('replayShareBtn');
+        btn.textContent = '\u2713';
+        setTimeout(function() { btn.innerHTML = '&#128279;'; }, 1500);
+    }).catch(function() {
+        prompt('Copy this link:', url);
+    });
+}
+
+async function applyRouteFromURL() {
+    var params = new URLSearchParams(window.location.search);
+
+    // Parse waypoints (new format) or origin/dest (legacy)
+    var wpStr = params.get('waypoints');
+    var nodeIndices = [];
+    if (wpStr) {
+        nodeIndices = wpStr.split(',').map(function(s) { return parseInt(s, 10); });
+    } else {
+        var origin = params.get('origin');
+        var dest = params.get('dest');
+        if (origin !== null && dest !== null) {
+            nodeIndices = [parseInt(origin, 10), parseInt(dest, 10)];
+        }
+    }
+    if (nodeIndices.length < 2 || nodeIndices.some(isNaN)) return;
+
+    var weight = params.get('weight') || 'comfW';
+    var speed = parseFloat(params.get('speed')) || 8;
+
+    // Apply season if specified
+    var season = params.get('season');
+    if (season && AREA && AREA.seasons && AREA.seasons[season] && season !== currentSeason) {
+        document.getElementById('seasonSelect').value = season;
+        await switchSeason(season);
+    }
+
+    // Apply time if specified
+    var timeIdx = params.get('time');
+    if (timeIdx !== null) {
+        var ti = parseInt(timeIdx, 10);
+        if (!isNaN(ti) && ti >= 0 && ti < TIMES.length && ti !== currentTimeIdx) {
+            document.getElementById('timeRange').value = ti;
+            await onTimeChange(ti);
+        }
+    }
+
+    // Enable route-graph layer
+    var cb = document.getElementById('tog-route-graph');
+    if (cb && !cb.checked) {
+        cb.checked = true;
+        layerState['route-graph'] = true;
+        var rgOpt = document.getElementById('opt-route-graph');
+        if (rgOpt) rgOpt.style.display = '';
+        var rc = document.getElementById('route-controls');
+        if (rc) rc.style.display = '';
+    }
+
+    // Load data
+    showLoading('route-graph', true);
+    await loadData('route_graph');
+    if (!CACHE['streets']) await loadData('streets');
+    showLoading('route-graph', false);
+
+    if (!CACHE.route_graph) return;
+    routeGraph = CACHE.route_graph;
+    routeAdj = buildRouteAdjacency(routeGraph);
+
+    // Validate all node indices
+    for (var i = 0; i < nodeIndices.length; i++) {
+        if (nodeIndices[i] < 0 || nodeIndices[i] >= routeGraph.nodes.length) return;
+    }
+
+    // Set state and compute all segments
+    routeWaypoints = nodeIndices;
+    routeWeightMode = weight;
+    var weightRadio = document.querySelector('input[name="route-weight"][value="' + weight + '"]');
+    if (weightRadio) weightRadio.checked = true;
+
+    routeSegments = [];
+    for (var i = 0; i < routeWaypoints.length - 1; i++) {
+        var result = routeDijkstra(routeAdj, routeWaypoints[i], routeWaypoints[i + 1], routeWeightMode);
+        if (!result) return;
+        routeSegments.push(result);
+    }
+    buildCombinedRoute();
+    rebuildDeck();
+
+    // Set speed and auto-start animation
+    routeAnimSpeed = speed;
+    document.getElementById('replaySpeed').value = speed;
+    document.getElementById('route-clear-btn').style.display = '';
+
+    // Small delay to let deck.gl settle before starting camera animation
+    setTimeout(function() { toggleRouteAnim(); }, 500);
+}
+
 // ═══════════════════════════════════════════════════════
 //  DECK.GL REBUILD
 // ═══════════════════════════════════════════════════════
@@ -2418,6 +2559,9 @@ async function init() {
 
     // Load default area
     await switchArea('al_karama');
+
+    // Check URL for shared route and auto-play
+    await applyRouteFromURL();
 }
 
 // ═══════════════════════════════════════════════════════

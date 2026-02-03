@@ -34,8 +34,12 @@
         img { max-width: 100%; }
         .side-by-side { display: flex; gap: 10px; margin: 15px 0; }
         .side-by-side figure { flex: 1; margin: 0; }
-        .side-by-side img { width: 100%; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+        .side-by-side img { width: 100%; border-radius: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.15); cursor: pointer; transition: opacity 0.2s; }
+        .side-by-side img:hover { opacity: 0.85; }
         .side-by-side figcaption { text-align: center; font-size: 0.9em; color: #555; margin-top: 6px; }
+        .lightbox-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center; cursor: pointer; }
+        .lightbox-overlay.active { display: flex; }
+        .lightbox-overlay img { max-width: 90vw; max-height: 90vh; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
         .formula { background: #f5f5f5; padding: 10px 20px; border-radius: 6px; font-family: monospace; margin: 10px 0; }
     </style>
 </head>
@@ -805,6 +809,19 @@ out center;
     <p>Dubai experiences extreme heat in summer but mild, pleasant winters. Comparing the two seasons reveals how solar geometry, temperature, and vegetation change &mdash; and whether shade infrastructure designed for summer also benefits winter pedestrians. The analysis pipeline now supports a <code>--season</code> flag, and both the 3D and 2D viewers include a season dropdown to switch between datasets.</p>
     <p>In addition to comparing seasons within a single year, we now include <strong>Summer 2020</strong> and <strong>Winter 2020/21</strong> data, enabling a 5-year temporal comparison to observe how urban heat, vegetation, and built-up indices have changed over time. The viewer dropdown presents all four seasons: Summer 2020, Winter 2020/21, Summer 2025, and Winter 2025/26.</p>
 
+    <p>The Sentinel-2 true-colour images below show the same area (Al Karama, 10m resolution) five years apart. Each is the single clearest scene (lowest cloud cover) from the respective summer window. Click to enlarge.</p>
+
+    <div class="side-by-side">
+        <figure>
+            <img src="images/satellite_rgb_summer_2020_single.png" alt="Sentinel-2 RGB — 10 September 2020" onclick="openLightbox(this)">
+            <figcaption><strong>10 September 2020</strong> &mdash; Sentinel-2B, 0.16% cloud cover. 10m true-colour RGB.</figcaption>
+        </figure>
+        <figure>
+            <img src="images/satellite_rgb_summer_2025_single.png" alt="Sentinel-2 RGB — 11 June 2025" onclick="openLightbox(this)">
+            <figcaption><strong>11 June 2025</strong> &mdash; Sentinel-2C, 0.01% cloud cover. 10m true-colour RGB.</figcaption>
+        </figure>
+    </div>
+
     <h3>10.2 Solar Geometry</h3>
     <p>The most striking difference between seasons is the sun's path across the sky:</p>
 
@@ -865,11 +882,11 @@ out center;
 
     <div class="side-by-side">
         <figure>
-            <img src="images/summer_lst.png" alt="LST heatmap — Summer 2025">
+            <img src="images/summer_lst.png" alt="LST heatmap — Summer 2025" onclick="openLightbox(this)">
             <figcaption><strong>Summer 2025</strong> &mdash; LST range 35&ndash;55&deg;C. The district is dominated by red/orange, with hot-spots exceeding 54&deg;C in dense built-up areas. Cooler blue patches correspond to parks and irrigated vegetation.</figcaption>
         </figure>
         <figure>
-            <img src="images/winter_lst.png" alt="LST heatmap — Winter 2025/26">
+            <img src="images/winter_lst.png" alt="LST heatmap — Winter 2025/26" onclick="openLightbox(this)">
             <figcaption><strong>Winter 2025/26</strong> &mdash; LST range 21&ndash;33&deg;C. The same district appears far cooler, with widespread blue tones. Relative hot-spots still align with dense impervious surfaces, but at 21&deg;C lower than summer.</figcaption>
         </figure>
     </div>
@@ -879,11 +896,11 @@ out center;
 
     <div class="side-by-side">
         <figure>
-            <img src="images/summer_south_view.png" alt="3D viewer — Summer 2025, noon, south view">
+            <img src="images/summer_south_view.png" alt="3D viewer — Summer 2025, noon, south view" onclick="openLightbox(this)">
             <figcaption><strong>Summer 2025</strong> &mdash; Sun at 83.2&deg; altitude. Shadows fall almost directly beneath buildings; rooftops and facades are uniformly lit.</figcaption>
         </figure>
         <figure>
-            <img src="images/winter_south_view.png" alt="3D viewer — Winter 2025/26, noon, south view">
+            <img src="images/winter_south_view.png" alt="3D viewer — Winter 2025/26, noon, south view" onclick="openLightbox(this)">
             <figcaption><strong>Winter 2025/26</strong> &mdash; Sun at 43.2&deg; altitude. Long shadows extend northward from buildings, creating shaded streets between blocks.</figcaption>
         </figure>
     </div>
@@ -1177,6 +1194,24 @@ Building Height = Distance &times; tan(Angle) + Observer Height
 <div class="section" style="text-align: center; margin-top: 40px;">
     <p><a href="index.html">&larr; Back to Dashboard</a></p>
 </div>
+
+<!-- Lightbox overlay for clickable images -->
+<div class="lightbox-overlay" id="lightbox" onclick="closeLightbox()">
+    <img id="lightbox-img" src="" alt="">
+</div>
+<script>
+function openLightbox(img) {
+    var overlay = document.getElementById('lightbox');
+    document.getElementById('lightbox-img').src = img.src;
+    overlay.classList.add('active');
+}
+function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('active');
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeLightbox();
+});
+</script>
 
 </body>
 </html>

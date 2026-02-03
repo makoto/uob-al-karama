@@ -854,6 +854,17 @@ body {
   background: rgba(244, 67, 54, 0.1);
 }
 
+.replay-share {
+  border-color: #aaa;
+  color: #aaa;
+  font-size: 13px;
+}
+
+.replay-share:hover {
+  border-color: #4fc3f7;
+  color: #4fc3f7;
+}
+
 .replay-progress-slider {
   flex: 1;
   accent-color: #4fc3f7;
