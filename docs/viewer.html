@@ -293,6 +293,7 @@
         <option value="1" selected>1x</option>
         <option value="2">2x</option>
         <option value="4">4x</option>
+        <option value="8">8x</option>
     </select>
     <button class="replay-btn replay-exit" id="replayExitBtn" onclick="exitRouteReplay()">&#10005;</button>
 </div>
@@ -421,6 +422,8 @@ var routeAnimTotalDist = 0;
 var routeGraphColorMode = 'pci';
 var routePreAnimViewState = null;
 var routeAnimFrameId = null;
+var routeAnimLastUIUpdate = 0;
+var routeAnimSmoothedBearing = 0;
 
 // Pre-render emoji to data URLs for IconLayer
 var POI_ICON_SIZE = 64;
@@ -2056,6 +2059,11 @@ function toggleRouteAnim() {
             bearing: deckgl.props.initialViewState ? deckgl.props.initialViewState.bearing : -20
         };
 
+        // Initialize smoothed bearing from starting sample
+        var startIdx = Math.floor(routeAnimProgress * (routeAnimSamples.length - 1));
+        routeAnimSmoothedBearing = routeAnimSamples[startIdx][2];
+        routeAnimLastUIUpdate = 0;
+
         routeAnimStartTime = performance.now() - (routeAnimProgress * routeAnimTotalDist / 1.4 / routeAnimSpeed * 1000);
         document.getElementById('replayPlayBtn').classList.add('playing');
         document.getElementById('replayPlayBtn').innerHTML = '&#9646;&#9646;';
@@ -2085,38 +2093,59 @@ function routeAnimFrame(timestamp) {
 
     routeAnimProgress = Math.min(1, elapsed / totalTime);
 
-    var sampleIdx = Math.min(
-        Math.floor(routeAnimProgress * (routeAnimSamples.length - 1)),
-        routeAnimSamples.length - 1
-    );
-    var sample = routeAnimSamples[sampleIdx];
+    // Sub-sample interpolation for smooth movement
+    var fIdx = routeAnimProgress * (routeAnimSamples.length - 1);
+    var idx0 = Math.floor(fIdx);
+    var idx1 = Math.min(idx0 + 1, routeAnimSamples.length - 1);
+    var t = fIdx - idx0;
+    var s0 = routeAnimSamples[idx0];
+    var s1 = routeAnimSamples[idx1];
 
-    // Update camera
+    var lat = s0[0] + t * (s1[0] - s0[0]);
+    var lng = s0[1] + t * (s1[1] - s0[1]);
+
+    // Shortest-angle bearing interpolation
+    var b0 = s0[2], b1 = s1[2];
+    var db = b1 - b0;
+    if (db > 180) db -= 360;
+    if (db < -180) db += 360;
+    var rawBearing = b0 + t * db;
+
+    // Exponential smoothing on bearing to soften corner turns
+    var alpha = 0.15; // lower = smoother (0.1 very smooth, 0.3 responsive)
+    var bd = rawBearing - routeAnimSmoothedBearing;
+    if (bd > 180) bd -= 360;
+    if (bd < -180) bd += 360;
+    routeAnimSmoothedBearing += alpha * bd;
+
+    // Set camera directly — no transitions, rAF provides 60fps smoothness
     deckgl.setProps({
         initialViewState: {
-            longitude: sample[1],
-            latitude: sample[0],
+            longitude: lng,
+            latitude: lat,
             zoom: 18,
             pitch: 70,
-            bearing: sample[2],
-            transitionDuration: 80,
-            transitionInterpolator: new deck.LinearInterpolator(['longitude', 'latitude', 'bearing'])
+            bearing: routeAnimSmoothedBearing,
+            transitionDuration: 0
         }
     });
 
-    // Update UI
-    var currentDist = routeAnimProgress * routeAnimTotalDist;
-    document.getElementById('replayDist').textContent =
-        currentDist.toFixed(0) + 'm / ' + routeAnimTotalDist.toFixed(0) + 'm';
-    document.getElementById('replayProgress').value = Math.round(routeAnimProgress * 1000);
-
-    // Rebuild for animated marker
-    rebuildDeck();
+    // Throttle DOM + layer updates to ~4fps (every 250ms)
+    if (timestamp - routeAnimLastUIUpdate > 250) {
+        routeAnimLastUIUpdate = timestamp;
+        var currentDist = routeAnimProgress * routeAnimTotalDist;
+        document.getElementById('replayDist').textContent =
+            currentDist.toFixed(0) + 'm / ' + routeAnimTotalDist.toFixed(0) + 'm';
+        document.getElementById('replayProgress').value = Math.round(routeAnimProgress * 1000);
+        rebuildDeck();
+    }
 
     if (routeAnimProgress >= 1) {
         routeAnimPaused = true;
+        routeAnimating = false;
         document.getElementById('replayPlayBtn').classList.remove('playing');
         document.getElementById('replayPlayBtn').innerHTML = '&#9654;';
+        rebuildDeck();
         return;
     }
 
