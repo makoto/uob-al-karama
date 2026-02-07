@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Isochrone Analysis - Al Karama</title>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; }
+        #map { width: 100%; height: 100vh; }
+        .panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255,255,0.95);
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 1000;
+            max-width: 380px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .panel h2 { margin: 0 0 5px 0; color: #6a1b9a; }
+        .panel h3 { margin: 15px 0 8px 0; font-size: 14px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        .btn { padding: 8px 12px; margin: 3px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .btn-active { box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+        .btn-5 { background: #c8e6c9; }
+        .btn-10 { background: #81c784; color: white; }
+        .btn-15 { background: #388e3c; color: white; }
+        .btn-all { background: #6a1b9a; color: white; }
+        .btn:not(.btn-active) { opacity: 0.6; }
+        .legend { margin: 10px 0; }
+        .legend-item { display: flex; align-items: center; margin: 6px 0; font-size: 12px; }
+        .legend-color { width: 20px; height: 20px; margin-right: 10px; border-radius: 3px; border: 1px solid #999; }
+        .station-list { font-size: 12px; }
+        .station-item { padding: 6px 0; border-bottom: 1px solid #eee; }
+        .station-item:last-child { border-bottom: none; }
+        .metro { color: #d32f2f; }
+        .bus { color: #1976d2; }
+        .insight { background: #f3e5f5; padding: 10px; border-radius: 6px; font-size: 12px; margin: 10px 0; line-height: 1.5; }
+        .btn-basemap { background: #424242; color: white; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div class="panel">
+        <h2>Isochrone Analysis</h2>
+        <p style="color: #666; font-size: 12px;">Walking distance from transit stations</p>
+
+        <div class="insight">
+            <b>What are isochrones?</b><br>
+            Areas reachable within X minutes of walking. Shows transit accessibility - where people can easily walk to/from public transport.
+        </div>
+
+        <h3>Walk Time</h3>
+        <div>
+            <button class="btn btn-5" id="btn-5" onclick="showTime(5)">5 min</button>
+            <button class="btn btn-10" id="btn-10" onclick="showTime(10)">10 min</button>
+            <button class="btn btn-15" id="btn-15" onclick="showTime(15)">15 min</button>
+            <button class="btn btn-all btn-active" id="btn-all" onclick="showTime('all')">All</button>
+        </div>
+
+        <h3>Legend</h3>
+        <div class="legend">
+            <div class="legend-item"><div class="legend-color" style="background: rgba(200, 230, 201, 0.6);"></div> 5 min walk</div>
+            <div class="legend-item"><div class="legend-color" style="background: rgba(129, 199, 132, 0.6);"></div> 10 min walk</div>
+            <div class="legend-item"><div class="legend-color" style="background: rgba(56, 142, 60, 0.6);"></div> 15 min walk</div>
+            <div class="legend-item"><div class="legend-color" style="background: #d32f2f; border-radius: 50%;"></div> Metro station</div>
+            <div class="legend-item"><div class="legend-color" style="background: #1976d2; border-radius: 50%;"></div> Bus station</div>
+        </div>
+
+        <h3>Transit Type</h3>
+        <div>
+            <button class="btn btn-active" id="btn-metro" style="background: #d32f2f; color: white;" onclick="toggleTransit('metro')">Metro</button>
+            <button class="btn btn-active" id="btn-bus" style="background: #1976d2; color: white;" onclick="toggleTransit('bus')">Bus</button>
+        </div>
+
+        <h3>Transit Stations</h3>
+        <div class="station-list">
+            <div class="station-item"><span class="metro">ADCB Metro Station</span></div> <div class="station-item"><span class="metro">Burjuman Metro Station</span></div> <div class="station-item"><span class="metro">Oud Metha Metro Station</span></div> <div class="station-item"><span class="bus">Big Bus Stop 4</span></div> <div class="station-item"><span class="bus">Oud Metha Bus Station</span></div> <div class="station-item"><span class="bus">Al Karama Bus Station</span></div>
+        </div>
+
+        <h3>Background</h3>
+        <div>
+            <button class="btn btn-basemap btn-active" id="btn-basemap" onclick="toggleBasemap()">Basemap</button>
+        </div>
+
+        <h3>Insights</h3>
+        <div style="font-size: 11px; color: #666; line-height: 1.5;">
+            <p>• Areas outside all isochrones have poor transit accessibility</p>
+            <p>• Overlap zones are well-served by multiple stations</p>
+            <p>• Combine with comfort data to find "cool transit corridors"</p>
+        </div>
+    </div>
+
+    <script>
+        var map = L.map('map').setView([25.245, 55.303], 15);
+        var basemapLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(map);
+        var basemapOn = true;
+
+        function toggleBasemap() {
+            var btn = document.getElementById('btn-basemap');
+            if (basemapOn) {
+                map.removeLayer(basemapLayer);
+                btn.classList.remove('btn-active');
+                document.getElementById('map').style.background = '#1a1a2e';
+            } else {
+                basemapLayer.addTo(map);
+                btn.classList.add('btn-active');
+                document.getElementById('map').style.background = 'white';
+            }
+            basemapOn = !basemapOn;
+        }
+
+        var isochrones = [{"station": "ADCB Metro Station", "type": "metro", "time": 5, "coords": [[[25.2466028, 55.3000151], [25.2429613, 55.2988355], [25.2428967, 55.2988057], [25.241844, 55.2968686], [25.2417869, 55.2963668], [25.2425859, 55.295924], [25.2454944, 55.294732], [25.2463294, 55.2959352], [25.2472738, 55.299443], [25.2469546, 55.2998156], [25.2466028, 55.3000151]]], "area": 20.0}, {"station": "ADCB Metro Station", "type": "metro", "time": 10, "coords": [[[25.2392351, 55.2945737], [25.244787, 55.2914361], [25.2448697, 55.2914173], [25.2470834, 55.2921686], [25.2473012, 55.2922775], [25.2484227, 55.2947266], [25.2484488, 55.2948006], [25.2496892, 55.2994165], [25.2498674, 55.3012038], [25.2496474, 55.3013752], [25.2462379, 55.3027069], [25.2454761, 55.3028228], [25.2413727, 55.3014305], [25.2412204, 55.3013412], [25.241082, 55.30126], [25.2409496, 55.3009043], [25.2391174, 55.295164], [25.2392351, 55.2945737]]], "area": 95.9}, {"station": "ADCB Metro Station", "type": "metro", "time": 15, "coords": [[[25.2482059, 55.2895026], [25.2503997, 55.292471], [25.2519196, 55.2985446], [25.2529616, 55.3029197], [25.2506379, 55.3040145], [25.2496652, 55.3044378], [25.2448463, 55.3065319], [25.2446492, 55.3066136], [25.2410548, 55.3049001], [25.2387734, 55.302545], [25.2376071, 55.2994751], [25.2364923, 55.2941048], [25.2363785, 55.2927787], [25.2443645, 55.2887494], [25.2458751, 55.288934], [25.2482059, 55.2895026]]], "area": 231.6}, {"station": "Burjuman Metro Station", "type": "metro", "time": 5, "coords": [[[25.2527292, 55.3058137], [25.2523251, 55.3045686], [25.2521774, 55.3037817], [25.2524855, 55.3027775], [25.2525561, 55.3026659], [25.2562583, 55.3013443], [25.25733, 55.3055171], [25.2573115, 55.3061572], [25.2553364, 55.3068539], [25.2544324, 55.3070629], [25.253225, 55.3072286], [25.2527292, 55.3058137]]], "area": 24.0}, {"station": "Burjuman Metro Station", "type": "metro", "time": 10, "coords": [[[25.2520426, 55.3100806], [25.2519769, 55.31004], [25.2508932, 55.3092519], [25.2490773, 55.3012171], [25.2509327, 55.3002397], [25.2577498, 55.2982345], [25.258651, 55.3011915], [25.2595821, 55.3068725], [25.259713, 55.3087419], [25.2545924, 55.310016], [25.2524506, 55.3103182], [25.2523667, 55.3102788], [25.2520426, 55.3100806]]], "area": 104.8}, {"station": "Burjuman Metro Station", "type": "metro", "time": 15, "coords": [[[25.2593205, 55.2951865], [25.2595544, 55.2952831], [25.2599888, 55.297859], [25.2599926, 55.3021191], [25.2599982, 55.3091652], [25.2599182, 55.3097579], [25.256768, 55.3122896], [25.2497042, 55.3130484], [25.2493614, 55.3127884], [25.2481214, 55.3084914], [25.2469767, 55.3038345], [25.2464419, 55.300685], [25.2462606, 55.2993734], [25.256094, 55.2953639], [25.2593205, 55.2951865]]], "area": 217.1}, {"station": "Oud Metha Metro Station", "type": "metro", "time": 5, "coords": [[[25.2406317, 55.3166775], [25.243821, 55.3133639], [25.2453437, 55.3144801], [25.2461566, 55.3150907], [25.246513, 55.3154701], [25.2457672, 55.3172312], [25.2455038, 55.3175388], [25.2453934, 55.317585], [25.2429464, 55.3183469], [25.2408834, 55.3169441], [25.2406317, 55.3166775]]], "area": 18.7}, {"station": "Oud Metha Metro Station", "type": "metro", "time": 10, "coords": [[[25.2373378, 55.317102], [25.2374382, 55.316716], [25.2417782, 55.310886], [25.2422038, 55.3108317], [25.2434766, 55.3107368], [25.2488149, 55.3132757], [25.2494071, 55.3148425], [25.2468502, 55.3185949], [25.2453798, 55.3196782], [25.2452519, 55.3197593], [25.2445944, 55.3199952], [25.2409794, 55.3199571], [25.2405436, 55.3197631], [25.2391509, 55.3187321], [25.2374724, 55.3173624], [25.2373378, 55.317102]]], "area": 83.0}, {"station": "Oud Metha Metro Station", "type": "metro", "time": 15, "coords": [[[25.2343565, 55.317123], [25.2346755, 55.3164085], [25.2371501, 55.312495], [25.2397698, 55.3084434], [25.241554, 55.308807], [25.2502327, 55.3106526], [25.2509301, 55.3114194], [25.2496389, 55.3183136], [25.2476334, 55.3199534], [25.2445944, 55.3199952], [25.2398445, 55.3199921], [25.2359296, 55.319385], [25.2355436, 55.3191472], [25.2343477, 55.3178987], [25.2342581, 55.3177797], [25.2343565, 55.317123]]], "area": 160.4}, {"station": "Big Bus Stop 4", "type": "bus", "time": 5, "coords": [[[25.249849, 55.3010694], [25.2518837, 55.3008171], [25.2521624, 55.3009823], [25.2550925, 55.3032827], [25.2551397, 55.3034669], [25.2552337, 55.3041675], [25.25484, 55.3046527], [25.254459, 55.3047923], [25.2504992, 55.302852], [25.2498674, 55.3012038], [25.249849, 55.3010694]]], "area": 12.3}, {"station": "Big Bus Stop 4", "type": "bus", "time": 10, "coords": [[[25.2577195, 55.3059503], [25.2577069, 55.3060449], [25.2573933, 55.3064038], [25.2566042, 55.3067898], [25.2547848, 55.3072769], [25.2527664, 55.3077633], [25.2499386, 55.3061619], [25.2487952, 55.3053835], [25.2485442, 55.304916], [25.2481015, 55.3039357], [25.2479462, 55.3034402], [25.2469546, 55.2998156], [25.2468933, 55.2994553], [25.2469418, 55.2993654], [25.2485328, 55.2986721], [25.2494961, 55.2982842], [25.2504803, 55.2979613], [25.2522884, 55.2975887], [25.2568311, 55.3000454], [25.2569675, 55.3002686], [25.2576363, 55.3049827], [25.2577195, 55.3059503]]], "area": 88.1}, {"station": "Big Bus Stop 4", "type": "bus", "time": 15, "coords": [[[25.2539206, 55.2948023], [25.258279, 55.2969015], [25.2587372, 55.2979931], [25.2590628, 55.2992363], [25.259234, 55.2999434], [25.2596406, 55.302106], [25.2598531, 55.3036052], [25.2599431, 55.309091], [25.2597301, 55.3091459], [25.2557211, 55.3099356], [25.2514801, 55.3105617], [25.2475383, 55.3081956], [25.2456863, 55.3045262], [25.2455926, 55.3043143], [25.2454107, 55.3036406], [25.2446087, 55.3003407], [25.2442017, 55.2977273], [25.2447655, 55.2973407], [25.2502567, 55.2952742], [25.2520226, 55.2949383], [25.2539206, 55.2948023]]], "area": 215.3}, {"station": "Oud Metha Bus Station", "type": "bus", "time": 5, "coords": [[[25.242865, 55.3118361], [25.2430363, 55.3113724], [25.2447672, 55.3116581], [25.2469304, 55.3136716], [25.2461566, 55.3150907], [25.2444773, 55.3162067], [25.2440417, 55.3159681], [25.2428574, 55.3119148], [25.242865, 55.3118361]]], "area": 12.9}, {"station": "Oud Metha Bus Station", "type": "bus", "time": 10, "coords": [[[25.245747, 55.318839], [25.2455182, 55.3189456], [25.2454003, 55.3189357], [25.2429038, 55.3181096], [25.2424688, 55.3179592], [25.2407833, 55.316657], [25.2400631, 55.3119274], [25.2402504, 55.3102556], [25.240493, 55.3090597], [25.241554, 55.308807], [25.2493614, 55.3127884], [25.2497135, 55.3149051], [25.245747, 55.318839]]], "area": 71.4}, {"station": "Oud Metha Bus Station", "type": "bus", "time": 15, "coords": [[[25.2514801, 55.3105617], [25.2496389, 55.3183136], [25.2490451, 55.318919], [25.246853, 55.3196827], [25.2445944, 55.3199952], [25.241116, 55.3199577], [25.239485, 55.3188473], [25.2375474, 55.3171916], [25.237487, 55.3170845], [25.2374655, 55.3169312], [25.2374482, 55.3168005], [25.2374382, 55.316716], [25.2368944, 55.3117957], [25.237215, 55.3099129], [25.2377157, 55.307415], [25.2378807, 55.306787], [25.2391351, 55.306833], [25.244292, 55.3083007], [25.2514801, 55.3105617]]], "area": 163.0}, {"station": "Al Karama Bus Station", "type": "bus", "time": 5, "coords": [[[25.2395385, 55.3009483], [25.2399622, 55.3015792], [25.2402044, 55.302388], [25.2402568, 55.3026031], [25.2395854, 55.3042464], [25.2380304, 55.3051708], [25.2379304, 55.305141], [25.2363234, 55.3046055], [25.2358546, 55.3035253], [25.2361461, 55.3029831], [25.2370646, 55.3013328], [25.2385829, 55.3008151], [25.2392613, 55.3008212], [25.2395385, 55.3009483]]], "area": 14.9}, {"station": "Al Karama Bus Station", "type": "bus", "time": 10, "coords": [[[25.2377816, 55.2997202], [25.2381067, 55.2991135], [25.2390013, 55.2984121], [25.2411539, 55.2980419], [25.2413133, 55.2981352], [25.2418783, 55.2992731], [25.2432817, 55.3028913], [25.2433586, 55.3031611], [25.2435016, 55.3048005], [25.2422679, 55.3056681], [25.2398835, 55.3067905], [25.2386782, 55.3064317], [25.2363234, 55.3046055], [25.2358546, 55.3035253], [25.2375149, 55.3002201], [25.2377369, 55.2998038], [25.2377816, 55.2997202]]], "area": 50.1}, {"station": "Al Karama Bus Station", "type": "bus", "time": 15, "coords": [[[25.2351117, 55.2991557], [25.2355788, 55.2974757], [25.2363002, 55.2968893], [25.2400563, 55.2952252], [25.2433506, 55.2972289], [25.2437172, 55.2978863], [25.2456478, 55.3021779], [25.2463923, 55.3046821], [25.2457571, 55.3063008], [25.244551, 55.3073549], [25.242009, 55.3090111], [25.2396756, 55.3093411], [25.2372696, 55.3091145], [25.2353667, 55.3071305], [25.2350154, 55.3008644], [25.2349886, 55.2998621], [25.2350306, 55.2996144], [25.2351117, 55.2991557]]], "area": 135.5}];
+        var stations = [{"name": "ADCB Metro Station", "lat": 25.2445, "lon": 55.2981, "type": "metro"}, {"name": "Burjuman Metro Station", "lat": 25.2547, "lon": 55.3043, "type": "metro"}, {"name": "Oud Metha Metro Station", "lat": 25.2436, "lon": 55.316, "type": "metro"}, {"name": "Big Bus Stop 4", "lat": 25.25228, "lon": 55.302412, "type": "bus"}, {"name": "Oud Metha Bus Station", "lat": 25.244543, "lon": 55.313219, "type": "bus"}, {"name": "Al Karama Bus Station", "lat": 25.237757, "lon": 55.303022, "type": "bus"}];
+
+        var timeColors = {
+            5: 'rgba(200, 230, 201, 0.6)',
+            10: 'rgba(129, 199, 132, 0.6)',
+            15: 'rgba(56, 142, 60, 0.6)'
+        };
+
+        var timeLayers = {
+            metro: { 5: L.layerGroup(), 10: L.layerGroup(), 15: L.layerGroup() },
+            bus: { 5: L.layerGroup(), 10: L.layerGroup(), 15: L.layerGroup() }
+        };
+        var stationLayers = {
+            metro: L.layerGroup(),
+            bus: L.layerGroup()
+        };
+        var transitVisible = { metro: true, bus: true };
+
+        // Add isochrones
+        isochrones.forEach(function(iso) {
+            var popup = '<b>' + iso.station + '</b><br>' +
+                       iso.time + ' min walk<br>' +
+                       'Area: ' + iso.area + ' ha';
+
+            iso.coords.forEach(function(ring) {
+                L.polygon(ring, {
+                    color: iso.time === 5 ? '#a5d6a7' : (iso.time === 10 ? '#66bb6a' : '#2e7d32'),
+                    weight: 2,
+                    fillColor: timeColors[iso.time],
+                    fillOpacity: 0.5
+                }).bindPopup(popup).addTo(timeLayers[iso.type][iso.time]);
+            });
+        });
+
+        // Add station markers
+        stations.forEach(function(s) {
+            var color = s.type === 'metro' ? '#d32f2f' : '#1976d2';
+            L.circleMarker([s.lat, s.lon], {
+                radius: 10,
+                fillColor: color,
+                color: 'white',
+                weight: 3,
+                fillOpacity: 1
+            }).bindPopup('<b>' + s.name + '</b><br>' + s.type.toUpperCase()).addTo(stationLayers[s.type]);
+        });
+
+        // Add all layers initially
+        ['metro', 'bus'].forEach(function(type) {
+            [5, 10, 15].forEach(function(t) { timeLayers[type][t].addTo(map); });
+            stationLayers[type].addTo(map);
+        });
+
+        var currentTime = 'all';
+
+        function showTime(time) {
+            // Remove all time layers
+            ['metro', 'bus'].forEach(function(type) {
+                [5, 10, 15].forEach(function(t) { map.removeLayer(timeLayers[type][t]); });
+            });
+
+            // Update buttons
+            ['5', '10', '15', 'all'].forEach(function(t) {
+                document.getElementById('btn-' + t).classList.remove('btn-active');
+            });
+            document.getElementById('btn-' + time).classList.add('btn-active');
+
+            // Add selected layers for visible transit types
+            ['metro', 'bus'].forEach(function(type) {
+                if (transitVisible[type]) {
+                    if (time === 'all') {
+                        [5, 10, 15].forEach(function(t) { timeLayers[type][t].addTo(map); });
+                    } else {
+                        timeLayers[type][time].addTo(map);
+                    }
+                }
+            });
+
+            currentTime = time;
+        }
+
+        function toggleTransit(type) {
+            var btn = document.getElementById('btn-' + type);
+            if (transitVisible[type]) {
+                // Hide this transit type
+                [5, 10, 15].forEach(function(t) { map.removeLayer(timeLayers[type][t]); });
+                map.removeLayer(stationLayers[type]);
+                btn.classList.remove('btn-active');
+                btn.style.opacity = '0.4';
+            } else {
+                // Show this transit type
+                if (currentTime === 'all') {
+                    [5, 10, 15].forEach(function(t) { timeLayers[type][t].addTo(map); });
+                } else {
+                    timeLayers[type][currentTime].addTo(map);
+                }
+                stationLayers[type].addTo(map);
+                btn.classList.add('btn-active');
+                btn.style.opacity = '1';
+            }
+            transitVisible[type] = !transitVisible[type];
+        }
+    </script>
+</body>
+</html>
