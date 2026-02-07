@@ -31,6 +31,9 @@
         .btn { padding: 8px 12px; margin: 3px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; }
         .btn-active { background: #d32f2f; color: white; }
         .btn:not(.btn-active) { background: #e0e0e0; }
+        .btn-basemap { background: #424242; color: white; }
+        .btn-basemap.btn-active { background: #424242; color: white; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+        .btn-basemap:not(.btn-active) { background: #9e9e9e; color: white; }
         .insight { background: #fff3e0; padding: 10px; border-radius: 6px; font-size: 12px; margin: 10px 0; line-height: 1.5; }
         .metric-desc { font-size: 11px; color: #666; margin: 5px 0 10px 0; line-height: 1.4; }
     </style>
@@ -80,6 +83,11 @@
             <div class="legend-item"><div class="legend-color" style="background: #9c27b0;"></div> Overrated by standard</div>
         </div>
 
+        <h3>Background</h3>
+        <div>
+            <button class="btn btn-basemap btn-active" id="btn-basemap" onclick="toggleBasemap()">Basemap</button>
+        </div>
+
         <h3>Show POIs</h3>
         <div>
             <button class="btn" id="btn-origins" onclick="toggleMarkers('origins')">Origins (121)</button>
@@ -87,16 +95,24 @@
         </div>
 
         <h3>Statistics</h3>
-        <div class="stats">
+
             <div class="stat-row"><span>Total paths analyzed:</span><span>24,403</span></div>
             <div class="stat-row"><span>Edges with OD traffic:</span><span>2,177</span></div>
             <div class="stat-row"><span>Max OD betweenness:</span><span>3550.3</span></div>
+        </div>
+
+        <div>
+
+        
+
         </div>
     </div>
 
     <script>
         var map = L.map('map').setView([25.2425, 55.3025], 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        var basemapLayer = null;
+        var basemapOn = true;
+        basemapLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap'
         }).addTo(map);
 
@@ -175,6 +191,20 @@
             std: { title: 'Standard Betweenness', desc: 'Traditional graph centrality - how often a street lies on shortest paths between ALL node pairs equally.' },
             diff: { title: 'Difference View', desc: 'Green = underrated by standard analysis (high actual traffic). Purple = overrated (theoretical but not used).' }
         };
+
+        function toggleBasemap() {
+            var btn = document.getElementById('btn-basemap');
+            if (basemapOn) {
+                map.removeLayer(basemapLayer);
+                btn.classList.remove('btn-active');
+                document.getElementById('map').style.background = '#ffffff';
+            } else {
+                basemapLayer.addTo(map);
+                btn.classList.add('btn-active');
+                document.getElementById('map').style.background = 'white';
+            }
+            basemapOn = !basemapOn;
+        }
 
         function showMetric(name) {
             map.removeLayer(layers[currentMetric]);
