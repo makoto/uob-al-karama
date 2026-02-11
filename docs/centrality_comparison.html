@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Centrality Comparison: Bounding Box vs Strict Boundary</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        #map { position: absolute; top: 0; left: 0; right: 360px; bottom: 0; }
+        #panel {
+            position: absolute; top: 0; right: 0; width: 360px; bottom: 0;
+            background: #1a1a2e; color: #eee; padding: 20px;
+            overflow-y: auto;
+        }
+        h1 { font-size: 18px; margin-bottom: 10px; color: #fff; }
+        h2 { font-size: 14px; margin: 20px 0 10px; color: #aaa; border-bottom: 1px solid #333; padding-bottom: 5px; }
+        p { font-size: 13px; line-height: 1.5; color: #bbb; margin-bottom: 10px; }
+        .legend-item { display: flex; align-items: center; margin: 6px 0; font-size: 12px; }
+        .legend-color { width: 30px; height: 4px; margin-right: 10px; border-radius: 2px; }
+        .stat-box { background: #252540; border-radius: 8px; padding: 12px; margin: 10px 0; }
+        .stat-label { font-size: 11px; color: #888; }
+        .stat-value { font-size: 18px; font-weight: bold; color: #fff; }
+        .stat-row { display: flex; justify-content: space-between; gap: 10px; }
+        .stat-item { text-align: center; flex: 1; }
+        .back-link { display: inline-block; margin-bottom: 15px; color: #4fc3f7; text-decoration: none; font-size: 13px; }
+        .back-link:hover { text-decoration: underline; }
+        .insight { background: #2a2a4a; border-left: 3px solid #4fc3f7; padding: 10px; margin: 10px 0; font-size: 12px; line-height: 1.5; }
+        select {
+            width: 100%; padding: 10px; font-size: 14px;
+            background: #252540; color: #fff; border: 1px solid #444;
+            border-radius: 6px; cursor: pointer; margin-bottom: 15px;
+        }
+        select:focus { outline: none; border-color: #4fc3f7; }
+        .metric-stats { font-size: 12px; margin-top: 10px; }
+        .metric-stats td { padding: 4px 8px; }
+        .metric-stats .label { color: #888; }
+        .metric-stats .value { color: #fff; font-weight: bold; text-align: right; }
+        .pct-bar { height: 6px; background: #333; border-radius: 3px; margin-top: 4px; overflow: hidden; }
+        .pct-fill { height: 100%; border-radius: 3px; }
+    </style>
+</head>
+<body>
+<div id="map"></div>
+<div id="panel">
+    <a href="viewer_2d.html" class="back-link">&larr; Back to 2D Viewer</a>
+    <h1>Centrality Comparison</h1>
+    <p>Compare how street importance changes between <b>strict Al Karama boundary</b> and <b>expanded bounding box</b>.</p>
+
+    <h2>Select Metric</h2>
+    <select id="metricSelect" onchange="updateMetric()">
+        <option value="betweenness">Betweenness Centrality</option>
+        <option value="closeness">Closeness (Global Integration)</option>
+        <option value="local_int">Local Integration (3-step)</option>
+        <option value="degree">Degree Centrality</option>
+    </select>
+
+    <div id="metricDescription"></div>
+
+    <h2>Legend</h2>
+    <p style="font-size:11px;color:#888;margin-bottom:8px;">Streets inside Al Karama (compared):</p>
+    <div class="legend-item"><div class="legend-color" style="background:#1565c0"></div> Much higher in strict (+0.1+)</div>
+    <div class="legend-item"><div class="legend-color" style="background:#64b5f6"></div> Higher in strict (+0.05 to +0.1)</div>
+    <div class="legend-item"><div class="legend-color" style="background:#9e9e9e"></div> Similar (&plusmn;0.05)</div>
+    <div class="legend-item"><div class="legend-color" style="background:#ffb74d"></div> Higher in bbox (-0.05 to -0.1)</div>
+    <div class="legend-item"><div class="legend-color" style="background:#e65100"></div> Much higher in bbox (-0.1+)</div>
+    <p style="font-size:11px;color:#888;margin:12px 0 8px;">External network (bbox betweenness):</p>
+    <div class="legend-item"><div class="legend-color" style="background:#e040fb"></div> Very high (&gt;0.3)</div>
+    <div class="legend-item"><div class="legend-color" style="background:#ab47bc"></div> High (0.1-0.3)</div>
+    <div class="legend-item"><div class="legend-color" style="background:#7e57c2"></div> Medium (0.03-0.1)</div>
+    <div class="legend-item"><div class="legend-color" style="background:#5c6bc0"></div> Low (0.01-0.03)</div>
+    <div class="legend-item"><div class="legend-color" style="background:#455a64"></div> Very low (&lt;0.01)</div>
+    <p style="font-size:11px;color:#888;margin:12px 0 8px;">Boundaries:</p>
+    <div class="legend-item"><div class="legend-color" style="background:#4fc3f7;height:2px;"></div> Al Karama boundary (dashed cyan)</div>
+    <div class="legend-item"><div class="legend-color" style="background:#ff9800;height:2px;"></div> Bounding box (dashed orange)</div>
+
+    <h2>Distribution</h2>
+    <div id="distribution"></div>
+
+    <h2>Key Insights</h2>
+    <div id="insights"></div>
+
+    <h2>Network Stats</h2>
+    <div class="stat-box">
+        <div class="stat-row">
+            <div class="stat-item">
+                <div class="stat-label">Bounding Box</div>
+                <div class="stat-value">3,856</div>
+                <div class="stat-label">nodes</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Strict Boundary</div>
+                <div class="stat-value">1,221</div>
+                <div class="stat-label">nodes</div>
+            </div>
+        </div>
+    </div>
+    <div class="stat-box">
+        <div class="stat-row">
+            <div class="stat-item">
+                <div class="stat-label">External Streets</div>
+                <div class="stat-value" style="color:#666;">3,855</div>
+                <div class="stat-label">edges (gray)</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Compared Streets</div>
+                <div class="stat-value" style="color:#64b5f6;">1,774</div>
+                <div class="stat-label">edges (colored)</div>
+            </div>
+        </div>
+    </div>
+    <p style="font-size:11px;color:#666;margin-top:10px;">
+        The gray external streets are included in bounding box analysis but excluded from strict boundary analysis. They affect centrality values of Al Karama streets by providing alternative routes.
+    </p>
+</div>
+
+<script>
+// Center on bbox center, zoom out to see full area
+var map = L.map('map').setView([25.2425, 55.3025], 14);
+
+// Create custom panes for proper layer ordering
+map.createPane('externalPane');
+map.getPane('externalPane').style.zIndex = 410;
+map.createPane('comparisonPane');
+map.getPane('comparisonPane').style.zIndex = 420;
+map.createPane('boundaryPane');
+map.getPane('boundaryPane').style.zIndex = 430;
+
+// Add tile layer first (base)
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19
+}).addTo(map);
+
+// Draw bounding box rectangle
+var bboxBounds = [[25.230, 55.290], [25.255, 55.315]];
+L.rectangle(bboxBounds, {
+    color: '#ff9800',
+    weight: 2,
+    fill: false,
+    dashArray: '10,5',
+    opacity: 0.7
+}).addTo(map).bindPopup('<b>Bounding Box</b><br>Area used for expanded network analysis');
+
+var externalLayer = null;
+var externalData = null;
+var boundaryLayer = null;
+var comparisonLayer = null;
+var comparisonData = null;
+
+// Map metric names to external data property names
+var metricToExtProp = {
+    'betweenness': 'betweenness',
+    'closeness': 'closeness',
+    'local_int': 'local_int',
+    'degree': 'degree'
+};
+
+// Load all data and add in correct order
+async function loadAllLayers() {
+    try {
+        // 1. Load external streets data (will be rendered after metric is set)
+        console.log('Loading external streets...');
+        var extResp = await fetch('data/al_karama/external_streets.json');
+        externalData = await extResp.json();
+        console.log('External streets loaded:', externalData.features.length);
+
+        // 2. Load comparison data (will be added on top)
+        console.log('Loading comparison data...');
+        var compResp = await fetch('data/al_karama/centrality_comparison_full.json');
+        comparisonData = await compResp.json();
+        console.log('Comparison data loaded:', comparisonData.features.length);
+
+        // 3. Load boundary (on top)
+        var boundResp = await fetch('data/al_karama/boundary.geojson');
+        var boundData = await boundResp.json();
+        boundaryLayer = L.geoJSON(boundData, {
+            pane: 'boundaryPane',
+            style: { color: '#4fc3f7', weight: 3, fill: false, dashArray: '8,6' }
+        }).addTo(map);
+
+        // 4. Render comparison layer
+        updateMetric();
+
+    } catch (err) {
+        console.error('Error loading layers:', err);
+    }
+}
+
+// Start loading
+loadAllLayers();
+
+var currentMetric = 'betweenness';
+
+var metricInfo = {
+    betweenness: {
+        name: 'Betweenness Centrality',
+        description: 'Measures how often a street lies on shortest paths between all pairs of locations. High betweenness = main corridor.',
+        insight: '<b>40% of streets</b> have higher betweenness in the strict boundary. These are key <b>internal circulation routes</b> within Al Karama that become more prominent when external through-traffic is excluded.'
+    },
+    closeness: {
+        name: 'Closeness (Global Integration)',
+        description: 'Measures how close/accessible a street is to all other streets. High closeness = central, well-connected location.',
+        insight: '<b>70% of streets</b> have higher closeness in the bounding box! This is because the bbox includes more destinations. In the strict boundary, <b>edge streets lose accessibility</b> since they can no longer connect to external areas.'
+    },
+    local_int: {
+        name: 'Local Integration (3-step)',
+        description: 'Closeness within a 3-step walking radius. Measures local accessibility regardless of global network structure.',
+        insight: '<b>45% of streets</b> have higher local integration in the strict boundary. Local metrics are <b>more stable</b> across boundary changes since they only consider nearby connections.'
+    },
+    degree: {
+        name: 'Degree Centrality',
+        description: 'Simply counts the number of direct connections (intersections). High degree = well-connected intersection.',
+        insight: '<b>84% of streets</b> have similar degree in both networks. Degree is a <b>purely local measure</b> - it only depends on immediate connections, not the broader network structure.'
+    }
+};
+
+// Color scale for external streets by betweenness (purple gradient)
+function getExternalColor(betNorm) {
+    // Purple gradient: low = dark purple, high = bright magenta
+    if (betNorm > 0.3) return '#e040fb';   // bright magenta - very high
+    if (betNorm > 0.1) return '#ab47bc';   // purple - high
+    if (betNorm > 0.03) return '#7e57c2';  // medium purple
+    if (betNorm > 0.01) return '#5c6bc0';  // blue-purple - low
+    return '#455a64';                       // dark gray - very low
+}
+
+function getExternalWeight(betNorm) {
+    if (betNorm > 0.3) return 4;
+    if (betNorm > 0.1) return 3;
+    if (betNorm > 0.03) return 2.5;
+    return 2;
+}
+
+function getColor(diff) {
+    if (diff > 0.1) return '#1565c0';
+    if (diff > 0.05) return '#64b5f6';
+    if (diff < -0.1) return '#e65100';
+    if (diff < -0.05) return '#ffb74d';
+    return '#9e9e9e';
+}
+
+function getWeight(diff) {
+    var absDiff = Math.abs(diff);
+    if (absDiff > 0.1) return 5;
+    if (absDiff > 0.05) return 3;
+    return 2;
+}
+
+function updateMetric() {
+    currentMetric = document.getElementById('metricSelect').value;
+
+    // Update description
+    var info = metricInfo[currentMetric];
+    document.getElementById('metricDescription').innerHTML =
+        '<div class="insight" style="border-color:#888;">' + info.description + '</div>';
+
+    // Update insights
+    document.getElementById('insights').innerHTML =
+        '<div class="insight">' + info.insight + '</div>';
+
+    // Update map layers
+    if (externalData) {
+        renderExternalLayer();
+    }
+    if (comparisonData) {
+        renderLayer();
+        updateDistribution();
+    }
+}
+
+function renderExternalLayer() {
+    if (externalLayer) {
+        map.removeLayer(externalLayer);
+    }
+
+    var extProp = metricToExtProp[currentMetric];
+
+    externalLayer = L.geoJSON(externalData, {
+        pane: 'externalPane',
+        style: function(feature) {
+            var val = feature.properties[extProp] || 0;
+            return {
+                color: getExternalColor(val),
+                weight: getExternalWeight(val),
+                opacity: 0.7
+            };
+        },
+        onEachFeature: function(feature, layer) {
+            var p = feature.properties;
+            var extPropVal = p[extProp] || 0;
+            layer.bindPopup(
+                '<b>External Street</b><br>' +
+                '<i>Outside Al Karama boundary</i><br>' +
+                'Included in bounding box analysis only<br>' +
+                '<b>' + metricInfo[currentMetric].name + ':</b> ' + extPropVal.toFixed(4) + ' (normalized)<br>' +
+                'Length: ' + (p.length || 0).toFixed(1) + 'm'
+            );
+        }
+    }).addTo(map);
+}
+
+function updateDistribution() {
+    var diffKey = currentMetric + '_diff';
+    var diffs = comparisonData.features.map(f => f.properties[diffKey]);
+
+    var higherStrict = diffs.filter(d => d > 0.05).length;
+    var similar = diffs.filter(d => d >= -0.05 && d <= 0.05).length;
+    var higherBbox = diffs.filter(d => d < -0.05).length;
+    var total = diffs.length;
+
+    var pctStrict = (higherStrict / total * 100).toFixed(1);
+    var pctSimilar = (similar / total * 100).toFixed(1);
+    var pctBbox = (higherBbox / total * 100).toFixed(1);
+
+    document.getElementById('distribution').innerHTML =
+        '<div style="margin:8px 0;">' +
+        '  <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:2px;">' +
+        '    <span style="color:#64b5f6;">Higher strict: ' + pctStrict + '%</span>' +
+        '    <span style="color:#9e9e9e;">Similar: ' + pctSimilar + '%</span>' +
+        '    <span style="color:#ffb74d;">Higher bbox: ' + pctBbox + '%</span>' +
+        '  </div>' +
+        '  <div class="pct-bar">' +
+        '    <div style="display:flex;height:100%;">' +
+        '      <div class="pct-fill" style="width:' + pctStrict + '%;background:#64b5f6;"></div>' +
+        '      <div class="pct-fill" style="width:' + pctSimilar + '%;background:#9e9e9e;"></div>' +
+        '      <div class="pct-fill" style="width:' + pctBbox + '%;background:#ffb74d;"></div>' +
+        '    </div>' +
+        '  </div>' +
+        '</div>';
+}
+
+function renderLayer() {
+    if (comparisonLayer) {
+        map.removeLayer(comparisonLayer);
+    }
+
+    var diffKey = currentMetric + '_diff';
+    var bboxKey = currentMetric + '_bbox';
+    var strictKey = currentMetric + '_strict';
+
+    comparisonLayer = L.geoJSON(comparisonData, {
+        pane: 'comparisonPane',
+        style: function(feature) {
+            var diff = feature.properties[diffKey];
+            return {
+                color: getColor(diff),
+                weight: getWeight(diff),
+                opacity: 0.9
+            };
+        },
+        onEachFeature: function(feature, layer) {
+            var p = feature.properties;
+            var diff = p[diffKey];
+            var diffStr = diff > 0 ? '+' + diff.toFixed(4) : diff.toFixed(4);
+            var changeText = diff > 0.05 ? 'More important in strict boundary' :
+                             diff < -0.05 ? 'More important in bounding box' : 'Similar importance';
+            layer.bindPopup(
+                '<b>' + metricInfo[currentMetric].name + '</b><br>' +
+                '<b>Bounding box:</b> ' + p[bboxKey].toFixed(4) + '<br>' +
+                '<b>Strict boundary:</b> ' + p[strictKey].toFixed(4) + '<br>' +
+                '<b>Difference:</b> ' + diffStr + '<br>' +
+                '<i>' + changeText + '</i>'
+            );
+        }
+    }).addTo(map);
+}
+
+</script>
+</body>
+</html>
