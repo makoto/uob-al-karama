@@ -1,0 +1,15 @@
+# Al Karama Materials
+
+newmtl building
+Kd 0.780 0.780 0.780
+Ka 0.156 0.156 0.156
+Ks 0.1 0.1 0.1
+Ns 10
+d 1.0
+
+newmtl canopy
+Kd 0.130 0.550 0.130
+Ka 0.026 0.110 0.026
+Ks 0.1 0.1 0.1
+Ns 10
+d 1.0
