@@ -129,7 +129,7 @@
                     </div>
                     <div class="layer-row">
                         <input type="checkbox" class="layer-toggle" id="tog-green-access" onchange="onLayerToggle('green-access')">
-                        <label class="layer-label" for="tog-green-access">Green Space Access<span class="seasonal-badge">seasonal</span></label>
+                        <label class="layer-label" for="tog-green-access">Green Space Access</label>
                         <span class="layer-info-btn" onclick="showInfoPopover(event,'green-access')">i</span>
                         <span class="layer-loading" id="load-green-access" style="display:none"></span>
                     </div>
@@ -143,6 +143,18 @@
                         <label><input type="radio" name="change5yr-metric" value="d_lst" checked onchange="setChange5yrMetric('d_lst')"> &Delta;LST</label>
                         <label><input type="radio" name="change5yr-metric" value="d_ndvi" onchange="setChange5yrMetric('d_ndvi')"> &Delta;NDVI</label>
                         <label><input type="radio" name="change5yr-metric" value="d_ndbi" onchange="setChange5yrMetric('d_ndbi')"> &Delta;NDBI</label>
+                    </div>
+                    <div class="layer-row">
+                        <input type="checkbox" class="layer-toggle" id="tog-changeSeasonal" onchange="onLayerToggle('changeSeasonal')">
+                        <label class="layer-label" for="tog-changeSeasonal">Seasonal Change (Summer&rarr;Winter)</label>
+                        <span class="layer-info-btn" onclick="showInfoPopover(event,'changeSeasonal')">i</span>
+                        <span class="layer-loading" id="load-changeSeasonal" style="display:none"></span>
+                    </div>
+                    <div class="layer-options" id="opt-changeSeasonal" style="display:none">
+                        <label><input type="radio" name="changeSeasonal-metric" value="d_lst" checked onchange="setChangeSeasonalMetric('d_lst')"> &Delta;LST</label>
+                        <label><input type="radio" name="changeSeasonal-metric" value="d_ndvi" onchange="setChangeSeasonalMetric('d_ndvi')"> &Delta;NDVI</label>
+                        <label><input type="radio" name="changeSeasonal-metric" value="d_ndbi" onchange="setChangeSeasonalMetric('d_ndbi')"> &Delta;NDBI</label>
+                        <label><input type="radio" name="changeSeasonal-metric" value="d_priority" onchange="setChangeSeasonalMetric('d_priority')"> &Delta;Priority</label>
                     </div>
                 </div>
             </div>
@@ -352,7 +364,7 @@ var layerState = {
     'gpu-shadows': true, 'building-shadows': true, 'tree-shadows': true,
     'street-shade': false,
     priority: false, combined: false, clusters: false, 'green-access': false,
-    change5yr: false,
+    change5yr: false, changeSeasonal: false,
     centrality: false, comfort: false,
     'route-graph': false,
     pois: false
@@ -362,9 +374,10 @@ var layerState = {
 var buildingColorMode = 'default';   // 'default' | 'height' | 'usage'
 var streetMode = 'shade';            // 'shade' | 'neutral'
 var combinedMetric = 'lst';          // 'lst' | 'gvi' | 'svf'
-var lstMin = 46, lstMax = 53;        // dynamic LST range for combined layer
+var lstMin = 20, lstMax = 56;        // GLOBAL LST range across all seasons (20-56°C)
 var centralityMetric = 'betweenness'; // 'betweenness' | 'closeness'
 var change5yrMetric = 'd_lst';       // 'd_lst' | 'd_ndvi' | 'd_ndbi'
+var changeSeasonalMetric = 'd_lst';  // 'd_lst' | 'd_ndvi' | 'd_ndbi' | 'd_priority'
 
 // Time
 var TIMES = [6, 8, 10, 12, 14, 16, 18];
@@ -585,6 +598,12 @@ async function onLayerToggle(key) {
         if (ch5Opt) ch5Opt.style.display = cb.checked ? '' : 'none';
     }
 
+    // Show changeSeasonal options
+    if (key === 'changeSeasonal') {
+        var chsOpt = document.getElementById('opt-changeSeasonal');
+        if (chsOpt) chsOpt.style.display = cb.checked ? '' : 'none';
+    }
+
     // Lazy-load data if needed
     if (cb.checked) {
         await ensureDataLoaded(key);
@@ -610,7 +629,8 @@ async function ensureDataLoaded(key) {
         'comfort': 'segment_comfort',
         'route-graph': 'route_graph',
         'pois': 'pois',
-        'change5yr': 'change_summer_5yr'
+        'change5yr': 'change_summer_5yr',
+        'changeSeasonal': 'change_seasonal'
     };
 
     var dataKey = dataKeyMap[key];
@@ -649,6 +669,7 @@ function setStreetMode(mode) { streetMode = mode; rebuildDeck(); }
 function setCombinedMetric(m) { combinedMetric = m; rebuildDeck(); updateLegend(); }
 function setCentralityMetric(m) { centralityMetric = m; rebuildDeck(); updateLegend(); }
 function setChange5yrMetric(m) { change5yrMetric = m; rebuildDeck(); updateLegend(); }
+function setChangeSeasonalMetric(m) { changeSeasonalMetric = m; rebuildDeck(); updateLegend(); }
 function setRouteGraphColor(m) { routeGraphColorMode = m; rebuildDeck(); updateLegend(); }
 
 // ═══════════════════════════════════════════════════════
@@ -808,6 +829,29 @@ function changeNDBIColor(v) {
     return [Math.round(c1[0]+(c2[0]-c1[0])*t), Math.round(c1[1]+(c2[1]-c1[1])*t), Math.round(c1[2]+(c2[2]-c1[2])*t), a];
 }
 
+// Diverging color functions for Seasonal Change (Summer → Winter)
+function seasonalLSTColor(v) {
+    // Range: -25 (much cooler in winter) to +5°C, centered near -10
+    var ratio = Math.max(0, Math.min(1, (v + 25) / 30));
+    var colors = [[33,102,172],[103,169,207],[209,229,240],[247,247,247],[253,219,199],[239,138,98],[178,24,43]];
+    var idx = Math.min(Math.floor(ratio * 6), 5);
+    var t = (ratio * 6) - idx;
+    var c1 = colors[idx], c2 = colors[idx + 1];
+    var a = Math.round(160 + 80 * Math.abs(ratio - 0.5) * 2);
+    return [Math.round(c1[0]+(c2[0]-c1[0])*t), Math.round(c1[1]+(c2[1]-c1[1])*t), Math.round(c1[2]+(c2[2]-c1[2])*t), a];
+}
+
+function changePriorityColor(v) {
+    // Range: approx -0.2 to +0.2
+    var ratio = Math.max(0, Math.min(1, (v + 0.2) / 0.4));
+    var colors = [[27,120,55],[102,189,99],[217,240,211],[247,247,247],[254,224,210],[252,146,114],[222,45,38]];
+    var idx = Math.min(Math.floor(ratio * 6), 5);
+    var t = (ratio * 6) - idx;
+    var c1 = colors[idx], c2 = colors[idx + 1];
+    var a = Math.round(140 + 100 * Math.abs(ratio - 0.5) * 2);
+    return [Math.round(c1[0]+(c2[0]-c1[0])*t), Math.round(c1[1]+(c2[1]-c1[1])*t), Math.round(c1[2]+(c2[2]-c1[2])*t), a];
+}
+
 // ═══════════════════════════════════════════════════════
 //  BUILD LAYERS
 // ═══════════════════════════════════════════════════════
@@ -945,10 +989,8 @@ function buildLayers() {
     }
 
     // === THERMAL: Combined SVI+Satellite ===
+    // Using GLOBAL LST range (20-56°C) for consistent comparison across seasons
     if (layerState.combined && CACHE.combined_svi) {
-        var _cRange = computeLSTRange(CACHE.combined_svi, 'lst');
-        lstMin = Math.floor(_cRange[0]);
-        lstMax = Math.ceil(_cRange[1]);
         layers.push(new deck.ScatterplotLayer({
             id: 'combined-points',
             data: CACHE.combined_svi,
@@ -1010,6 +1052,26 @@ function buildLayers() {
             pickable: true,
             opacity: 0.9,
             updateTriggers: { getFillColor: [change5yrMetric] }
+        }));
+    }
+
+    // === THERMAL: Seasonal Change Detection (Summer → Winter) ===
+    if (layerState.changeSeasonal && CACHE.change_seasonal) {
+        layers.push(new deck.ScatterplotLayer({
+            id: 'changeSeasonal-points',
+            data: CACHE.change_seasonal,
+            getPosition: function(d) { return [d.lon, d.lat]; },
+            getRadius: 4,
+            radiusUnits: 'pixels',
+            getFillColor: function(d) {
+                if (changeSeasonalMetric === 'd_lst') return seasonalLSTColor(d.d_lst);
+                if (changeSeasonalMetric === 'd_ndvi') return changeNDVIColor(d.d_ndvi);
+                if (changeSeasonalMetric === 'd_ndbi') return changeNDBIColor(d.d_ndbi);
+                return changePriorityColor(d.d_priority || 0);
+            },
+            pickable: true,
+            opacity: 0.9,
+            updateTriggers: { getFillColor: [changeSeasonalMetric] }
         }));
     }
 
@@ -1383,6 +1445,23 @@ function getTooltip(info) {
         };
     }
 
+    // Seasonal Change
+    if (lid === 'changeSeasonal-points') {
+        var priorityStr = d.d_priority !== null && d.d_priority !== undefined
+            ? '<br><b>&Delta;Priority:</b> ' + d.d_priority.toFixed(4) : '';
+        return {
+            html: '<div style="padding:6px;max-width:280px;"><b>Seasonal Change (Summer &rarr; Winter)</b><br>' +
+                '<b>&Delta;LST:</b> ' + (d.d_lst || 0).toFixed(2) + '°C' +
+                ' <span style="color:#aaa;">(' + (d.lst_summer || 0).toFixed(1) + ' &rarr; ' + (d.lst_winter || 0).toFixed(1) + ')</span><br>' +
+                '<b>&Delta;NDVI:</b> ' + (d.d_ndvi || 0).toFixed(4) +
+                ' <span style="color:#aaa;">(' + (d.ndvi_summer || 0).toFixed(3) + ' &rarr; ' + (d.ndvi_winter || 0).toFixed(3) + ')</span><br>' +
+                '<b>&Delta;NDBI:</b> ' + (d.d_ndbi || 0).toFixed(4) +
+                ' <span style="color:#aaa;">(' + (d.ndbi_summer || 0).toFixed(3) + ' &rarr; ' + (d.ndbi_winter || 0).toFixed(3) + ')</span>' +
+                priorityStr + '</div>',
+            style: { background: 'rgba(0,0,0,0.85)', color: '#eee', fontSize: '12px', borderRadius: '6px' }
+        };
+    }
+
     // Route graph edges
     if (lid === 'route-graph-edges') {
         var e = d.edge;
@@ -1661,6 +1740,25 @@ function updateLegend() {
             items.push('<div class="legend-title">&Delta;NDBI (2020 &rarr; 2025)</div>');
             items.push('<div class="legend-gradient" style="background:linear-gradient(to right,rgb(69,117,180),rgb(145,191,219),rgb(247,247,247),rgb(252,174,97),rgb(215,48,39))"></div>');
             items.push('<div class="legend-labels"><span>&minus;0.2 (reduced)</span><span>0</span><span>+0.2 (built up)</span></div>');
+        }
+    }
+    if (layerState.changeSeasonal) {
+        if (changeSeasonalMetric === 'd_lst') {
+            items.push('<div class="legend-title">&Delta;LST (Summer &rarr; Winter)</div>');
+            items.push('<div class="legend-gradient" style="background:linear-gradient(to right,rgb(33,102,172),rgb(103,169,207),rgb(209,229,240),rgb(247,247,247),rgb(253,219,199),rgb(239,138,98),rgb(178,24,43))"></div>');
+            items.push('<div class="legend-labels"><span>&minus;25°C (much cooler)</span><span>&minus;10°C</span><span>+5°C</span></div>');
+        } else if (changeSeasonalMetric === 'd_ndvi') {
+            items.push('<div class="legend-title">&Delta;NDVI (Summer &rarr; Winter)</div>');
+            items.push('<div class="legend-gradient" style="background:linear-gradient(to right,rgb(140,81,10),rgb(216,179,101),rgb(247,247,247),rgb(166,219,160),rgb(27,120,55))"></div>');
+            items.push('<div class="legend-labels"><span>&minus;0.2 (veg loss)</span><span>0</span><span>+0.2 (greened)</span></div>');
+        } else if (changeSeasonalMetric === 'd_ndbi') {
+            items.push('<div class="legend-title">&Delta;NDBI (Summer &rarr; Winter)</div>');
+            items.push('<div class="legend-gradient" style="background:linear-gradient(to right,rgb(69,117,180),rgb(145,191,219),rgb(247,247,247),rgb(252,174,97),rgb(215,48,39))"></div>');
+            items.push('<div class="legend-labels"><span>&minus;0.2 (reduced)</span><span>0</span><span>+0.2 (built up)</span></div>');
+        } else {
+            items.push('<div class="legend-title">&Delta;Priority (Summer &rarr; Winter)</div>');
+            items.push('<div class="legend-gradient" style="background:linear-gradient(to right,rgb(27,120,55),rgb(102,189,99),rgb(247,247,247),rgb(252,146,114),rgb(222,45,38))"></div>');
+            items.push('<div class="legend-labels"><span>&minus;0.2 (lower priority)</span><span>0</span><span>+0.2 (higher priority)</span></div>');
         }
     }
     if (layerState.centrality) {
@@ -2581,6 +2679,7 @@ var LAYER_INFO = {
     'clusters':          { label: 'Climate Clusters',           desc: 'K-means clustering of micro-climate variables to identify urban thermal zones.', anchor: '#clusters' },
     'green-access':      { label: 'Green Space Access',         desc: 'Walking distance from each sample point to the nearest green space.', anchor: '#clusters' },
     'change5yr':         { label: '5-Year Change (2020→2025)', desc: 'Pixel-by-pixel comparison of summer satellite data between 2020 and 2025, showing changes in LST, NDVI and NDBI.', anchor: '#temporal' },
+    'changeSeasonal':    { label: 'Seasonal Change (Summer→Winter)', desc: 'Comparison of satellite data between Summer 2025 and Winter 2025, showing seasonal variation in LST, NDVI, NDBI and priority scores.', anchor: '#temporal' },
     'centrality':        { label: 'Street Centrality',          desc: 'Network analysis metrics (betweenness, closeness) indicating pedestrian route importance.', anchor: '#network' },
     'comfort':           { label: 'Pedestrian Comfort',         desc: 'Pedestrian Comfort Index combining shade, temperature, greenery and sky openness.', anchor: '#combined' },
     'route-graph':       { label: 'Walking Network',             desc: 'Route graph of 5622 walkable edges colored by PCI, shade or LST. Click Set Route to pick start/end points and replay a street-level camera walk.', anchor: '#network' },

@@ -42,6 +42,7 @@
     "street_metrics": "street_metrics.json",
     "segment_comfort": "segment_comfort.json",
     "change_summer_5yr": "change_summer_5yr.json",
+    "change_seasonal": "change_seasonal.json",
     "route_graph": "route_graph.json"
   },
   "seasons": {
