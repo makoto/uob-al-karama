@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>User Manual - Al Karama Urban Digital Twin</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 900px; margin: 40px auto; padding: 0 20px; color: #2c2520; line-height: 1.6; background: #faf6ef; }
+    h1 { border-bottom: 2px solid #c4653a; padding-bottom: 8px; color: #3b2818; }
+    h2 { color: #c4653a; margin-top: 32px; }
+    h3 { color: #5c3a1e; margin-top: 24px; }
+    a { color: #c4653a; }
+    .back { font-size: 14px; margin-bottom: 16px; }
+    table { font-size: 13px; border-collapse: collapse; width: 100%; margin: 12px 0 20px 0; }
+    th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid #e8dcc8; vertical-align: top; }
+    th { color: #5c3a1e; font-weight: 600; background: #f5f0e8; border-bottom: 2px solid #d4c4a8; }
+    tr:hover td { background: #fdf8f3; }
+    hr { border: none; border-top: 1px solid #d4c4a8; margin: 32px 0; }
+    code { background: #f0ebe0; padding: 1px 5px; border-radius: 3px; font-size: 12px; }
+    kbd { background: #f5f0e8; border: 1px solid #c4b89c; border-radius: 3px; padding: 1px 6px; font-size: 12px; font-family: monospace; box-shadow: 0 1px 0 #b0a48c; }
+    #toc { background: #f5f0e8; border: 1px solid #e8dcc8; border-radius: 6px; padding: 14px 20px; margin: 0 0 24px 0; }
+    #toc summary { font-weight: 600; cursor: pointer; color: #c4653a; font-size: 15px; }
+    #toc ul { margin: 8px 0 0 0; padding-left: 20px; list-style: none; }
+    #toc li { margin: 3px 0; font-size: 13px; line-height: 1.5; }
+    #toc li::before { content: '\2013'; color: #c4b89c; margin-right: 6px; }
+    #toc a { text-decoration: none; }
+    #toc a:hover { text-decoration: underline; }
+    .tip { background: #fdf8f3; border-left: 3px solid #c4653a; padding: 10px 14px; margin: 12px 0; font-size: 13px; border-radius: 0 4px 4px 0; }
+    .note { background: #fff8e1; border-left: 3px solid #e8a04c; padding: 10px 14px; margin: 12px 0; font-size: 13px; border-radius: 0 4px 4px 0; }
+    .swatch { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: middle; margin-right: 4px; }
+  </style>
+</head>
+<body>
+  <div class="back"><a href="index.html">&larr; Back to Dashboard</a></div>
+  <h1>User Manual</h1>
+  <p>A guide to the <a href="viewer.html">3D Digital Twin</a> and <a href="viewer_2d.html">2D Printable Viewer</a> for the Al Karama Urban Digital Twin project.</p>
+
+  <details id="toc" open>
+    <summary>Table of Contents</summary>
+    <ul>
+      <li><a href="#getting-started">Getting Started</a></li>
+      <li><a href="#shortcuts">Keyboard &amp; Mouse Shortcuts</a></li>
+      <li><a href="#3d-viewer">3D Digital Twin Viewer</a></li>
+      <li><a href="#layers">Layer Groups</a></li>
+      <li><a href="#time-slider">Time Slider &amp; Shadows</a></li>
+      <li><a href="#routing">Walking Route Planner</a></li>
+      <li><a href="#view-presets">View Presets &amp; Basemaps</a></li>
+      <li><a href="#clicking">Clicking Features</a></li>
+      <li><a href="#2d-viewer">2D Printable Viewer</a></li>
+      <li><a href="#other-maps">Other Maps</a></li>
+      <li><a href="#tips">Tips &amp; Troubleshooting</a></li>
+    </ul>
+  </details>
+
+  <hr>
+
+  <!-- ===== GETTING STARTED ===== -->
+  <h2 id="getting-started">Getting Started</h2>
+  <p>Open <a href="viewer.html">viewer.html</a> in a modern browser (Chrome, Firefox, Safari, or Edge). The viewer loads with:</p>
+  <ul>
+    <li><strong>Al Karama, Dubai</strong> as the study area</li>
+    <li><strong>Buildings</strong> extruded in 3D with height from Google Earth Engine</li>
+    <li><strong>Tree canopy</strong> shown as green polygons</li>
+    <li><strong>District boundary</strong> as a magenta outline</li>
+    <li><strong>GPU sun shadows</strong> and <strong>projected building/tree shadows</strong> enabled for the default time (12:00 PM)</li>
+    <li>The camera tilted at 45&deg; for a 3D perspective</li>
+  </ul>
+  <div class="tip">The viewer uses WebGL via deck.gl for GPU-accelerated rendering. If the map appears blank, check that hardware acceleration is enabled in your browser settings.</div>
+
+  <!-- ===== KEYBOARD & MOUSE SHORTCUTS ===== -->
+  <h2 id="shortcuts">Keyboard &amp; Mouse Shortcuts</h2>
+  <p>The 3D viewer uses <strong>deck.gl + MapLibre GL</strong>. The 2D viewer uses <strong>Leaflet</strong>. Their navigation shortcuts are listed below.</p>
+
+  <h3>3D Viewer (deck.gl / MapLibre)</h3>
+  <table>
+    <tr><th style="width:220px">Action</th><th>Mouse / Trackpad</th><th>Keyboard</th></tr>
+    <tr><td><strong>Pan</strong></td><td>Left-click + drag</td><td>&mdash;</td></tr>
+    <tr><td><strong>Zoom in</strong></td><td>Scroll up, or pinch out on trackpad</td><td><kbd>+</kbd> or <kbd>=</kbd></td></tr>
+    <tr><td><strong>Zoom out</strong></td><td>Scroll down, or pinch in on trackpad</td><td><kbd>&minus;</kbd></td></tr>
+    <tr><td><strong>Rotate (bearing)</strong></td><td>Right-click + drag left/right, <em>or</em> <kbd>Ctrl</kbd> + left-click + drag</td><td>&mdash;</td></tr>
+    <tr><td><strong>Tilt (pitch)</strong></td><td>Right-click + drag up/down, <em>or</em> <kbd>Ctrl</kbd> + left-click + drag up/down</td><td>&mdash;</td></tr>
+    <tr><td><strong>Zoom to point</strong></td><td>Double-click</td><td>&mdash;</td></tr>
+    <tr><td><strong>Zoom out from point</strong></td><td>Double-click + <kbd>Shift</kbd></td><td>&mdash;</td></tr>
+    <tr><td><strong>Reset north</strong></td><td>Click the compass (if visible)</td><td>&mdash;</td></tr>
+    <tr><td><strong>Box zoom</strong></td><td><kbd>Shift</kbd> + left-click + drag a rectangle</td><td>&mdash;</td></tr>
+  </table>
+
+  <h3>2D Viewer (Leaflet)</h3>
+  <table>
+    <tr><th style="width:220px">Action</th><th>Mouse / Trackpad</th><th>Keyboard</th></tr>
+    <tr><td><strong>Pan</strong></td><td>Left-click + drag</td><td>Arrow keys (<kbd>&larr;</kbd> <kbd>&rarr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd>)</td></tr>
+    <tr><td><strong>Zoom in</strong></td><td>Scroll up, double-click, or pinch out</td><td><kbd>+</kbd> or <kbd>=</kbd></td></tr>
+    <tr><td><strong>Zoom out</strong></td><td>Scroll down, or pinch in</td><td><kbd>&minus;</kbd></td></tr>
+    <tr><td><strong>Box zoom</strong></td><td><kbd>Shift</kbd> + left-click + drag a rectangle</td><td>&mdash;</td></tr>
+  </table>
+
+  <h3>Browser Shortcuts (all viewers)</h3>
+  <table>
+    <tr><th style="width:220px">Action</th><th>Windows / Linux</th><th>macOS</th></tr>
+    <tr><td><strong>Hard refresh</strong> (clear cache)</td><td><kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd></td><td><kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd></td></tr>
+    <tr><td><strong>Open dev console</strong></td><td><kbd>F12</kbd> or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>I</kbd></td><td><kbd>Cmd</kbd>+<kbd>Option</kbd>+<kbd>I</kbd></td></tr>
+    <tr><td><strong>Full screen</strong></td><td><kbd>F11</kbd></td><td><kbd>Ctrl</kbd>+<kbd>Cmd</kbd>+<kbd>F</kbd></td></tr>
+    <tr><td><strong>Print / export PDF</strong></td><td><kbd>Ctrl</kbd>+<kbd>P</kbd></td><td><kbd>Cmd</kbd>+<kbd>P</kbd></td></tr>
+  </table>
+
+  <hr>
+
+  <!-- ===== 3D VIEWER ===== -->
+  <h2 id="3d-viewer">3D Digital Twin Viewer</h2>
+  <p>The <a href="viewer.html">3D viewer</a> is the primary interface. It renders Al Karama as an interactive 3D scene with buildings, tree canopy, shadow projections, thermal overlays, street networks, and points of interest.</p>
+  <h3>Interface layout</h3>
+  <ul>
+    <li><strong>Left panel</strong> &mdash; layer toggles organised in accordion groups, plus the sun position compass</li>
+    <li><strong>Bottom bar</strong> &mdash; time-of-day slider (6 AM &ndash; 6 PM) with play/pause button</li>
+    <li><strong>Bottom-right buttons</strong> &mdash; view presets (Overview, Top-down, Street, South) and basemap switcher</li>
+    <li><strong>Top nav bar</strong> &mdash; links to Dashboard, 2D maps dropdown, season selector, and area selector</li>
+    <li><strong>Dynamic legend</strong> &mdash; appears bottom-left when a colour-coded layer is active</li>
+    <li><strong>Info popover</strong> &mdash; click the <strong>i</strong> button next to any layer for a description</li>
+  </ul>
+
+  <h3>Season selector</h3>
+  <p>The dropdown in the top nav bar lets you switch between seasonal datasets (e.g., Summer 2025, Winter 2025). Switching seasons reloads shadow projections, satellite grids, heat priority, and combined SVI data for the selected period. Layers marked with a <em>seasonal</em> badge update automatically.</p>
+
+  <!-- ===== LAYERS ===== -->
+  <h2 id="layers">Layer Groups</h2>
+
+  <h3>Urban Form (3 layers)</h3>
+  <table>
+    <tr><th>Layer</th><th>Description</th></tr>
+    <tr><td><strong>Buildings</strong></td><td>3D extruded footprints. Colour modes: Default (uniform), Height (blue&rarr;red), Land Use (residential, commercial, etc.)</td></tr>
+    <tr><td><strong>Tree Canopy</strong></td><td>Green polygons from satellite-derived canopy data</td></tr>
+    <tr><td><strong>District Boundary</strong></td><td>Magenta outline of Al Karama</td></tr>
+  </table>
+
+  <h3>Shade &amp; Shadows (4 layers)</h3>
+  <table>
+    <tr><th>Layer</th><th>Description</th></tr>
+    <tr><td><strong>GPU Sun Shadows</strong></td><td>Real-time shadow casting from the deck.gl lighting engine based on the time slider</td></tr>
+    <tr><td><strong>Building Shadows (projected)</strong></td><td>Pre-computed shadow polygons from building footprints. Updates with time slider. <em>Seasonal.</em></td></tr>
+    <tr><td><strong>Tree Shadows (projected)</strong></td><td>Pre-computed shadow polygons from tree canopy. Updates with time slider. <em>Seasonal.</em></td></tr>
+    <tr><td><strong>Street Shade %</strong></td><td>Street segments coloured by shade coverage percentage. Modes: Shade colour / Neutral. <em>Seasonal.</em></td></tr>
+  </table>
+  <p>A shade coverage bar chart also appears in the panel, showing average shade per time slot.</p>
+
+  <h3>Thermal &amp; Vegetation (7 layers)</h3>
+  <table>
+    <tr><th>Layer</th><th>Description</th></tr>
+    <tr><td><strong>Heat Mitigation Priority</strong></td><td>Points scored by combined heat stress factors. <em>Seasonal.</em></td></tr>
+    <tr><td><strong>Combined SVI+Satellite</strong></td><td>Fused street-view and satellite metrics per point. Colour modes: LST, GVI, SVF. <em>Seasonal.</em></td></tr>
+    <tr><td><strong>Climate Clusters</strong></td><td>K-means clustered zones by thermal/vegetation profile. <em>Seasonal.</em></td></tr>
+    <tr><td><strong>Green Space Access</strong></td><td>Walking distance to nearest green space per point</td></tr>
+    <tr><td><strong>5-Year Change (2020&rarr;2025)</strong></td><td>Difference in LST, NDVI, or NDBI over 5 years</td></tr>
+    <tr><td><strong>Seasonal Change</strong></td><td>Difference between summer and winter in LST, NDVI, NDBI, or priority score</td></tr>
+  </table>
+
+  <h3>Mobility &amp; Network (3 layers)</h3>
+  <table>
+    <tr><th>Layer</th><th>Description</th></tr>
+    <tr><td><strong>Street Centrality</strong></td><td>Network analysis of street importance. Modes: Betweenness, Closeness</td></tr>
+    <tr><td><strong>Pedestrian Comfort</strong></td><td>Segment-level comfort scores combining shade, LST, and GVI</td></tr>
+    <tr><td><strong>Walking Network</strong></td><td>Routable pedestrian network. Colour modes: PCI (comfort index), Shade, LST. Includes route planning (see <a href="#routing">below</a>)</td></tr>
+  </table>
+
+  <h3>Points of Interest (1 layer)</h3>
+  <table>
+    <tr><th>Layer</th><th>Description</th></tr>
+    <tr><td><strong>POIs</strong></td><td>1,290 points from OpenStreetMap. Filter by category: Food, Shopping, Hotel, Health, Religious, Services, Leisure, Education</td></tr>
+  </table>
+
+  <!-- ===== TIME SLIDER ===== -->
+  <h2 id="time-slider">Time Slider &amp; Shadows</h2>
+  <p>The bottom time slider controls the sun position and shadow projections across 7 time slots:</p>
+  <p><strong>6 AM &bull; 8 AM &bull; 10 AM &bull; 12 PM &bull; 2 PM &bull; 4 PM &bull; 6 PM</strong></p>
+  <ul>
+    <li>Drag the slider or click a time mark to jump to that hour</li>
+    <li>Click the <strong>&#9654; Play</strong> button to auto-cycle through the day</li>
+    <li>The sun compass in the left panel updates to show azimuth, altitude, and shadow length</li>
+    <li>Building and tree shadow polygons update to match the selected time</li>
+    <li>Street shade percentages update accordingly</li>
+  </ul>
+
+  <!-- ===== ROUTING ===== -->
+  <h2 id="routing">Walking Route Planner</h2>
+  <p>When the <strong>Walking Network</strong> layer is enabled, a route planning interface appears:</p>
+  <ol>
+    <li>Click <strong>Set Route</strong></li>
+    <li>Click on the map to set the <strong>start point</strong> (snaps to nearest network node)</li>
+    <li>Click again to set the <strong>end point</strong></li>
+    <li>A route is computed and displayed. Choose the optimisation:
+      <ul>
+        <li><strong>Comfort</strong> &mdash; prefers shaded, cooler, greener paths (may be longer)</li>
+        <li><strong>Shortest</strong> &mdash; minimises walking distance</li>
+      </ul>
+    </li>
+    <li>A <strong>replay bar</strong> appears at the bottom to animate a walk along the route, with speed controls (0.5x&ndash;32x)</li>
+    <li>Click the <strong>&#128279; share</strong> button to copy a URL that encodes the route</li>
+    <li>Click <strong>Clear</strong> or <strong>&#10005;</strong> to dismiss</li>
+  </ol>
+
+  <!-- ===== VIEW PRESETS ===== -->
+  <h2 id="view-presets">View Presets &amp; Basemaps</h2>
+
+  <h3>Camera presets (bottom-right)</h3>
+  <table>
+    <tr><th>Preset</th><th>Description</th></tr>
+    <tr><td><strong>Overview</strong></td><td>Tilted 45&deg; view of the entire district</td></tr>
+    <tr><td><strong>Top-down</strong></td><td>Bird's-eye (0&deg; pitch) for map-like viewing</td></tr>
+    <tr><td><strong>Street</strong></td><td>Low angle, zoomed in for street-level perspective</td></tr>
+    <tr><td><strong>South</strong></td><td>Looking south to see shadow fall patterns</td></tr>
+  </table>
+
+  <h3>Basemaps</h3>
+  <table>
+    <tr><th>Style</th><th>Description</th></tr>
+    <tr><td><strong>Map</strong> (default)</td><td>CARTO Positron &mdash; light, clean labels. Good for analysis overlays.</td></tr>
+    <tr><td><strong>Satellite</strong></td><td>Esri World Imagery. Good for comparing with vegetation layers.</td></tr>
+    <tr><td><strong>Dark</strong></td><td>CARTO Dark Matter. Best contrast for thermal/coloured layers.</td></tr>
+  </table>
+
+  <!-- ===== CLICKING ===== -->
+  <h2 id="clicking">Clicking Features</h2>
+  <p>Click any visible feature to see a tooltip or popup with details. The information depends on the layer:</p>
+  <table>
+    <tr><th style="width:200px">Layer</th><th>Popup content</th></tr>
+    <tr><td><strong>Buildings</strong></td><td>Name, building type, height (m), height source, land use</td></tr>
+    <tr><td><strong>Street Shade</strong></td><td>Street name, shade %, length</td></tr>
+    <tr><td><strong>Heat Priority</strong></td><td>Priority score, LST, NDVI, SVF, GVI</td></tr>
+    <tr><td><strong>Combined SVI</strong></td><td>Current metric value (LST, GVI, or SVF)</td></tr>
+    <tr><td><strong>Street Centrality</strong></td><td>Road name, betweenness/closeness value</td></tr>
+    <tr><td><strong>Pedestrian Comfort</strong></td><td>Comfort score, shade %, LST, GVI</td></tr>
+    <tr><td><strong>POIs</strong></td><td>Name, category, amenity type</td></tr>
+    <tr><td><strong>Walking Network</strong></td><td>Edge comfort index, shade %, LST</td></tr>
+  </table>
+  <p>Click on an empty area of the map to dismiss the popup.</p>
+
+  <hr>
+
+  <!-- ===== 2D VIEWER ===== -->
+  <h2 id="2d-viewer">2D Printable Viewer</h2>
+  <p>The <a href="viewer_2d.html">2D viewer</a> uses Leaflet and is designed for printable/exportable maps. It provides radio-button layer selection (one analysis layer at a time) with a legend.</p>
+  <p>Available layers include: Street Centrality, Pedestrian Comfort, Heat Priority, Combined SVI, Satellite Grid, Climate Clusters, and Green Access.</p>
+  <div class="tip"><strong>Export:</strong> Use <kbd>Ctrl</kbd>+<kbd>P</kbd> (<kbd>Cmd</kbd>+<kbd>P</kbd> on Mac) to print or save as PDF. The 2D viewer is styled for clean print output.</div>
+
+  <!-- ===== OTHER MAPS ===== -->
+  <h2 id="other-maps">Other Maps</h2>
+  <table>
+    <tr><th>Map</th><th>Description</th></tr>
+    <tr><td><a href="gvi_point_map.html">GVI Point Map</a></td><td>11,651 Mapillary image locations with Green View Index values and image popups</td></tr>
+    <tr><td><a href="segmentation_gallery.html">Segmentation Gallery</a></td><td>Sample semantic segmentation images showing vegetation detection</td></tr>
+    <tr><td><a href="network_analysis/network_analysis_comparison.html">Network Analysis Comparison</a></td><td>Side-by-side comparison of 5 centrality metrics</td></tr>
+    <tr><td><a href="network_analysis/od_betweenness_map.html">OD Betweenness</a></td><td>Origin-destination weighted pedestrian flow analysis</td></tr>
+    <tr><td><a href="network_analysis/angular_map.html">Space Syntax</a></td><td>Angular Choice and Integration analysis</td></tr>
+    <tr><td><a href="network_analysis/isochrone_map.html">Transit Isochrones</a></td><td>Walking distance from metro and bus stations (5/10/15 min)</td></tr>
+    <tr><td><a href="centrality_comparison.html">Boundary Comparison</a></td><td>Effect of boundary choice on centrality metrics</td></tr>
+    <tr><td><a href="satellite_full/full_area_analysis_10m.html">Satellite Grid (10m)</a></td><td>High-resolution satellite analysis grid</td></tr>
+    <tr><td><a href="thermal_sharpening/thermal_sharpening.html">Thermal Sharpening</a></td><td>Downscaled thermal imagery comparison</td></tr>
+  </table>
+
+  <!-- ===== TIPS ===== -->
+  <h2 id="tips">Tips &amp; Troubleshooting</h2>
+  <table>
+    <tr><th style="width:200px">Issue</th><th>Solution</th></tr>
+    <tr><td>Map appears blank</td><td>Check that hardware acceleration is enabled in your browser. Try a hard refresh (<kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd> / <kbd>Cmd</kbd>+<kbd>Shift</kbd>+<kbd>R</kbd>).</td></tr>
+    <tr><td>Layer not loading</td><td>Check the browser console (<kbd>F12</kbd>) for errors. Data files are lazy-loaded on first toggle.</td></tr>
+    <tr><td>Shadows not updating</td><td>Drag the time slider. Shadow polygons load per time slot; there may be a brief loading delay.</td></tr>
+    <tr><td>Slow performance</td><td>Disable layers you don't need, especially GPU Shadows and Tree Shadows which are rendering-intensive. Closing other browser tabs also helps.</td></tr>
+    <tr><td>Route not computing</td><td>Make sure you click near the road network. The start/end points snap to the nearest walkable node.</td></tr>
+    <tr><td>Season data missing</td><td>Not all seasons may have complete data. Check the season dropdown for available options.</td></tr>
+    <tr><td>Printing / PDF export</td><td>Use the 2D viewer for best print results. Switch to Top-down view and use <kbd>Ctrl</kbd>+<kbd>P</kbd>.</td></tr>
+  </table>
+
+  <hr>
+  <p style="font-size: 12px; color: #999; text-align: center;">Al Karama Urban Digital Twin | Data: Mapillary, Landsat 8/9, Sentinel-2, OpenStreetMap | Generated with ZenSVI + Google Earth Engine</p>
+</body>
+</html>
